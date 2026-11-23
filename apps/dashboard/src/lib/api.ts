@@ -100,6 +100,8 @@ export interface Language {
   enabled: boolean;
   isDefault: boolean;
   bundled?: boolean;
+  customized?: boolean;
+  customUpdatedAt?: string | null;
   missingKeys?: number | null;
 }
 
@@ -163,6 +165,41 @@ export interface RegistrationTokenResult {
   serverType: 'VELOCITY' | 'PAPER';
   serverName: string;
   expiresAt: string;
+}
+
+export interface RegistrationStatus {
+  id: string;
+  serverType: 'VELOCITY' | 'PAPER';
+  serverName: string;
+  expiresAt: string;
+  usedAt: string | null;
+  status: 'PENDING' | 'REGISTERED' | 'EXPIRED';
+  server: { id: string; name: string; status: ServerInfo['status']; lastHeartbeatAt: string | null; pluginVersion: string | null; minecraftVersion: string | null } | null;
+}
+
+export interface ManagedPluginSettings {
+  language: string | null;
+  statisticsEnabled: boolean | null;
+  statisticsCategories: string[] | null;
+  statisticsIntervalSeconds: number | null;
+  inventorySync: boolean | null;
+  enderChestSync: boolean | null;
+  inventorySyncIntervalSeconds: number | null;
+  messages: Record<string, Record<string, string>>;
+}
+
+export interface StoredPluginSettings {
+  revision: number;
+  settings: ManagedPluginSettings;
+  updatedAt: string | null;
+}
+
+export interface ModerationPreset {
+  id: string;
+  name: string;
+  type: PunishmentType;
+  reason: string;
+  durationSeconds: number | null;
 }
 
 export interface PlayerListItem {

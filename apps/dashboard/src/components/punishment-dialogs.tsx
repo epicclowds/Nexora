@@ -2,8 +2,8 @@
 
 import { PERMISSIONS } from '@mnm/shared-types';
 import { useTranslations } from 'next-intl';
-import { type FormEvent, type ReactNode, useState } from 'react';
-import { api, ApiError, errorKey, type Punishment, type PunishmentType } from '@/lib/api';
+import { type FormEvent, type ReactNode, useEffect, useState } from 'react';
+import { api, ApiError, errorKey, type ModerationPreset, type Punishment, type PunishmentType } from '@/lib/api';
 import { useAuth } from './auth-provider';
 import { useToast } from './toaster';
 import { Dialog, DialogContent, DialogTrigger } from './ui/dialog';
@@ -23,6 +23,15 @@ const TEMPORARY: PunishmentType[] = ['TEMP_BAN', 'TEMP_MUTE'];
 const PRESETS = [3600, 86_400, 3 * 86_400, 7 * 86_400, 30 * 86_400];
 const UNIT_SECONDS = { minutes: 60, hours: 3600, days: 86_400, weeks: 604_800 } as const;
 type Unit = keyof typeof UNIT_SECONDS;
+
+/** Largest unit that represents the duration exactly (e.g. 1209600 → 2 weeks). */
+export function splitDuration(seconds: number): { amount: number; unit: Unit } {
+  for (const unit of ['weeks', 'days', 'hours', 'minutes'] as const) {
+    if (seconds % UNIT_SECONDS[unit] === 0) return { amount: seconds / UNIT_SECONDS[unit], unit };
+  }
+  return { amount: Math.max(1, Math.round(seconds / 60)), unit: 'minutes' };
+}
+export { UNIT_SECONDS, TEMPORARY as TEMPORARY_TYPES, type Unit };
 
 /** Types the current user may issue (cosmetic; the backend enforces the same rules). */
 export function useIssuableTypes(): PunishmentType[] {
@@ -58,8 +67,35 @@ export function PunishDialog({ trigger, target, targetName, onIssued }: { trigge
   const [unit, setUnit] = useState<Unit>('days');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [presets, setPresets] = useState<ModerationPreset[]>([]);
+  const [presetId, setPresetId] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    api<{ presets: ModerationPreset[] }>('/settings/moderation')
+      .then((m) => setPresets(m.presets))
+      .catch(() => setPresets([]));
+  }, [open]);
 
   if (types.length === 0) return null;
+  const usablePresets = presets.filter((p) => types.includes(p.type));
+
+  function applyPreset(id: string) {
+    setPresetId(id);
+    const p = usablePresets.find((x) => x.id === id);
+    if (!p) return;
+    setType(p.type);
+    setReason(p.reason);
+    if (p.durationSeconds) {
+      if (PRESETS.includes(p.durationSeconds)) setPreset(p.durationSeconds);
+      else {
+        const split = splitDuration(p.durationSeconds);
+        setPreset('custom');
+        setAmount(split.amount);
+        setUnit(split.unit);
+      }
+    }
+  }
   const temporary = TEMPORARY.includes(type);
   const durationSeconds = preset === 'custom' ? amount * UNIT_SECONDS[unit] : preset;
 
@@ -75,6 +111,7 @@ export function PunishDialog({ trigger, target, targetName, onIssued }: { trigge
       toast(t('moderation.issued', { type: t(`moderation.types.${type}`), player: created.target.username }));
       setOpen(false);
       setReason('');
+      setPresetId('');
       onIssued?.();
     } catch (err) {
       setError(format(err));
@@ -92,6 +129,18 @@ export function PunishDialog({ trigger, target, targetName, onIssued }: { trigge
           {!target && (
             <Field label={t('moderation.punishTarget')} htmlFor="pun-target">
               <Input id="pun-target" value={player} onChange={(e) => setPlayer(e.target.value)} maxLength={36} required autoFocus />
+            </Field>
+          )}
+          {usablePresets.length > 0 && (
+            <Field label={t('presets.template')} htmlFor="pun-preset">
+              <Select id="pun-preset" value={presetId} onChange={(e) => applyPreset(e.target.value)}>
+                <option value="">{t('presets.none')}</option>
+                {usablePresets.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
             </Field>
           )}
           <Field label={t('moderation.type')} htmlFor="pun-type" hint={type === 'BLACKLIST' ? t('moderation.blacklistHint') : undefined}>

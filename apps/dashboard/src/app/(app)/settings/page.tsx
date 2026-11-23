@@ -1,31 +1,81 @@
 'use client';
 
 import { PERMISSIONS } from '@mnm/shared-types';
-import { Check, Copy, Trash2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
-import { useFormatter, useNow, useTranslations } from 'next-intl';
-import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
+import { type FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
 import { useAuth } from '@/components/auth-provider';
+import { LanguagesManager } from '@/components/languages-manager';
+import { MinecraftIntegration } from '@/components/minecraft-integration';
+import { ModerationPresets } from '@/components/moderation-presets';
+import { PluginSettingsEditor } from '@/components/plugin-settings-editor';
 import { LanguageSwitcher, ThemeToggle } from '@/components/preference-controls';
 import { useToast } from '@/components/toaster';
-import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Label, Select, Textarea } from '@/components/ui/primitives';
-import { Switch } from '@/components/ui/switch';
-import { api, errorKey, type Language, type RegistrationTokenResult } from '@/lib/api';
+import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Label, Select, Skeleton, Textarea } from '@/components/ui/primitives';
+import { api, errorKey } from '@/lib/api';
 import { browserTimeZone, storeTimeZone } from '@/lib/preferences';
+import { cn } from '@/lib/utils';
+
+const SECTIONS = [
+  { key: 'general', permission: null },
+  { key: 'minecraft', permission: PERMISSIONS.SERVERS_MANAGE },
+  { key: 'plugins', permission: PERMISSIONS.SETTINGS_MANAGE },
+  { key: 'moderation', permission: PERMISSIONS.SETTINGS_MANAGE },
+  { key: 'languages', permission: PERMISSIONS.TRANSLATIONS_MANAGE },
+  { key: 'privacy', permission: PERMISSIONS.SETTINGS_MANAGE },
+] as const;
+type Section = (typeof SECTIONS)[number]['key'];
 
 export default function SettingsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-64" />}>
+      <Settings />
+    </Suspense>
+  );
+}
+
+function Settings() {
   const t = useTranslations();
   const { can } = useAuth();
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  const visible = SECTIONS.filter((s) => s.permission === null || can(s.permission)).map((s) => s.key);
+  const requested = params.get('section') as Section | null;
+  const section: Section = requested && visible.includes(requested) ? requested : 'general';
+
   return (
     <>
       <PageHeader title={t('settings.title')} subtitle={t('settings.subtitle')} />
+      <nav aria-label={t('settings.title')} className="mb-6 flex gap-1 overflow-x-auto border-b [scrollbar-width:none]">
+        {visible.map((key) => (
+          <button
+            key={key}
+            type="button"
+            aria-current={section === key ? 'page' : undefined}
+            onClick={() => router.replace(`${pathname}${key === 'general' ? '' : `?section=${key}`}`, { scroll: false })}
+            className={cn(
+              '-mb-px shrink-0 border-b-2 px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground',
+              section === key ? 'border-primary font-medium text-foreground' : 'border-transparent',
+            )}
+          >
+            {t(`settings.sections.${key}`)}
+          </button>
+        ))}
+      </nav>
       <div className="grid gap-6">
-        <PreferencesCard />
-        {can(PERMISSIONS.SETTINGS_MANAGE) && <NetworkCard />}
-        {can(PERMISSIONS.SETTINGS_MANAGE) && <PrivacyCard />}
-        {can(PERMISSIONS.TRANSLATIONS_MANAGE) && <LanguagesCard />}
-        {can(PERMISSIONS.SERVERS_MANAGE) && <MinecraftCard />}
+        {section === 'general' && (
+          <>
+            <PreferencesCard />
+            {can(PERMISSIONS.SETTINGS_MANAGE) && <NetworkCard />}
+          </>
+        )}
+        {section === 'minecraft' && <MinecraftIntegration />}
+        {section === 'plugins' && <PluginSettingsEditor />}
+        {section === 'moderation' && <ModerationPresets />}
+        {section === 'languages' && <LanguagesManager />}
+        {section === 'privacy' && <PrivacyCard />}
       </div>
     </>
   );
@@ -185,161 +235,6 @@ function PrivacyCard() {
             <option value="forever">{t('privacy.keepForever')}</option>
           </Select>
         </Field>
-      </CardContent>
-    </Card>
-  );
-}
-
-function LanguagesCard() {
-  const t = useTranslations();
-  const toast = useToast();
-  const [languages, setLanguages] = useState<Language[]>([]);
-
-  const load = useCallback(() => api<Language[]>('/i18n/languages').then(setLanguages).catch(() => undefined), []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function update(locale: string, body: { enabled?: boolean; isDefault?: true }) {
-    try {
-      await api(`/i18n/languages/${locale}`, { method: 'PATCH', body });
-      toast(t('settings.saved'));
-      await load();
-    } catch (err) {
-      toast(t(`errors.${errorKey(err)}`), 'error');
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('settings.languages')}</CardTitle>
-        <CardDescription>{t('settings.languagesDescription')}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-2">
-        {languages.map((l) => (
-          <div key={l.locale} className="flex flex-wrap items-center gap-3 rounded-lg border px-4 py-3">
-            <div className="min-w-40 flex-1">
-              <div className="font-medium">{l.nativeName}</div>
-              <div className="font-mono text-xs text-muted-foreground">{l.locale}</div>
-            </div>
-            {typeof l.missingKeys === 'number' && <Badge variant={l.missingKeys === 0 ? 'default' : 'warning'}>{t('settings.missingKeys', { count: l.missingKeys })}</Badge>}
-            {l.isDefault ? (
-              <Badge variant="info">{t('settings.default')}</Badge>
-            ) : (
-              <Button size="sm" variant="ghost" onClick={() => void update(l.locale, { isDefault: true })}>
-                {t('settings.setDefault')}
-              </Button>
-            )}
-            <label className="flex items-center gap-2 text-sm">
-              <Switch checked={l.enabled} disabled={l.isDefault} onCheckedChange={(v) => void update(l.locale, { enabled: v })} aria-label={t('settings.enabled')} />
-              {t('settings.enabled')}
-            </label>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-interface PendingToken {
-  id: string;
-  serverType: 'VELOCITY' | 'PAPER';
-  serverName: string;
-  expiresAt: string;
-}
-
-function MinecraftCard() {
-  const t = useTranslations();
-  const format = useFormatter();
-  const now = useNow({ updateInterval: 30_000 });
-  const toast = useToast();
-  const [type, setType] = useState<'VELOCITY' | 'PAPER'>('PAPER');
-  const [name, setName] = useState('');
-  const [created, setCreated] = useState<RegistrationTokenResult | null>(null);
-  const [pending, setPending] = useState<PendingToken[]>([]);
-  const [copied, setCopied] = useState(false);
-
-  const load = useCallback(() => api<PendingToken[]>('/servers/registration-tokens').then(setPending).catch(() => undefined), []);
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  async function create(e: FormEvent) {
-    e.preventDefault();
-    try {
-      setCreated(await api<RegistrationTokenResult>('/servers/registration-tokens', { method: 'POST', body: { type, name } }));
-      setName('');
-      await load();
-    } catch (err) {
-      toast(t(`errors.${errorKey(err)}`), 'error');
-    }
-  }
-
-  async function revoke(id: string) {
-    await api(`/servers/registration-tokens/${id}`, { method: 'DELETE' }).catch(() => undefined);
-    if (created?.id === id) setCreated(null);
-    await load();
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('settings.minecraft')}</CardTitle>
-        <CardDescription>{t('settings.minecraftDescription')}</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <form onSubmit={create} className="grid gap-3 sm:grid-cols-[160px_1fr_auto] sm:items-end">
-          <Field label={t('settings.serverType')} htmlFor="tok-type">
-            <Select id="tok-type" value={type} onChange={(e) => setType(e.target.value as 'VELOCITY' | 'PAPER')}>
-              <option value="VELOCITY">Velocity</option>
-              <option value="PAPER">Paper</option>
-            </Select>
-          </Field>
-          <Field label={t('settings.serverName')} htmlFor="tok-name">
-            <Input id="tok-name" placeholder="lobby-1" value={name} onChange={(e) => setName(e.target.value)} pattern="[A-Za-z0-9_.\-]+" maxLength={64} required />
-          </Field>
-          <Button type="submit" disabled={name.trim().length < 2}>
-            {t('settings.createToken')}
-          </Button>
-        </form>
-
-        {created && (
-          <Alert variant="success" className="grid gap-2">
-            <span>{t('settings.tokenCreated', { time: format.relativeTime(new Date(created.expiresAt), now) })}</span>
-            <div className="flex gap-2">
-              <code className="flex-1 overflow-x-auto rounded-md border bg-background px-3 py-2 font-mono text-xs text-foreground">{created.token}</code>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  void navigator.clipboard.writeText(created.token);
-                  setCopied(true);
-                  setTimeout(() => setCopied(false), 2000);
-                }}
-              >
-                {copied ? <Check aria-hidden /> : <Copy aria-hidden />}
-                {copied ? t('common.copied') : t('common.copy')}
-              </Button>
-            </div>
-          </Alert>
-        )}
-
-        {pending.length > 0 && (
-          <ul className="grid gap-2">
-            {pending.map((p) => (
-              <li key={p.id} className="flex items-center gap-3 rounded-lg border px-4 py-2 text-sm">
-                <Badge variant={p.serverType === 'VELOCITY' ? 'info' : 'default'}>{p.serverType === 'VELOCITY' ? 'Velocity' : 'Paper'}</Badge>
-                <span className="flex-1 font-medium">{p.serverName}</span>
-                <span className="text-xs text-muted-foreground">{t('setup.velocity.expires', { time: format.relativeTime(new Date(p.expiresAt), now) })}</span>
-                <Button variant="ghost" size="icon" onClick={() => void revoke(p.id)} title={t('common.delete')}>
-                  <Trash2 aria-hidden />
-                  <span className="sr-only">{t('common.delete')}</span>
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
       </CardContent>
     </Card>
   );
