@@ -10,6 +10,7 @@ import dev.mnm.plugin.punish.PunishmentTexts;
 import dev.mnm.paper.anticheat.AntiCheatBanCommand;
 import dev.mnm.paper.anticheat.AntiCheatBridge;
 import dev.mnm.paper.api.AntiCheatApi;
+import dev.mnm.paper.inventory.InventorySync;
 import dev.mnm.paper.stats.ActivityTracker;
 import dev.mnm.paper.stats.StatisticsCollector;
 import io.papermc.paper.command.brigadier.BasicCommand;
@@ -74,6 +75,14 @@ public final class NetworkManagerPaper extends JavaPlugin {
         getServer().getServicesManager().register(AntiCheatApi.class, anticheat, this, ServicePriority.Normal);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> event.registrar().register(
                 "anticheatban", "Requests an AntiCheat punishment according to the network rules", List.of(), new AntiCheatBanCommand(anticheat, messages)));
+
+        if (config.inventorySync() || config.enderChestSync()) {
+            InventorySync inventories = new InventorySync(this, connector.client(), config.inventorySync(), config.enderChestSync(), getSLF4JLogger());
+            getServer().getPluginManager().registerEvents(inventories, this);
+            connector.every3Seconds(inventories::poll);
+            long interval = config.inventorySyncIntervalSeconds() * 20L;
+            getServer().getScheduler().runTaskTimer(this, inventories::snapshotAll, interval, interval);
+        }
 
         if (config.statisticsEnabled()) {
             ActivityTracker activity = new ActivityTracker(this, config.afkTimeoutSeconds());

@@ -27,6 +27,9 @@ public record PluginConfig(
         int afkTimeoutSeconds,
         java.util.Set<String> anticheatIntegrations,
         int anticheatMaxReportsPerMinute,
+        boolean inventorySync,
+        boolean enderChestSync,
+        int inventorySyncIntervalSeconds,
         boolean debug) {
 
     public static final java.util.Set<String> STATISTIC_CATEGORIES = java.util.Set.of("movement", "combat", "blocks", "general");
@@ -63,6 +66,9 @@ public record PluginConfig(
                 clamp(integer(p, "afk-timeout-seconds", 300), 30, 3600),
                 names(p.getProperty("anticheat-integrations", "")),
                 clamp(integer(p, "anticheat-max-reports-per-minute", 120), 1, 10_000),
+                bool(p, "inventory-sync", true),
+                bool(p, "enderchest-sync", true),
+                clamp(integer(p, "inventory-sync-interval-seconds", 300), 30, 3600),
                 bool(p, "debug", false));
     }
 
