@@ -119,7 +119,7 @@ function ProfileContent() {
             </div>
           </Card>
 
-          <nav aria-label={player.username} className="-mb-2 flex gap-1 overflow-x-auto border-b">
+          <nav aria-label={player.username} className="-mb-2 flex gap-1 overflow-x-auto border-b [scrollbar-width:none]">
             {visible.map((key) => (
               <button
                 key={key}

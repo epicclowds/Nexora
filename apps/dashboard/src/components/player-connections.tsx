@@ -97,7 +97,7 @@ export function PlayerConnections({ uuid, locale }: { uuid: string; locale: stri
                     <TR key={ip.ipAddress}>
                       <TD className="font-mono text-xs">{ip.ipAddress}</TD>
                       {data.canViewLocation && (
-                        <TD className="text-xs">
+                        <TD className="min-w-40 text-xs">
                           {describe(ip.location, countryName)}
                           {ip.location?.isp && <span className="block text-muted-foreground">{ip.location.isp}</span>}
                         </TD>
@@ -167,7 +167,7 @@ export function PlayerConnections({ uuid, locale }: { uuid: string; locale: stri
                   </TD>
                   {data.canViewIp && <TD className="font-mono text-xs">{c.ipAddress ?? <span className="text-muted-foreground">{t('connections.anonymised')}</span>}</TD>}
                   {data.canViewIp && <TD className="text-xs">{c.virtualHost ?? '–'}</TD>}
-                  {data.canViewLocation && <TD className="text-xs">{describe(c.location, countryName)}</TD>}
+                  {data.canViewLocation && <TD className="min-w-40 text-xs">{describe(c.location, countryName)}</TD>}
                 </TR>
               ))}
             </TBody>

@@ -63,14 +63,26 @@ export function SkinViewer({ uuid, model, className }: { uuid: string; model: st
         if (!disposed) setState('unavailable');
         return;
       }
+      // Decode the image before handing it over, so the object URL can be revoked safely.
       const blobUrl = URL.createObjectURL(await probe.blob());
+      const image = new Image();
+      const decoded = await new Promise<boolean>((resolve) => {
+        image.onload = () => resolve(true);
+        image.onerror = () => resolve(false);
+        image.src = blobUrl;
+      });
+      URL.revokeObjectURL(blobUrl);
+      if (!decoded) {
+        if (!disposed) setState('unavailable');
+        return;
+      }
       const { SkinViewer: Viewer, WalkingAnimation } = await import('skinview3d');
       if (disposed || !canvas.current) return;
       const instance = new Viewer({
         canvas: canvas.current,
         width: 220,
         height: 300,
-        skin: blobUrl,
+        skin: image,
         model: model === 'slim' ? 'slim' : 'default',
         zoom: 0.85,
       });
@@ -82,7 +94,6 @@ export function SkinViewer({ uuid, model, className }: { uuid: string; model: st
       instance.controls.enableZoom = false;
       viewer = instance;
       setState('ready');
-      URL.revokeObjectURL(blobUrl);
     })();
     return () => {
       disposed = true;
