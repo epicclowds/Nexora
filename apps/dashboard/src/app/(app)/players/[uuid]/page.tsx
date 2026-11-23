@@ -10,6 +10,7 @@ import { useAuth } from '@/components/auth-provider';
 import { PlayerActivity } from '@/components/player-activity';
 import { PlayerConnections } from '@/components/player-connections';
 import { PlayerModeration, PlayerNotes } from '@/components/player-moderation';
+import { PlayerStatistics } from '@/components/player-statistics';
 import { PlayerHead, SkinViewer } from '@/components/player-skin';
 import { useLiveRefresh } from '@/components/realtime-provider';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, StatusDot } from '@/components/ui/primitives';
@@ -23,8 +24,8 @@ type Gamemode = (typeof GAMEMODES)[number];
 
 const TABS = ['overview', 'statistics', 'inventory', 'enderChest', 'moderation', 'connections', 'activity', 'notes'] as const;
 type Tab = (typeof TABS)[number];
-/** Tabs whose data is collected in later releases (statistics: Phase 5, inventories: Phase 7). */
-const PLANNED: Tab[] = ['statistics', 'inventory', 'enderChest'];
+/** Tabs whose data is collected in a later release (inventories: Phase 7). */
+const PLANNED: Tab[] = ['inventory', 'enderChest'];
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -50,7 +51,7 @@ function ProfileContent() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const visible = TABS.filter((tab) => (tab === 'moderation' ? can(PERMISSIONS.PUNISHMENTS_HISTORY) : tab === 'notes' ? can(PERMISSIONS.PLAYERS_NOTES) : true));
+  const visible = TABS.filter((tab) => (tab === 'moderation' ? can(PERMISSIONS.PUNISHMENTS_HISTORY) : tab === 'notes' ? can(PERMISSIONS.PLAYERS_NOTES) : tab === 'statistics' ? can(PERMISSIONS.PLAYERS_VIEW_STATISTICS) : true));
   const requested = params.get('tab') as Tab | null;
   const tab: Tab = requested && visible.includes(requested) ? requested : 'overview';
 
@@ -205,6 +206,7 @@ function ProfileContent() {
           {tab === 'moderation' && <PlayerModeration uuid={player.uuid} username={player.username} />}
           {tab === 'connections' && <PlayerConnections uuid={player.uuid} locale={locale} />}
           {tab === 'activity' && <PlayerActivity uuid={player.uuid} />}
+          {tab === 'statistics' && <PlayerStatistics uuid={player.uuid} />}
           {tab === 'notes' && <PlayerNotes uuid={player.uuid} />}
         </div>
       )}
