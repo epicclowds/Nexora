@@ -102,6 +102,27 @@ jobs:
       - run: npm run build:packages
       - run: npm run build -w @mnm/dashboard
 
+  plugins:
+    name: Minecraft plugins (Java 25, Gradle)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile, test and package
+        run: ./gradlew build --no-daemon
+      - name: Upload plugin jars
+        uses: actions/upload-artifact@v4
+        with:
+          name: minecraft-plugins
+          path: |
+            apps/velocity-plugin/build/libs/*.jar
+            apps/paper-plugin/build/libs/*.jar
+          if-no-files-found: error
+
   docker:
     name: Docker images
     runs-on: ubuntu-latest
