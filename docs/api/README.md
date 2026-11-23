@@ -10,7 +10,7 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 - Errors: `{ "statusCode": 403, "code": "FORBIDDEN", "message": "...", "issues"?: [{ "path", "message" }] }`.
 - Rate limits answer `429`.
 
-## Endpoints (v0.5.0)
+## Endpoints (v0.6.0)
 
 | Method & path | Auth | Permission | Purpose |
 | --- | --- | --- | --- |
@@ -43,6 +43,7 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `GET /api/players/:uuid/activity?days=` | session | `players.view` | Daily playtime and weekday/hour heatmap |
 | `GET /api/players/:uuid/connections` | session | `players.view` (+ `players.view.ip`, `players.view.location`) | Connection history, IP summary, related accounts |
 | `GET /api/players/:uuid/statistics` · `…/statistics/series` · `GET /api/statistics/overview` · `…/leaderboard` | session | `players.view.statistics` | Statistics ([details](../architecture/statistics.md)) |
+| `GET /api/anticheat/events` · `…/summary` · `GET/PUT …/settings` · `GET /api/players/:uuid/anticheat` | session | `anticheat.view` / `anticheat.manage` | AntiCheat ([details](../architecture/anticheat.md)) |
 | `GET/PATCH /api/settings/privacy` | session | `settings.manage` | IP retention period |
 | `GET /api/punishments` | session | `punishments.history` | Search/filter punishments (`type`, `status`, `search`) |
 | `POST /api/punishments` | session | per type (e.g. `punishments.ban`) | Issue a punishment |
@@ -52,6 +53,7 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `GET /api/events` | session | per event | Server-Sent Events stream ([realtime](../architecture/realtime.md)) |
 | `POST /api/plugin/v1/register` | registration token | – | Plugin exchanges a token for a credential |
 | `GET /api/plugin/v1/ping` · `POST …/heartbeat` · `…/events` · `…/sync` · `…/shutdown` | request signature | – | Plugin API ([protocol](../architecture/plugin-protocol.md)) |
+| `POST /api/plugin/v1/anticheat/reports` | request signature | – | AntiCheat report |
 | `POST /api/plugin/v1/statistics` | request signature (Paper) | – | Statistics upload |
 | `GET /api/plugin/v1/punishments/active` · `…/changes?after=` · `POST …/punishments` · `…/punishments/revoke` · `GET …/players/lookup` | request signature | – | Punishment feed and in-game moderation ([punishments](../architecture/punishments.md)) |
 

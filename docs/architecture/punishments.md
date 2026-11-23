@@ -10,7 +10,7 @@
 | `KICK` | Online player disconnected once (recorded, never "active") | – | commands, dashboard |
 | `WARNING` | Message to the player, kept in history | – | commands, dashboard |
 
-Every record stores: ID, target UUID, type, reason, created/expiry timestamps, issuer (dashboard user, player or console), source (`COMMAND`, `DASHBOARD`, `CONSOLE`, later `ANTICHEAT`), server, status (`ACTIVE`, `EXPIRED`, `REVOKED`) and revocation details (who, when, why). Expiry is evaluated on read; no background job is needed.
+Every record stores: ID, target UUID, type, reason, created/expiry timestamps, issuer (dashboard user, player or console), source (`COMMAND`, `DASHBOARD`, `CONSOLE`, `ANTICHEAT`), server, status (`ACTIVE`, `EXPIRED`, `REVOKED`) and revocation details (who, when, why). Expiry is evaluated on read; no background job is needed.
 
 **Duplicate prevention:** a player can have at most one active ban (incl. blacklist) and one active mute (`409 ALREADY_BANNED` / `ALREADY_MUTED`). Commands carry an idempotency key, so a retried request never creates a second punishment.
 
@@ -19,7 +19,7 @@ Every record stores: ID, target UUID, type, reason, created/expiry timestamps, i
 ## Enforcement architecture
 
 ```
- command / dashboard ──▶ backend (single source of truth) ──▶ punishment_changes (ordered feed)
+ command / dashboard / AntiCheat ──▶ backend (single source of truth) ──▶ punishment_changes (ordered feed)
                                                                   │  poll every 3 s (cursor = id)
                               ┌───────────────────────────────────┴───────────────────────┐
                         Velocity plugin                                             Paper plugin
