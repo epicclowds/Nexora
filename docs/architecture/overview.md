@@ -3,8 +3,8 @@
 ```
  Minecraft players
         │
- ┌──────▼──────┐  plugin API (Phase 2)   ┌────────────────────────── Docker Compose ─────────────────────────┐
- │  Velocity   │────────────────────────▶│  [caddy :443]* ─▶ dashboard :3000 ──/api/*──▶ backend :4000       │
+ ┌──────▼──────┐                         ┌────────────────────────── Docker Compose ─────────────────────────┐
+ │  Velocity   │───── signed HTTPS ─────▶│  [caddy :443]* ─▶ dashboard :3000 ──/api/*──▶ backend :4000       │
  │  + plugin   │                         │                    (Next.js)                 (NestJS)              │
  └──────┬──────┘                         │                                              │        │            │
         │                                │                                         MySQL 8.4   Redis 7.4      │
@@ -21,7 +21,9 @@
 | `apps/dashboard` | Next.js 16 (App Router), React 19, Tailwind CSS 4, Radix UI, next-intl 4 | Administration UI; same-origin `/api/*` proxy to the backend |
 | `packages/shared-types` | TypeScript | Permission catalogue, default roles, locales, punishment enums – shared by backend and dashboard |
 | `packages/translations` | JSON/YAML + TypeScript | Dashboard catalogues, Minecraft plugin messages, validation tooling |
-| `apps/velocity-plugin`, `apps/paper-plugin` | Java 21, Gradle | Phase 2 |
+| `apps/plugin-common` | Java 25 | Backend client, request signing, event buffering, config, messages (bundled into both plugins) |
+| `apps/velocity-plugin` | Velocity API 4.3, Java 25 | Sessions, server switches, proxy heartbeats, periodic sync |
+| `apps/paper-plugin` | Paper API 26.3, Java 25 | Server heartbeats (TPS, MSPT, memory), player game modes |
 
 ## Key decisions
 

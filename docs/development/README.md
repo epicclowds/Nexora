@@ -4,7 +4,7 @@
 
 - Node.js 22 LTS and npm 12 (`npm install -g npm@12`)
 - MySQL 8.4 and Redis 7 for running the backend (e.g. `docker compose up -d mysql redis` with temporary published ports, or local installations)
-- Java 21 + Gradle (from Phase 2, for the plugins)
+- JDK 25 for the plugins (Gradle is provided by the wrapper: `./gradlew build`)
 
 npm 12 only runs install scripts for packages approved in `package.json → allowScripts` (argon2, prisma, @swc/core, …). Approve new ones with `npm install-scripts approve <pkg>`.
 
@@ -37,6 +37,7 @@ BACKEND_INTERNAL_URL=http://localhost:4000 npm run dev -w @mnm/dashboard   # htt
 | `npm run typecheck` | `tsc --noEmit` for all workspaces (includes translation-key checking in the dashboard) |
 | `npm test` | Vitest unit tests (backend, dashboard) + translation validation |
 | `npm run translations:validate` | Catalogue safety/structure checks |
+| `./gradlew build` | Compile (warnings as errors in common/Velocity), JUnit tests and plugin jars |
 | `E2E_DATABASE_URL=… E2E_REDIS_URL=… npx vitest run test/e2e.spec.ts` (in `apps/backend`) | End-to-end tests against an **empty, migrated** database |
 
 CI (`.github/workflows/ci.yml`) runs all of the above plus migration drift detection, Docker image builds, Compose validation, Gitleaks and `npm audit`.

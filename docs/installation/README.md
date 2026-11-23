@@ -51,7 +51,7 @@ Node.js, MySQL and Redis do **not** need to be installed on the host.
 
    After completion the wizard is locked; the setup endpoint returns `409`.
 
-6. **Connect the Minecraft servers** – the Velocity and Paper plugins are delivered in v0.2.0. Registration tokens can already be created under *Settings → Minecraft Integration*.
+6. **Connect the Minecraft servers** – install the Velocity and Paper plugins: see [Minecraft plugins](minecraft-plugins.md).
 
 ## Ports and exposure
 
