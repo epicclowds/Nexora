@@ -210,6 +210,7 @@ enum InventoryRevisionStatus {
   CONFLICT
   REJECTED
   ROLLED_BACK
+  CANCELLED
 }
 
 /// Latest known inventory state. `revision` increments on every accepted
@@ -241,6 +242,10 @@ model InventoryRevision {
   changes       Json
   actorUserId   String?                 @map("actor_user_id") @db.VarChar(32)
   reason        String?                 @db.VarChar(500)
+  /// Why the server rejected or could not apply the change (conflict details).
+  resultMessage String?                 @map("result_message") @db.VarChar(500)
+  /// Set when this revision undoes another one.
+  rollbackOfId  String?                 @map("rollback_of_id") @db.VarChar(32)
   createdAt     DateTime                @default(now()) @map("created_at") @db.DateTime(3)
   appliedAt     DateTime?               @map("applied_at") @db.DateTime(3)
 

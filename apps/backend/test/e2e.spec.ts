@@ -302,6 +302,82 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect((await call('GET', '/api/players?online=true')).body.total).toBe(0);
   });
 
+  // ── Phase 7: inventories ───────────────────────────────────────
+
+  it('queues inventory edits for offline players, applies them with compare-and-set and rolls back', async () => {
+    const steve = '069a79f4-44e9-4726-a5be-fca90e38aaf5';
+    const fp = (c: string) => c.repeat(64);
+    const sword = { slot: 0, id: 'minecraft:diamond_sword', amount: 1, name: 'Excalibur', fp: fp('a'), data: 'U1dPUkQ=' };
+    const dirt = { slot: 1, id: 'minecraft:dirt', amount: 64, fp: fp('b'), data: 'RElSVA==' };
+    const ingest = await signed(paper, 'POST', '/api/plugin/v1/inventories', {
+      capturedAt: Date.now(),
+      players: [{ uuid: steve, inventory: { fp: fp('1'), items: [sword, dirt] }, enderChest: { fp: fp('2'), items: [] } }],
+    });
+    expect(ingest.body).toEqual({ changed: 2 });
+    const again = await signed(paper, 'POST', '/api/plugin/v1/inventories', { capturedAt: Date.now(), players: [{ uuid: steve, inventory: { fp: fp('1'), items: [sword, dirt] } }] });
+    expect(again.body).toEqual({ changed: 0 });
+
+    const overview = await call('GET', `/api/players/${steve}/inventories`);
+    expect(overview.body[0].serverName).toBe('lobby');
+    const scope = overview.body[0].serverId as string;
+    const view = await call('GET', `/api/players/${steve}/inventories/${scope}/inventory`);
+    expect(view.body.revision).toBe(1);
+    expect(view.body.items[0]).not.toHaveProperty('data');
+
+    const base = `/api/players/${steve}/inventories/${scope}/inventory/revisions`;
+    const move = { baseRevision: 1, reason: 'Support ticket #12', changes: [{ slot: 1, before: fp('b'), after: null }, { slot: 5, before: null, after: { id: 'minecraft:dirt', amount: 64, base: fp('b') } }] };
+    expect((await call('POST', base, { ...move, baseRevision: 0 })).body.code).toBe('STALE_REVISION');
+    expect((await call('POST', base, { ...move, changes: [{ slot: 2, before: null, after: { id: 'minecraft:dirt', amount: 1, base: fp('f') } }] })).body.code).toBe('UNKNOWN_BASE_ITEM');
+    const created = await call('POST', base, move);
+    expect(created.status).toBe(201);
+    expect((await call('POST', base, move)).body.code).toBe('PENDING_EDIT');
+
+    // Offline: nothing is delivered until the player is on that server.
+    expect((await signed(paper, 'GET', '/api/plugin/v1/inventories/pending')).body.revisions).toEqual([]);
+    const session = '44444444-5555-4666-8777-888888888888';
+    await signed(proxy, 'POST', '/api/plugin/v1/events', {
+      events: [
+        { type: 'player.join', sessionKey: session, uuid: steve, username: 'Steve', at: Date.now() },
+        { type: 'player.switch', sessionKey: session, uuid: steve, server: 'lobby', at: Date.now() },
+      ],
+    });
+    const pending = await signed(paper, 'GET', '/api/plugin/v1/inventories/pending');
+    expect(pending.body.revisions).toHaveLength(1);
+    expect(pending.body.revisions[0].changes[1].after).toMatchObject({ id: 'minecraft:dirt', data: 'RElSVA==' });
+
+    const movedDirt = { ...dirt, slot: 5, fp: fp('d') };
+    const applied = await signed(paper, 'POST', `/api/plugin/v1/inventories/revisions/${created.body.id}/result`, {
+      status: 'APPLIED',
+      appliedFps: { '1': null, '5': fp('d') },
+      snapshot: { fp: fp('3'), items: [sword, movedDirt] },
+    });
+    expect(applied.body.status).toBe('APPLIED');
+    const afterApply = await call('GET', `/api/players/${steve}/inventories/${scope}/inventory`);
+    expect(afterApply.body.revision).toBe(2);
+    expect(afterApply.body.revisions[0]).toMatchObject({ status: 'APPLIED', reason: 'Support ticket #12' });
+
+    // Rollback: the exact previous item comes back via the same compare-and-set path.
+    const rollback = await call('POST', `/api/players/${steve}/inventories/revisions/${created.body.id}/rollback`, { reason: 'Undo' });
+    expect(rollback.status).toBe(201);
+    const pendingRollback = (await signed(paper, 'GET', '/api/plugin/v1/inventories/pending')).body.revisions[0];
+    expect(pendingRollback.changes).toEqual(
+      expect.arrayContaining([
+        { slot: 1, before: null, after: expect.objectContaining({ id: 'minecraft:dirt', data: 'RElSVA==' }) },
+        { slot: 5, before: fp('d'), after: null },
+      ]),
+    );
+    const conflict = await signed(paper, 'POST', `/api/plugin/v1/inventories/revisions/${pendingRollback.id}/result`, { status: 'CONFLICT', message: 'Slot 5 changed' });
+    expect(conflict.body.status).toBe('CONFLICT');
+    const final = await call('GET', `/api/players/${steve}/inventories/${scope}/inventory`);
+    expect(final.body.revisions[0]).toMatchObject({ status: 'CONFLICT', resultMessage: 'Slot 5 changed' });
+    expect(final.body.revisions[1].status).toBe('APPLIED');
+
+    const audit = await call('GET', '/api/audit-logs?action=inventory.');
+    expect(audit.body.items.map((e: { action: string }) => e.action)).toEqual(expect.arrayContaining(['inventory.edit_requested', 'inventory.revision_applied', 'inventory.rollback_requested', 'inventory.revision_conflict']));
+
+    await signed(proxy, 'POST', '/api/plugin/v1/events', { events: [{ type: 'player.leave', sessionKey: session, uuid: steve, at: Date.now() }] });
+  });
+
   it('rotates and revokes server credentials', async () => {
     const servers = await call('GET', '/api/servers');
     const proxyId = servers.body.find((s: { name: string }) => s.name === 'proxy-1').id;

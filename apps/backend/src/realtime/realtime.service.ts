@@ -11,7 +11,8 @@ export type RealtimeEvent =
   | { type: 'player.offline'; uuid: string }
   | { type: 'player.updated'; uuid: string }
   | { type: 'punishment.changed'; uuid: string }
-  | { type: 'anticheat.event'; uuid: string };
+  | { type: 'anticheat.event'; uuid: string }
+  | { type: 'inventory.changed'; uuid: string };
 
 /** Permission needed to receive each event type. */
 export const EVENT_PERMISSION: Record<RealtimeEvent['type'], string> = {
@@ -22,6 +23,7 @@ export const EVENT_PERMISSION: Record<RealtimeEvent['type'], string> = {
   'player.updated': PERMISSIONS.PLAYERS_VIEW,
   'punishment.changed': PERMISSIONS.PUNISHMENTS_HISTORY,
   'anticheat.event': PERMISSIONS.ANTICHEAT_VIEW,
+  'inventory.changed': PERMISSIONS.PLAYERS_VIEW_INVENTORY,
 };
 
 const CHANNEL = 'mnm:realtime';
