@@ -178,7 +178,7 @@ model PlayerStatistic {
   @@map("player_statistics")
 }
 
-/// Periodic history used for time-range charts.
+/// Hourly history of the core statistics, used for time ranges and charts.
 model PlayerStatisticSnapshot {
   id         BigInt   @id @default(autoincrement())
   playerUuid String   @map("player_uuid") @db.Char(36)
@@ -189,6 +189,8 @@ model PlayerStatisticSnapshot {
 
   player Player @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
 
+  /// One row per player, scope, key and hour (captured_at is truncated to the hour).
+  @@unique([playerUuid, scope, statKey, capturedAt])
   @@index([playerUuid, statKey, capturedAt])
   @@index([capturedAt])
   @@map("player_statistic_snapshots")

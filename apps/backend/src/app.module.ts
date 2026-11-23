@@ -21,6 +21,7 @@ import { RedisThrottlerStorage } from './redis/redis-throttler.storage';
 import { ServersModule } from './servers/servers.module';
 import { SettingsModule } from './settings/settings.module';
 import { SetupModule } from './setup/setup.module';
+import { StatisticsModule } from './statistics/statistics.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -50,6 +51,7 @@ import { UsersModule } from './users/users.module';
     PluginApiModule,
     PunishmentsModule,
     MaintenanceModule,
+    StatisticsModule,
   ],
   providers: [
     // Order matters: rate limiting → authentication/CSRF → authorization.

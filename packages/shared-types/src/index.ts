@@ -3,3 +3,4 @@ export * from './roles';
 export * from './locales';
 export * from './punishments';
 export * from './health';
+export * from './stats';

@@ -393,6 +393,55 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     );
   });
 
+  // ── Phase 5: statistics ────────────────────────────────────────
+
+  it('ingests statistics from Paper and serves totals, ranges, series and leaderboards', async () => {
+    const steve = '069a79f4-44e9-4726-a5be-fca90e38aaf5';
+    const hour = 3_600_000;
+    const first = await signed(paper, 'POST', '/api/plugin/v1/statistics', {
+      capturedAt: Date.now() - 3 * hour,
+      players: [{ uuid: steve, stats: { 'mnm:blocks_mined': 100, 'mined:minecraft:diamond_ore': 4, 'mnm:active_time': 3000, 'mnm:afk_time': 600, 'custom:minecraft:deaths': 2 } }],
+    });
+    expect(first.body).toEqual({ players: 1, changed: 5 });
+    const unchanged = await signed(paper, 'POST', '/api/plugin/v1/statistics', {
+      capturedAt: Date.now() - 3 * hour,
+      players: [{ uuid: steve, stats: { 'mnm:blocks_mined': 100 } }, { uuid: '00000000-0000-4000-8000-0000000000ff', stats: { 'mnm:blocks_mined': 1 } }],
+    });
+    expect(unchanged.body).toEqual({ players: 1, changed: 0 });
+    await signed(paper, 'POST', '/api/plugin/v1/statistics', {
+      capturedAt: Date.now() - hour,
+      players: [{ uuid: steve, stats: { 'mnm:blocks_mined': 160, 'mined:minecraft:diamond_ore': 6, 'mnm:active_time': 4200, 'mnm:afk_time': 600, 'custom:minecraft:deaths': 3 } }],
+    });
+
+    const invalidKey = await signed(paper, 'POST', '/api/plugin/v1/statistics', { capturedAt: Date.now(), players: [{ uuid: steve, stats: { 'drop table': 1 } }] });
+    expect(invalidKey.status).toBe(400);
+    const fromProxy = await signed(proxy, 'POST', '/api/plugin/v1/statistics', { capturedAt: Date.now(), players: [{ uuid: steve, stats: { 'mnm:blocks_mined': 1 } }] });
+    expect([401, 403]).toContain(fromProxy.status); // proxy is rotated/disabled or not a Paper server
+
+    const all = await call('GET', `/api/players/${steve}/statistics?range=all`);
+    expect(all.body.collected).toBe(true);
+    expect(all.body.values['mnm:blocks_mined']).toBe(160);
+    expect(all.body.ores).toEqual([{ id: 'minecraft:diamond_ore', value: 6 }]);
+    expect(all.body.topMined[0]).toEqual({ id: 'minecraft:diamond_ore', value: 6 });
+
+    const day = await call('GET', `/api/players/${steve}/statistics?range=24h`);
+    expect(day.body.values['mnm:blocks_mined']).toBe(60); // first snapshot has no known start
+    expect(day.body.partial).toBe(true);
+
+    const series = await call('GET', `/api/players/${steve}/statistics/series?keys=mnm:blocks_mined&days=7`);
+    expect(series.body.series['mnm:blocks_mined'].reduce((a: number, b: number) => a + b, 0)).toBe(60);
+
+    const profile = await call('GET', `/api/players/${steve}`);
+    expect(profile.body.activePlaytimeSeconds).toBe(4200);
+    expect(profile.body.afkSeconds).toBe(600);
+
+    const board = await call('GET', '/api/statistics/leaderboard?stat=mnm:blocks_mined');
+    expect(board.body[0]).toMatchObject({ rank: 1, value: 160, player: { username: 'Steve' } });
+    expect((await call('GET', '/api/statistics/leaderboard?stat=mined:minecraft:stone')).status).toBe(400);
+    const overview = await call('GET', '/api/statistics/overview');
+    expect(overview.body.trackedPlayers).toBe(1);
+  });
+
   it('enforces RBAC for lower roles', async () => {
     const roles = await call('GET', '/api/roles');
     const viewer = roles.body.find((r: { key: string }) => r.key === 'viewer');
