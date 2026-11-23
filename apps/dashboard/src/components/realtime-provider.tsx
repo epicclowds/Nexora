@@ -2,7 +2,7 @@
 
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from 'react';
 
-export type RealtimeEventType = 'server.updated' | 'server.removed' | 'player.online' | 'player.offline' | 'player.updated';
+export type RealtimeEventType = 'server.updated' | 'server.removed' | 'player.online' | 'player.offline' | 'player.updated' | 'punishment.changed';
 export interface RealtimeEvent {
   type: RealtimeEventType;
   serverId?: string;
@@ -18,7 +18,7 @@ interface RealtimeContextValue {
 
 const RealtimeContext = createContext<RealtimeContextValue>({ connected: false, subscribe: () => () => undefined });
 
-const EVENT_TYPES: RealtimeEventType[] = ['server.updated', 'server.removed', 'player.online', 'player.offline', 'player.updated'];
+const EVENT_TYPES: RealtimeEventType[] = ['server.updated', 'server.removed', 'player.online', 'player.offline', 'player.updated', 'punishment.changed'];
 
 /**
  * Single Server-Sent Events connection per tab (GET /api/events). The browser

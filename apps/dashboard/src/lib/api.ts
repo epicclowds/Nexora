@@ -211,3 +211,34 @@ export interface RotatedCredentials {
   keyId: string;
   secret: string;
 }
+
+export type PunishmentType = 'BAN' | 'TEMP_BAN' | 'MUTE' | 'TEMP_MUTE' | 'KICK' | 'WARNING' | 'BLACKLIST';
+export type PunishmentStatus = 'ACTIVE' | 'EXPIRED' | 'REVOKED';
+
+export interface Punishment {
+  id: string;
+  type: PunishmentType;
+  status: PunishmentStatus;
+  revocable: boolean;
+  reason: string;
+  source: 'COMMAND' | 'DASHBOARD' | 'ANTICHEAT' | 'API' | 'CONSOLE';
+  target: { uuid: string; username: string; online: boolean };
+  issuer: { type: string; name: string; uuid: string | null; userId: string | null };
+  server: { id: string; name: string } | null;
+  createdAt: string;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  revokedBy: string | null;
+  revokedReason: string | null;
+}
+
+export interface PlayerPunishments extends Page<Punishment> {
+  active: { ban: Punishment | null; mute: Punishment | null };
+}
+
+export interface PlayerNote {
+  id: string;
+  content: string;
+  author: { id: string; username: string } | null;
+  createdAt: string;
+}

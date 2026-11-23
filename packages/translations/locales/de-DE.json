@@ -334,5 +334,88 @@
   },
   "duration": {
     "none": "–"
+  },
+  "moderation": {
+    "title": "Moderation",
+    "subtitle": "Netzwerkweite Strafen aus dem Spiel und dem Dashboard.",
+    "search": "Spieler, Teammitglied, Grund oder ID suchen",
+    "allTypes": "Alle Arten",
+    "allStatuses": "Alle Status",
+    "empty": "Keine Strafen gefunden.",
+    "type": "Art",
+    "target": "Spieler",
+    "reason": "Grund",
+    "issuer": "Erteilt von",
+    "created": "Erteilt",
+    "expires": "Läuft ab",
+    "permanent": "Permanent",
+    "status": "Status",
+    "source": "Quelle",
+    "revoke": "Aufheben",
+    "revokeTitle": "Strafe aufheben",
+    "revokeDescription": "Die Strafe endet sofort auf allen Servern.",
+    "revokeReason": "Grund (optional)",
+    "revoked": "Strafe aufgehoben.",
+    "revokedBy": "Aufgehoben von {name}",
+    "newPunishment": "Neue Strafe",
+    "punish": "Bestrafen",
+    "punishTitle": "{player} bestrafen",
+    "punishTarget": "Spielername oder UUID",
+    "duration": "Dauer",
+    "custom": "Benutzerdefiniert",
+    "amount": "Anzahl",
+    "unit": "Einheit",
+    "units": {
+      "minutes": "Minuten",
+      "hours": "Stunden",
+      "days": "Tage",
+      "weeks": "Wochen"
+    },
+    "issued": "{type} für {player} erteilt.",
+    "activeBan": "Gebannt",
+    "activeMute": "Stummgeschaltet",
+    "clean": "Keine aktiven Strafen",
+    "history": "Strafhistorie",
+    "alreadyBanned": "Dieser Spieler ist bereits gebannt.",
+    "alreadyMuted": "Dieser Spieler ist bereits stummgeschaltet.",
+    "playerOffline": "Nur Spieler, die online sind, können gekickt werden.",
+    "playerNotFound": "Dieser Spieler ist dem Netzwerk noch nie beigetreten.",
+    "types": {
+      "BAN": "Bann",
+      "TEMP_BAN": "Temporärer Bann",
+      "MUTE": "Stummschaltung",
+      "TEMP_MUTE": "Temporäre Stummschaltung",
+      "KICK": "Kick",
+      "WARNING": "Verwarnung",
+      "BLACKLIST": "Blacklist"
+    },
+    "statuses": {
+      "ACTIVE": "Aktiv",
+      "EXPIRED": "Abgelaufen",
+      "REVOKED": "Aufgehoben"
+    },
+    "filter": {
+      "active": "Aktiv",
+      "expired": "Abgelaufen",
+      "revoked": "Aufgehoben"
+    },
+    "sources": {
+      "COMMAND": "Befehl",
+      "DASHBOARD": "Dashboard",
+      "ANTICHEAT": "AntiCheat",
+      "API": "API",
+      "CONSOLE": "Konsole"
+    },
+    "blacklistHint": "Sperrt zusätzlich die zuletzt bekannte IP-Adresse dieses Spielers.",
+    "presetDays": "{count, plural, one {# Tag} other {# Tage}}",
+    "presetHours": "{count, plural, one {# Stunde} other {# Stunden}}"
+  },
+  "notes": {
+    "title": "Interne Notizen",
+    "description": "Nur für das Team sichtbar. Wird dem Spieler nie angezeigt.",
+    "placeholder": "Notiz hinzufügen…",
+    "add": "Notiz hinzufügen",
+    "empty": "Noch keine Notizen.",
+    "deleted": "Notiz gelöscht."
   }
 }

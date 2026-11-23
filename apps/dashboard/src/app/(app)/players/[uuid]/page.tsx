@@ -5,7 +5,10 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { PERMISSIONS } from '@mnm/shared-types';
+import { useAuth } from '@/components/auth-provider';
 import { PlayerAvatar } from '@/components/player-avatar';
+import { PlayerModeration, PlayerNotes } from '@/components/player-moderation';
 import { useLiveRefresh } from '@/components/realtime-provider';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, StatusDot } from '@/components/ui/primitives';
 import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/table';
@@ -33,6 +36,7 @@ export default function PlayerProfilePage() {
   const [player, setPlayer] = useState<PlayerProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const { can } = useAuth();
 
   const load = useCallback(async () => {
     try {
@@ -60,7 +64,7 @@ export default function PlayerProfilePage() {
       {!player && !error && <Skeleton className="h-64" />}
 
       {player && (
-        <div className="grid gap-6">
+        <div className="grid min-w-0 gap-6 [&>*]:min-w-0">
           <Card className="overflow-hidden">
             <div className="bg-blocks flex flex-wrap items-center gap-5 p-6">
               <PlayerAvatar uuid={player.uuid} username={player.username} className="size-20 rounded-xl text-4xl" />
@@ -161,6 +165,9 @@ export default function PlayerProfilePage() {
               </CardContent>
             </Card>
           </div>
+
+          {can(PERMISSIONS.PUNISHMENTS_HISTORY) && <PlayerModeration uuid={player.uuid} username={player.username} />}
+          {can(PERMISSIONS.PLAYERS_NOTES) && <PlayerNotes uuid={player.uuid} />}
         </div>
       )}
     </>

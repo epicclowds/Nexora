@@ -43,7 +43,7 @@ export default function DashboardPage() {
     void load();
   }, [load]);
   // Server-Sent Events push changes; a slow poll covers counters without events (e.g. punishments).
-  useLiveRefresh(['server.updated', 'server.removed', 'player.online', 'player.offline'], load, 60_000);
+  useLiveRefresh(['server.updated', 'server.removed', 'player.online', 'player.offline', 'punishment.changed'], load, 60_000);
 
   const n = (v: number) => format.number(v);
 

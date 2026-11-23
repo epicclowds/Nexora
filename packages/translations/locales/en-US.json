@@ -334,5 +334,88 @@
   },
   "duration": {
     "none": "–"
+  },
+  "moderation": {
+    "title": "Moderation",
+    "subtitle": "Network-wide punishments issued in game and in the dashboard.",
+    "search": "Search player, staff member, reason or ID",
+    "allTypes": "All types",
+    "allStatuses": "All statuses",
+    "empty": "No punishments found.",
+    "type": "Type",
+    "target": "Player",
+    "reason": "Reason",
+    "issuer": "Issued by",
+    "created": "Issued",
+    "expires": "Expires",
+    "permanent": "Permanent",
+    "status": "Status",
+    "source": "Source",
+    "revoke": "Revoke",
+    "revokeTitle": "Revoke punishment",
+    "revokeDescription": "The punishment ends immediately on all servers.",
+    "revokeReason": "Reason (optional)",
+    "revoked": "Punishment revoked.",
+    "revokedBy": "Revoked by {name}",
+    "newPunishment": "New punishment",
+    "punish": "Punish",
+    "punishTitle": "Punish {player}",
+    "punishTarget": "Player name or UUID",
+    "duration": "Duration",
+    "custom": "Custom",
+    "amount": "Amount",
+    "unit": "Unit",
+    "units": {
+      "minutes": "Minutes",
+      "hours": "Hours",
+      "days": "Days",
+      "weeks": "Weeks"
+    },
+    "issued": "{type} issued for {player}.",
+    "activeBan": "Banned",
+    "activeMute": "Muted",
+    "clean": "No active punishments",
+    "history": "Punishment history",
+    "alreadyBanned": "This player is already banned.",
+    "alreadyMuted": "This player is already muted.",
+    "playerOffline": "Only online players can be kicked.",
+    "playerNotFound": "This player has never joined the network.",
+    "types": {
+      "BAN": "Ban",
+      "TEMP_BAN": "Temporary ban",
+      "MUTE": "Mute",
+      "TEMP_MUTE": "Temporary mute",
+      "KICK": "Kick",
+      "WARNING": "Warning",
+      "BLACKLIST": "Blacklist"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "EXPIRED": "Expired",
+      "REVOKED": "Revoked"
+    },
+    "filter": {
+      "active": "Active",
+      "expired": "Expired",
+      "revoked": "Revoked"
+    },
+    "sources": {
+      "COMMAND": "Command",
+      "DASHBOARD": "Dashboard",
+      "ANTICHEAT": "AntiCheat",
+      "API": "API",
+      "CONSOLE": "Console"
+    },
+    "blacklistHint": "Also blocks the last known IP address of this player.",
+    "presetDays": "{count, plural, one {# day} other {# days}}",
+    "presetHours": "{count, plural, one {# hour} other {# hours}}"
+  },
+  "notes": {
+    "title": "Internal notes",
+    "description": "Visible to staff only. Never shown to the player.",
+    "placeholder": "Add a note…",
+    "add": "Add note",
+    "empty": "No notes yet.",
+    "deleted": "Note deleted."
   }
 }
