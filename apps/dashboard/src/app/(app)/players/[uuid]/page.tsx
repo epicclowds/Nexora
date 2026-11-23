@@ -8,6 +8,7 @@ import { useFormatter, useLocale, useNow, useTranslations } from 'next-intl';
 import { type ReactNode, Suspense, useCallback, useEffect, useState } from 'react';
 import { AntiCheatEvents } from '@/components/anticheat-events';
 import { useAuth } from '@/components/auth-provider';
+import { InventoryEditor } from '@/components/inventory-editor';
 import { PlayerActivity } from '@/components/player-activity';
 import { PlayerConnections } from '@/components/player-connections';
 import { PlayerModeration, PlayerNotes } from '@/components/player-moderation';
@@ -25,8 +26,6 @@ type Gamemode = (typeof GAMEMODES)[number];
 
 const TABS = ['overview', 'statistics', 'inventory', 'enderChest', 'moderation', 'connections', 'activity', 'notes'] as const;
 type Tab = (typeof TABS)[number];
-/** Tabs whose data is collected in a later release (inventories: Phase 7). */
-const PLANNED: Tab[] = ['inventory', 'enderChest'];
 
 function Fact({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -52,7 +51,7 @@ function ProfileContent() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const visible = TABS.filter((tab) => (tab === 'moderation' ? can(PERMISSIONS.PUNISHMENTS_HISTORY) : tab === 'notes' ? can(PERMISSIONS.PLAYERS_NOTES) : tab === 'statistics' ? can(PERMISSIONS.PLAYERS_VIEW_STATISTICS) : true));
+  const visible = TABS.filter((tab) => (tab === 'moderation' ? can(PERMISSIONS.PUNISHMENTS_HISTORY) : tab === 'notes' ? can(PERMISSIONS.PLAYERS_NOTES) : tab === 'statistics' ? can(PERMISSIONS.PLAYERS_VIEW_STATISTICS) : tab === 'inventory' || tab === 'enderChest' ? can(PERMISSIONS.PLAYERS_VIEW_INVENTORY) : true));
   const requested = params.get('tab') as Tab | null;
   const tab: Tab = requested && visible.includes(requested) ? requested : 'overview';
 
@@ -201,9 +200,6 @@ function ProfileContent() {
             </>
           )}
 
-          {PLANNED.includes(tab) && (
-            <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{t('profileTabs.planned', { tab: t(`profileTabs.${tab}`) })}</div>
-          )}
           {tab === 'moderation' && <PlayerModeration uuid={player.uuid} username={player.username} />}
           {tab === 'moderation' && can(PERMISSIONS.ANTICHEAT_VIEW) && (
             <Card>
@@ -218,6 +214,8 @@ function ProfileContent() {
           {tab === 'connections' && <PlayerConnections uuid={player.uuid} locale={locale} />}
           {tab === 'activity' && <PlayerActivity uuid={player.uuid} />}
           {tab === 'statistics' && <PlayerStatistics uuid={player.uuid} />}
+          {tab === 'inventory' && <InventoryEditor key="inventory" uuid={player.uuid} kind="inventory" />}
+          {tab === 'enderChest' && <InventoryEditor key="ender-chest" uuid={player.uuid} kind="ender-chest" />}
           {tab === 'notes' && <PlayerNotes uuid={player.uuid} />}
         </div>
       )}
