@@ -1,0 +1,558 @@
+// Minecraft Network Manager – database schema (MySQL 8.4 LTS).
+// See docs/architecture/database.md for design decisions.
+// Conventions: snake_case table/column names, UTC timestamps (DATETIME(3)),
+// Minecraft UUID (dashed, lowercase, CHAR(36)) as stable player identity.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+// ───────────────────────────── Players ─────────────────────────────
+
+model Player {
+  uuid                  String    @id @db.Char(36)
+  username              String    @db.VarChar(16)
+  firstSeenAt           DateTime  @map("first_seen_at") @db.DateTime(3)
+  lastSeenAt            DateTime  @map("last_seen_at") @db.DateTime(3)
+  online                Boolean   @default(false)
+  currentServerId       String?   @map("current_server_id") @db.VarChar(32)
+  /// Seconds connected to the network; null until the proxy reports sessions.
+  totalPlaytimeSeconds  BigInt    @default(0) @map("total_playtime_seconds")
+  activePlaytimeSeconds BigInt?   @map("active_playtime_seconds")
+  afkSeconds            BigInt?   @map("afk_seconds")
+  connectionCount       Int       @default(0) @map("connection_count")
+  rank                  String?   @db.VarChar(64)
+  gamemode              String?   @db.VarChar(16)
+  clientProtocol        Int?      @map("client_protocol")
+  clientVersion         String?   @map("client_version") @db.VarChar(32)
+  clientBrand           String?   @map("client_brand") @db.VarChar(128)
+  locale                String?   @db.VarChar(16)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt             DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  currentServer      Server?                   @relation("PlayerCurrentServer", fields: [currentServerId], references: [id], onDelete: SetNull)
+  names              PlayerName[]
+  sessions           PlayerSession[]
+  connections        PlayerConnection[]
+  serverVisits       PlayerServerVisit[]
+  statistics         PlayerStatistic[]
+  statisticSnapshots PlayerStatisticSnapshot[]
+  inventories        PlayerInventory[]
+  punishments        Punishment[]              @relation("PunishmentTarget")
+  antiCheatEvents    AntiCheatEvent[]
+  notes              PlayerNote[]
+
+  @@index([username])
+  @@index([online])
+  @@index([lastSeenAt])
+  @@index([firstSeenAt])
+  @@map("players")
+}
+
+model PlayerName {
+  id          BigInt   @id @default(autoincrement())
+  playerUuid  String   @map("player_uuid") @db.Char(36)
+  username    String   @db.VarChar(16)
+  firstSeenAt DateTime @map("first_seen_at") @db.DateTime(3)
+  lastSeenAt  DateTime @map("last_seen_at") @db.DateTime(3)
+
+  player Player @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+
+  @@unique([playerUuid, username])
+  @@index([username])
+  @@map("player_names")
+}
+
+/// One network session: from proxy login to proxy disconnect.
+model PlayerSession {
+  id              BigInt    @id @default(autoincrement())
+  playerUuid      String    @map("player_uuid") @db.Char(36)
+  proxyServerId   String?   @map("proxy_server_id") @db.VarChar(32)
+  startedAt       DateTime  @map("started_at") @db.DateTime(3)
+  endedAt         DateTime? @map("ended_at") @db.DateTime(3)
+  durationSeconds Int?      @map("duration_seconds")
+  afkSeconds      Int?      @map("afk_seconds")
+
+  player       Player              @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+  proxyServer  Server?             @relation(fields: [proxyServerId], references: [id], onDelete: SetNull)
+  connection   PlayerConnection?
+  serverVisits PlayerServerVisit[]
+
+  @@index([playerUuid, startedAt])
+  @@index([startedAt])
+  @@index([endedAt])
+  @@map("player_sessions")
+}
+
+/// Connection metadata. IP data is personal data: access requires players.view.ip
+/// and rows are subject to the configured retention period.
+model PlayerConnection {
+  id             BigInt   @id @default(autoincrement())
+  playerUuid     String   @map("player_uuid") @db.Char(36)
+  sessionId      BigInt?  @unique @map("session_id")
+  ipAddress      String?  @map("ip_address") @db.VarChar(45)
+  /// Approximate, IP-derived. Never an exact location.
+  countryCode    String?  @map("country_code") @db.Char(2)
+  region         String?  @db.VarChar(128)
+  city           String?  @db.VarChar(128)
+  isp            String?  @db.VarChar(255)
+  virtualHost    String?  @map("virtual_host") @db.VarChar(255)
+  clientProtocol Int?     @map("client_protocol")
+  clientBrand    String?  @map("client_brand") @db.VarChar(128)
+  connectedAt    DateTime @map("connected_at") @db.DateTime(3)
+
+  player  Player         @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+  session PlayerSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+
+  @@index([playerUuid, connectedAt])
+  @@index([ipAddress])
+  @@index([connectedAt])
+  @@map("player_connections")
+}
+
+/// Time spent on a specific backend server inside a network session.
+model PlayerServerVisit {
+  id         BigInt    @id @default(autoincrement())
+  playerUuid String    @map("player_uuid") @db.Char(36)
+  sessionId  BigInt?   @map("session_id")
+  serverId   String    @map("server_id") @db.VarChar(32)
+  joinedAt   DateTime  @map("joined_at") @db.DateTime(3)
+  leftAt     DateTime? @map("left_at") @db.DateTime(3)
+
+  player  Player         @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+  session PlayerSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  server  Server         @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([playerUuid, joinedAt])
+  @@index([serverId, joinedAt])
+  @@map("player_server_visits")
+}
+
+model PlayerNote {
+  id           String   @id @default(cuid()) @db.VarChar(32)
+  playerUuid   String   @map("player_uuid") @db.Char(36)
+  authorUserId String?  @map("author_user_id") @db.VarChar(32)
+  content      String   @db.Text
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt    DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  player Player         @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+  author DashboardUser? @relation(fields: [authorUserId], references: [id], onDelete: SetNull)
+
+  @@index([playerUuid, createdAt])
+  @@map("player_notes")
+}
+
+// ──────────────────────────── Statistics ────────────────────────────
+
+/// Current value of one statistic. `scope` is "network" or a server id;
+/// statKey uses Minecraft keys where possible (e.g. minecraft:custom/minecraft:jump).
+/// A missing row means "never collected" – never zero-filled.
+model PlayerStatistic {
+  playerUuid String   @map("player_uuid") @db.Char(36)
+  scope      String   @default("network") @db.VarChar(32)
+  statKey    String   @map("stat_key") @db.VarChar(191)
+  value      BigInt
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  player Player @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+
+  @@id([playerUuid, scope, statKey])
+  @@index([statKey, value])
+  @@map("player_statistics")
+}
+
+/// Periodic history used for time-range charts.
+model PlayerStatisticSnapshot {
+  id         BigInt   @id @default(autoincrement())
+  playerUuid String   @map("player_uuid") @db.Char(36)
+  scope      String   @default("network") @db.VarChar(32)
+  statKey    String   @map("stat_key") @db.VarChar(191)
+  value      BigInt
+  capturedAt DateTime @map("captured_at") @db.DateTime(3)
+
+  player Player @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+
+  @@index([playerUuid, statKey, capturedAt])
+  @@index([capturedAt])
+  @@map("player_statistic_snapshots")
+}
+
+// ──────────────────────────── Inventories ───────────────────────────
+
+enum InventoryKind {
+  INVENTORY
+  ENDER_CHEST
+}
+
+enum InventoryRevisionStatus {
+  SNAPSHOT
+  PENDING
+  APPLIED
+  CONFLICT
+  REJECTED
+  ROLLED_BACK
+}
+
+/// Latest known inventory state. `revision` increments on every accepted
+/// change and is used for optimistic concurrency (no duplication on conflict).
+model PlayerInventory {
+  id         String        @id @default(cuid()) @db.VarChar(32)
+  playerUuid String        @map("player_uuid") @db.Char(36)
+  scope      String        @default("network") @db.VarChar(32)
+  kind       InventoryKind
+  revision   Int           @default(0)
+  contents   Json
+  capturedAt DateTime      @map("captured_at") @db.DateTime(3)
+  updatedAt  DateTime      @updatedAt @map("updated_at") @db.DateTime(3)
+
+  player    Player              @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+  revisions InventoryRevision[]
+
+  @@unique([playerUuid, scope, kind])
+  @@map("player_inventories")
+}
+
+model InventoryRevision {
+  id            String                  @id @default(cuid()) @db.VarChar(32)
+  inventoryId   String                  @map("inventory_id") @db.VarChar(32)
+  baseRevision  Int                     @map("base_revision")
+  revision      Int?
+  status        InventoryRevisionStatus
+  /// Slot-level diff: [{ slot, before, after }]
+  changes       Json
+  actorUserId   String?                 @map("actor_user_id") @db.VarChar(32)
+  reason        String?                 @db.VarChar(500)
+  createdAt     DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+  appliedAt     DateTime?               @map("applied_at") @db.DateTime(3)
+
+  inventory PlayerInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  actor     DashboardUser?  @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([inventoryId, createdAt])
+  @@index([status])
+  @@map("inventory_revisions")
+}
+
+// ──────────────────────────── Punishments ───────────────────────────
+
+enum PunishmentType {
+  BAN
+  TEMP_BAN
+  MUTE
+  TEMP_MUTE
+  KICK
+  WARNING
+  BLACKLIST
+}
+
+enum PunishmentStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+enum PunishmentSource {
+  COMMAND
+  DASHBOARD
+  ANTICHEAT
+  API
+  CONSOLE
+}
+
+enum ActorType {
+  USER
+  PLAYER
+  CONSOLE
+  SERVER
+  SYSTEM
+}
+
+model Punishment {
+  id              String           @id @default(cuid()) @db.VarChar(32)
+  targetUuid      String           @map("target_uuid") @db.Char(36)
+  type            PunishmentType
+  reason          String           @db.VarChar(500)
+  status          PunishmentStatus @default(ACTIVE)
+  source          PunishmentSource
+  createdAt       DateTime         @default(now()) @map("created_at") @db.DateTime(3)
+  /// Null = permanent (or not applicable, e.g. kick/warning).
+  expiresAt       DateTime?        @map("expires_at") @db.DateTime(3)
+  issuerType      ActorType        @map("issuer_type")
+  issuerUserId    String?          @map("issuer_user_id") @db.VarChar(32)
+  issuerUuid      String?          @map("issuer_uuid") @db.Char(36)
+  issuerName      String           @map("issuer_name") @db.VarChar(64)
+  serverId        String?          @map("server_id") @db.VarChar(32)
+  /// Client-supplied key making creation idempotent across retries.
+  idempotencyKey  String?          @unique @map("idempotency_key") @db.VarChar(64)
+  revokedAt       DateTime?        @map("revoked_at") @db.DateTime(3)
+  revokedReason   String?          @map("revoked_reason") @db.VarChar(500)
+  revokedByType   ActorType?       @map("revoked_by_type")
+  revokedByUserId String?          @map("revoked_by_user_id") @db.VarChar(32)
+  revokedByUuid   String?          @map("revoked_by_uuid") @db.Char(36)
+  revokedByName   String?          @map("revoked_by_name") @db.VarChar(64)
+
+  target          Player               @relation("PunishmentTarget", fields: [targetUuid], references: [uuid], onDelete: Cascade)
+  issuerUser      DashboardUser?       @relation("PunishmentIssuer", fields: [issuerUserId], references: [id], onDelete: SetNull)
+  revokedByUser   DashboardUser?       @relation("PunishmentRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  server          Server?              @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  evidence        PunishmentEvidence[]
+  antiCheatEvents AntiCheatEvent[]
+
+  @@index([targetUuid, type, status])
+  @@index([status, type, expiresAt])
+  @@index([createdAt])
+  @@map("punishments")
+}
+
+model PunishmentEvidence {
+  id           String   @id @default(cuid()) @db.VarChar(32)
+  punishmentId String   @map("punishment_id") @db.VarChar(32)
+  kind         String   @db.VarChar(32)
+  content      String?  @db.Text
+  url          String?  @db.VarChar(2048)
+  metadata     Json?
+  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  punishment Punishment @relation(fields: [punishmentId], references: [id], onDelete: Cascade)
+
+  @@index([punishmentId])
+  @@map("punishment_evidence")
+}
+
+model AntiCheatEvent {
+  id             String   @id @default(cuid()) @db.VarChar(32)
+  playerUuid     String   @map("player_uuid") @db.Char(36)
+  serverId       String?  @map("server_id") @db.VarChar(32)
+  provider       String   @db.VarChar(64)
+  cheatType      String   @map("cheat_type") @db.VarChar(64)
+  violationLevel Float?   @map("violation_level")
+  metadata       Json?
+  punishmentId   String?  @map("punishment_id") @db.VarChar(32)
+  createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  player     Player      @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
+  server     Server?     @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  punishment Punishment? @relation(fields: [punishmentId], references: [id], onDelete: SetNull)
+
+  @@index([playerUuid, createdAt])
+  @@index([cheatType, createdAt])
+  @@index([createdAt])
+  @@map("anticheat_events")
+}
+
+// ───────────────────────────── Servers ─────────────────────────────
+
+enum ServerType {
+  VELOCITY
+  PAPER
+}
+
+enum ServerStatus {
+  PENDING
+  ONLINE
+  OFFLINE
+  DISABLED
+}
+
+model Server {
+  id               String       @id @default(cuid()) @db.VarChar(32)
+  name             String       @unique @db.VarChar(64)
+  type             ServerType
+  status           ServerStatus @default(PENDING)
+  enabled          Boolean      @default(true)
+  minecraftVersion String?      @map("minecraft_version") @db.VarChar(32)
+  pluginVersion    String?      @map("plugin_version") @db.VarChar(32)
+  platformVersion  String?      @map("platform_version") @db.VarChar(128)
+  onlinePlayers    Int?         @map("online_players")
+  maxPlayers       Int?         @map("max_players")
+  tps              Float?
+  mspt             Float?
+  memoryUsedBytes  BigInt?      @map("memory_used_bytes")
+  memoryMaxBytes   BigInt?      @map("memory_max_bytes")
+  cpuLoad          Float?       @map("cpu_load")
+  lastHeartbeatAt  DateTime?    @map("last_heartbeat_at") @db.DateTime(3)
+  createdAt        DateTime     @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime     @updatedAt @map("updated_at") @db.DateTime(3)
+
+  credentials        ServerCredential[]
+  registrationTokens RegistrationToken[]
+  currentPlayers     Player[]            @relation("PlayerCurrentServer")
+  proxySessions      PlayerSession[]
+  visits             PlayerServerVisit[]
+  punishments        Punishment[]
+  antiCheatEvents    AntiCheatEvent[]
+
+  @@index([type, status])
+  @@map("servers")
+}
+
+/// Long-lived plugin credential. Only a SHA-256 hash of the secret is stored.
+model ServerCredential {
+  id         String    @id @default(cuid()) @db.VarChar(32)
+  serverId   String    @map("server_id") @db.VarChar(32)
+  keyId      String    @unique @map("key_id") @db.VarChar(64)
+  secretHash String    @map("secret_hash") @db.Char(64)
+  createdAt  DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  lastUsedAt DateTime? @map("last_used_at") @db.DateTime(3)
+  revokedAt  DateTime? @map("revoked_at") @db.DateTime(3)
+
+  server Server @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@index([serverId])
+  @@map("server_credentials")
+}
+
+/// Short-lived, single-use token exchanged by a plugin for a ServerCredential.
+model RegistrationToken {
+  id              String     @id @default(cuid()) @db.VarChar(32)
+  tokenHash       String     @unique @map("token_hash") @db.Char(64)
+  serverType      ServerType @map("server_type")
+  serverName      String     @map("server_name") @db.VarChar(64)
+  createdByUserId String?    @map("created_by_user_id") @db.VarChar(32)
+  expiresAt       DateTime   @map("expires_at") @db.DateTime(3)
+  usedAt          DateTime?  @map("used_at") @db.DateTime(3)
+  serverId        String?    @map("server_id") @db.VarChar(32)
+  createdAt       DateTime   @default(now()) @map("created_at") @db.DateTime(3)
+
+  createdBy DashboardUser? @relation(fields: [createdByUserId], references: [id], onDelete: SetNull)
+  server    Server?        @relation(fields: [serverId], references: [id], onDelete: SetNull)
+
+  @@index([expiresAt])
+  @@map("registration_tokens")
+}
+
+// ───────────────────────── Dashboard / RBAC ─────────────────────────
+
+model DashboardUser {
+  id               String    @id @default(cuid()) @db.VarChar(32)
+  username         String    @unique @db.VarChar(32)
+  email            String    @unique @db.VarChar(254)
+  passwordHash     String    @map("password_hash") @db.VarChar(255)
+  roleId           String    @map("role_id") @db.VarChar(32)
+  locale           String?   @db.VarChar(16)
+  theme            String?   @db.VarChar(16)
+  timezone         String?   @db.VarChar(64)
+  disabled         Boolean   @default(false)
+  /// Reserved for optional TOTP 2FA (encrypted secret).
+  twoFactorSecret  String?   @map("two_factor_secret") @db.VarChar(255)
+  twoFactorEnabled Boolean   @default(false) @map("two_factor_enabled")
+  lastLoginAt      DateTime? @map("last_login_at") @db.DateTime(3)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+
+  role                DashboardRole       @relation(fields: [roleId], references: [id])
+  sessions            DashboardSession[]
+  issuedPunishments   Punishment[]        @relation("PunishmentIssuer")
+  revokedPunishments  Punishment[]        @relation("PunishmentRevoker")
+  notes               PlayerNote[]
+  inventoryRevisions  InventoryRevision[]
+  registrationTokens  RegistrationToken[]
+  auditLogs           AuditLog[]
+
+  @@index([roleId])
+  @@map("dashboard_users")
+}
+
+model DashboardRole {
+  id          String   @id @default(cuid()) @db.VarChar(32)
+  key         String   @unique @db.VarChar(32)
+  name        String   @db.VarChar(64)
+  description String?  @db.VarChar(255)
+  priority    Int      @default(0)
+  isSystem    Boolean  @default(false) @map("is_system")
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  users       DashboardUser[]
+  permissions DashboardRolePermission[]
+
+  @@map("dashboard_roles")
+}
+
+/// Permission catalogue (synchronised from @mnm/shared-types at startup).
+model DashboardPermission {
+  key         String   @id @db.VarChar(64)
+  description String?  @db.VarChar(255)
+  createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  @@map("dashboard_permissions")
+}
+
+/// Grants. `permission` is a catalogue key, a namespace wildcard ("players.*") or "*".
+model DashboardRolePermission {
+  roleId     String @map("role_id") @db.VarChar(32)
+  permission String @db.VarChar(64)
+
+  role DashboardRole @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permission])
+  @@map("dashboard_role_permissions")
+}
+
+model DashboardSession {
+  id               String    @id @default(cuid()) @db.VarChar(32)
+  userId           String    @map("user_id") @db.VarChar(32)
+  refreshTokenHash String    @unique @map("refresh_token_hash") @db.Char(64)
+  userAgent        String?   @map("user_agent") @db.VarChar(255)
+  ipAddress        String?   @map("ip_address") @db.VarChar(45)
+  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  lastUsedAt       DateTime  @default(now()) @map("last_used_at") @db.DateTime(3)
+  expiresAt        DateTime  @map("expires_at") @db.DateTime(3)
+  revokedAt        DateTime? @map("revoked_at") @db.DateTime(3)
+
+  user DashboardUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("dashboard_sessions")
+}
+
+// ───────────────────────── Audit & settings ─────────────────────────
+
+model AuditLog {
+  id          BigInt    @id @default(autoincrement())
+  actorType   ActorType @map("actor_type")
+  actorUserId String?   @map("actor_user_id") @db.VarChar(32)
+  actorName   String    @map("actor_name") @db.VarChar(64)
+  action      String    @db.VarChar(64)
+  targetType  String?   @map("target_type") @db.VarChar(32)
+  targetId    String?   @map("target_id") @db.VarChar(64)
+  metadata    Json?
+  ipAddress   String?   @map("ip_address") @db.VarChar(45)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+
+  actorUser DashboardUser? @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId])
+  @@index([actorUserId, createdAt])
+  @@map("audit_logs")
+}
+
+model SystemSetting {
+  key             String   @id @db.VarChar(128)
+  value           Json
+  updatedByUserId String?  @map("updated_by_user_id") @db.VarChar(32)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("system_settings")
+}
+
+model LanguageSetting {
+  locale    String   @id @db.VarChar(16)
+  name      String   @db.VarChar(64)
+  enabled   Boolean  @default(true)
+  isDefault Boolean  @default(false) @map("is_default")
+  updatedAt DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("language_settings")
+}
