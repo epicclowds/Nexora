@@ -54,6 +54,12 @@ export class ServersController {
     return this.servers.createRegistrationToken(body.type, body.name, userActor(actor), clientIp(req));
   }
 
+  @Get('registration-tokens/:id')
+  @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
+  tokenStatus(@Param('id') id: string) {
+    return this.servers.tokenStatus(id);
+  }
+
   @Delete('registration-tokens/:id')
   @HttpCode(200)
   @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)

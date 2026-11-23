@@ -109,3 +109,23 @@ function bracesBalanced(value: string): boolean {
   }
   return depth === 0;
 }
+
+/**
+ * Parses a Minecraft plugin message catalogue (`minecraft/<locale>.yml`). The
+ * files use a flat subset of YAML: `key: "double-quoted value"` per line plus
+ * comments, so no YAML library is needed.
+ */
+export function parseMinecraftCatalog(text: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const line of text.split(/\r?\n/)) {
+    const match = /^([A-Za-z][A-Za-z0-9_.-]*):\s*(".*")\s*$/.exec(line);
+    if (!match) continue;
+    out[match[1]] = JSON.parse(match[2]) as string;
+  }
+  return out;
+}
+
+/** `{name}` placeholders used in a plugin message. */
+export function messagePlaceholders(text: string): string[] {
+  return [...new Set([...text.matchAll(/\{([a-zA-Z][a-zA-Z0-9_-]*)\}/g)].map((m) => m[1]))];
+}

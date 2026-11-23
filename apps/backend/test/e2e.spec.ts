@@ -378,6 +378,83 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     await signed(proxy, 'POST', '/api/plugin/v1/events', { events: [{ type: 'player.leave', sessionKey: session, uuid: steve, at: Date.now() }] });
   });
 
+  // ── Phase 8: configuration and setup ───────────────────────────
+
+  it('reports registration progress for the add-server flow', async () => {
+    const created = await call('POST', '/api/servers/registration-tokens', { type: 'PAPER', name: 'survival' });
+    expect((await call('GET', `/api/servers/registration-tokens/${created.body.id}`)).body).toMatchObject({ status: 'PENDING', server: null });
+    await call('POST', '/api/plugin/v1/register', { token: created.body.token, pluginVersion: '0.8.0' }, { 'x-mnm-csrf': '' });
+    const done = await call('GET', `/api/servers/registration-tokens/${created.body.id}`);
+    expect(done.body).toMatchObject({ status: 'REGISTERED', server: { name: 'survival', pluginVersion: '0.8.0' } });
+    expect((await call('GET', '/api/servers/registration-tokens/unknown')).status).toBe(404);
+  });
+
+  it('pushes managed plugin settings with revisions and validated messages', async () => {
+    const initial = await call('GET', '/api/settings/plugins');
+    expect(initial.body).toMatchObject({ revision: 0, settings: { language: null, messages: {} } });
+    expect((await signed(paper, 'GET', '/api/plugin/v1/ping')).body.configRevision).toBe(0);
+    expect((await call('GET', '/api/settings/plugins/messages')).body['en-US']['command.ban.success']).toContain('{player}');
+
+    const unsafe = await call('PUT', '/api/settings/plugins', { baseRevision: 0, settings: { messages: { 'en-US': { 'command.kick.success': '<click:run_command:/op x>{player}' } } } });
+    expect(unsafe.status).toBe(400);
+    expect(unsafe.body.issues[0]).toEqual({ path: 'en-US.command.kick.success', message: 'unsafe-content' });
+
+    const settings = { language: 'de-DE', statisticsEnabled: false, inventorySyncIntervalSeconds: 120, messages: { 'de-DE': { 'command.kick.success': '<green>{player} wurde entfernt.' } } };
+    const saved = await call('PUT', '/api/settings/plugins', { baseRevision: 0, settings });
+    expect(saved.status).toBe(200);
+    expect(saved.body.revision).toBe(1);
+    expect((await call('PUT', '/api/settings/plugins', { baseRevision: 0, settings })).body.code).toBe('STALE_SETTINGS');
+
+    const hb = await signed(paper, 'POST', '/api/plugin/v1/heartbeat', { pluginVersion: '0.8.0', platformVersion: 'Paper', onlinePlayers: 0 });
+    expect(hb.body.configRevision).toBe(1);
+    const config = await signed(paper, 'GET', '/api/plugin/v1/config');
+    expect(config.body).toMatchObject({ revision: 1, language: 'de-DE', statisticsEnabled: false, inventorySync: null, inventorySyncIntervalSeconds: 120 });
+    expect(config.body.messages['de-DE']['command.kick.success']).toContain('{player}');
+
+    const audit = await call('GET', '/api/audit-logs?action=settings.plugins_updated');
+    expect(audit.body.items[0].metadata).toMatchObject({ revision: 1, messageOverrides: 1 });
+  });
+
+  it('stores punishment presets', async () => {
+    const presets = [{ id: 'hacking', name: 'Hacking', type: 'TEMP_BAN', reason: 'Unfair advantage', durationSeconds: 2_592_000 }];
+    expect((await call('PUT', '/api/settings/moderation', { presets: [{ ...presets[0], durationSeconds: null }] })).status).toBe(400);
+    expect((await call('PUT', '/api/settings/moderation', { presets })).status).toBe(200);
+    expect((await call('GET', '/api/settings/moderation')).body.presets).toEqual(presets);
+  });
+
+  it('adds languages and imports validated dashboard catalogues', async () => {
+    expect((await call('POST', '/api/i18n/languages', { locale: 'fr-FR', name: 'French' })).status).toBe(201);
+    expect((await call('POST', '/api/i18n/languages', { locale: 'fr-FR', name: 'French' })).status).toBe(409);
+    // Disabled languages are not served publicly.
+    expect((await call('GET', '/api/i18n/messages/fr-FR')).status).toBe(404);
+
+    const bad = await call('PUT', '/api/i18n/catalogs/fr-FR', { messages: { common: { save: '<img src=x onerror=alert(1)>' }, nope: { key: 'x' } } });
+    expect(bad.status).toBe(400);
+    expect(bad.body.code).toBe('INVALID_CATALOG');
+
+    const imported = await call('PUT', '/api/i18n/catalogs/fr-FR', { messages: { meta: { nativeName: 'Français' }, common: { save: 'Enregistrer' } } });
+    expect(imported.status).toBe(200);
+    expect(imported.body.missingKeys).toBeGreaterThan(0);
+    await call('PATCH', '/api/i18n/languages/fr-FR', { enabled: true });
+
+    const served = await call('GET', '/api/i18n/messages/fr-FR');
+    expect(served.body).toMatchObject({ locale: 'fr-FR', messages: { common: { save: 'Enregistrer' }, meta: { locale: 'fr-FR' } } });
+    expect(served.body.revision).toBeGreaterThan(0);
+    const languages = await call('GET', '/api/i18n/languages');
+    expect(languages.body.find((l: { locale: string }) => l.locale === 'fr-FR')).toMatchObject({ nativeName: 'Français', customized: true, bundled: false });
+
+    // Overrides for a bundled language merge over the shipped catalogue.
+    await call('PUT', '/api/i18n/catalogs/de-DE', { messages: { common: { save: 'Sichern' } } });
+    const exported = await call('GET', '/api/i18n/catalogs/de-DE');
+    expect(exported.body.common.save).toBe('Sichern');
+    expect(exported.body.common.cancel).toBeTruthy();
+    expect((await call('DELETE', '/api/i18n/catalogs/de-DE')).status).toBe(200);
+    expect((await call('DELETE', '/api/i18n/languages/de-DE')).body.code).toBe('BUNDLED_LANGUAGE');
+
+    expect((await call('DELETE', '/api/i18n/languages/fr-FR')).status).toBe(200);
+    expect((await call('GET', '/api/i18n/messages/fr-FR')).status).toBe(404);
+  });
+
   it('rotates and revokes server credentials', async () => {
     const servers = await call('GET', '/api/servers');
     const proxyId = servers.body.find((s: { name: string }) => s.name === 'proxy-1').id;

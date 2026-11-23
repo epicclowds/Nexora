@@ -41,6 +41,7 @@ COPY --from=build --chown=node:node /app/packages/shared-types/dist /app/package
 COPY --from=build --chown=node:node /app/packages/translations/package.json /app/packages/translations/package.json
 COPY --from=build --chown=node:node /app/packages/translations/dist /app/packages/translations/dist
 COPY --from=build --chown=node:node /app/packages/translations/locales /app/packages/translations/locales
+COPY --from=build --chown=node:node /app/packages/translations/minecraft /app/packages/translations/minecraft
 COPY --from=build --chown=node:node /app/apps/backend/package.json /app/apps/backend/package.json
 COPY --from=build --chown=node:node /app/apps/backend/dist /app/apps/backend/dist
 COPY --from=build --chown=node:node /app/apps/backend/prisma /app/apps/backend/prisma

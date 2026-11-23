@@ -159,6 +159,17 @@ export class ServersService {
     return tokens;
   }
 
+  /** Progress of a registration started in the dashboard (polled by the add-server flow). */
+  async tokenStatus(id: string) {
+    const token = await this.prisma.registrationToken.findUnique({
+      where: { id },
+      select: { id: true, serverType: true, serverName: true, expiresAt: true, usedAt: true, server: { select: { id: true, name: true, status: true, lastHeartbeatAt: true, pluginVersion: true, minecraftVersion: true } } },
+    });
+    if (!token) throw new NotFoundException();
+    const status = token.usedAt ? 'REGISTERED' : token.expiresAt <= new Date() ? 'EXPIRED' : 'PENDING';
+    return { id: token.id, serverType: token.serverType, serverName: token.serverName, expiresAt: token.expiresAt, usedAt: token.usedAt, status, server: token.server };
+  }
+
   async revokeToken(id: string, actor: AuditActor, ip: string | null) {
     await this.prisma.$transaction(async (tx) => {
       await tx.registrationToken.updateMany({ where: { id, usedAt: null }, data: { expiresAt: new Date() } });

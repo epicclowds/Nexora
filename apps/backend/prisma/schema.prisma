@@ -603,3 +603,15 @@ model LanguageSetting {
 
   @@map("language_settings")
 }
+
+/// Dashboard translations imported at runtime. For bundled locales the
+/// messages override the shipped catalogue; for added locales they are the
+/// whole catalogue. Missing keys always fall back to en-US.
+model TranslationCatalog {
+  locale          String   @id @db.VarChar(16)
+  messages        Json
+  updatedByUserId String?  @map("updated_by_user_id") @db.VarChar(32)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("translation_catalogs")
+}

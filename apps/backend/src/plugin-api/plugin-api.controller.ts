@@ -7,6 +7,7 @@ import { ZodBody } from '../common/zod';
 import { ServerStatus, ServerType } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
+import { SettingsService } from '../settings/settings.service';
 import { type PluginRequest, PluginAuthGuard, type PluginServer } from './plugin-auth.guard';
 import { eventBatchSchema, type HeartbeatInput, heartbeatSchema, type PluginEvent, syncSchema, type SyncInput } from './plugin-events';
 import { PlayerTrackingService } from './player-tracking.service';
@@ -30,13 +31,26 @@ export class PluginApiController {
     private readonly prisma: PrismaService,
     private readonly tracking: PlayerTrackingService,
     private readonly realtime: RealtimeService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Lets a plugin verify its credentials and clock. */
   @Get('ping')
-  ping(@Req() req: PluginRequest) {
+  async ping(@Req() req: PluginRequest) {
     const server = req.pluginServer!;
-    return { serverId: server.id, serverName: server.name, serverType: server.type, serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS };
+    const configRevision = await this.settings.pluginSettingsRevision();
+    return { serverId: server.id, serverName: server.name, serverType: server.type, serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS, configRevision };
+  }
+
+  /**
+   * Centrally managed settings. Plugins fetch them on start and whenever the
+   * configRevision in a heartbeat response changes; null fields keep the
+   * server's local value.
+   */
+  @Get('config')
+  async config() {
+    const { revision, settings } = await this.settings.getPluginSettings();
+    return { revision, ...settings };
   }
 
   @Post('heartbeat')
@@ -63,7 +77,7 @@ export class PluginApiController {
     });
     if (server.type === ServerType.PAPER && body.players?.length) await this.tracking.updateGamemodes(body.players);
     this.realtime.publish({ type: 'server.updated', serverId: server.id });
-    return { serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS };
+    return { serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS, configRevision: await this.settings.pluginSettingsRevision() };
   }
 
   /** Ordered batch of player events from the proxy (join, server switch, client brand, leave). */
