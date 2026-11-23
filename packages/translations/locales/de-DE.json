@@ -1,0 +1,243 @@
+{
+  "meta": {
+    "locale": "de-DE",
+    "name": "German (Germany)",
+    "nativeName": "Deutsch (Deutschland)"
+  },
+  "common": {
+    "appName": "Network Manager",
+    "loading": "Wird geladen…",
+    "save": "Speichern",
+    "saving": "Wird gespeichert…",
+    "cancel": "Abbrechen",
+    "back": "Zurück",
+    "next": "Weiter",
+    "retry": "Erneut versuchen",
+    "copy": "Kopieren",
+    "copied": "Kopiert",
+    "create": "Erstellen",
+    "delete": "Löschen",
+    "close": "Schließen",
+    "actions": "Aktionen",
+    "status": "Status",
+    "unknown": "Unbekannt",
+    "never": "Nie",
+    "signOut": "Abmelden",
+    "version": "Version {version}",
+    "online": "Online",
+    "offline": "Offline",
+    "up": "Betriebsbereit",
+    "down": "Nicht erreichbar",
+    "previous": "Zurück",
+    "page": "Seite {page} von {pages}"
+  },
+  "nav": {
+    "dashboard": "Übersicht",
+    "players": "Spieler",
+    "onlinePlayers": "Online-Spieler",
+    "statistics": "Statistiken",
+    "moderation": "Moderation",
+    "anticheat": "AntiCheat",
+    "servers": "Server",
+    "auditLogs": "Audit-Protokoll",
+    "users": "Benutzerverwaltung",
+    "settings": "Einstellungen",
+    "toggleSidebar": "Navigation umschalten"
+  },
+  "theme": {
+    "label": "Design",
+    "dark": "Dunkel",
+    "light": "Hell",
+    "system": "System"
+  },
+  "language": {
+    "label": "Sprache"
+  },
+  "auth": {
+    "title": "Anmelden",
+    "subtitle": "Melde dich an, um dein Minecraft-Netzwerk zu verwalten.",
+    "identifier": "Benutzername oder E-Mail",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "submitting": "Anmeldung läuft…",
+    "invalidCredentials": "Benutzername oder Passwort ist ungültig.",
+    "rateLimited": "Zu viele Versuche. Bitte warte einen Moment und versuche es erneut."
+  },
+  "dashboard": {
+    "title": "Übersicht",
+    "subtitle": "Überblick über dein Netzwerk.",
+    "onlinePlayers": "Online-Spieler",
+    "totalPlayers": "Registrierte Spieler",
+    "newPlayersToday": "Neue Spieler heute",
+    "connectionsToday": "Verbindungen heute",
+    "playerRecord": "Spielerrekord",
+    "activeBans": "Aktive Banns",
+    "activeMutes": "Aktive Mutes",
+    "anticheatToday": "AntiCheat-Strafen heute",
+    "notRecorded": "Noch nicht erfasst",
+    "servers": "Verbundene Server",
+    "serversEmpty": "Es sind noch keine Minecraft-Server verbunden.",
+    "serversEmptyHint": "Erstelle unter Einstellungen → Minecraft-Integration ein Registrierungstoken und trage es in die Plugin-Konfiguration ein.",
+    "serverPlayers": "{count, plural, =0 {Keine Spieler} one {# Spieler} other {# Spieler}}",
+    "pluginVersion": "Plugin {version}",
+    "lastHeartbeat": "Letzter Heartbeat: {time}",
+    "recentActivity": "Letzte Aktivitäten",
+    "recentActivityEmpty": "Noch keine Audit-Ereignisse vorhanden."
+  },
+  "planned": {
+    "title": "Noch nicht verfügbar",
+    "description": "Das Modul {module} ist für eine spätere Entwicklungsphase geplant und in dieser Version noch nicht umgesetzt."
+  },
+  "users": {
+    "title": "Benutzerverwaltung",
+    "subtitle": "Dashboard-Konten und ihre Rollen.",
+    "create": "Benutzer hinzufügen",
+    "username": "Benutzername",
+    "email": "E-Mail",
+    "password": "Passwort",
+    "passwordHint": "Mindestens 12 Zeichen.",
+    "role": "Rolle",
+    "lastLogin": "Letzte Anmeldung",
+    "active": "Aktiv",
+    "disabled": "Deaktiviert",
+    "disable": "Deaktivieren",
+    "enable": "Aktivieren",
+    "empty": "Keine Benutzer gefunden.",
+    "created": "Benutzer {username} wurde erstellt.",
+    "updated": "Benutzer {username} wurde aktualisiert.",
+    "count": "{count, plural, one {# Benutzer} other {# Benutzer}}"
+  },
+  "roles": {
+    "title": "Rollen & Berechtigungen",
+    "subtitle": "Lege fest, was jede Rolle tun darf.",
+    "system": "Systemrolle",
+    "users": "{count, plural, =0 {Keine Benutzer} one {# Benutzer} other {# Benutzer}}",
+    "saved": "Berechtigungen für {role} wurden gespeichert.",
+    "ownerLocked": "Die Owner-Rolle besitzt immer alle Berechtigungen.",
+    "names": {
+      "owner": "Owner",
+      "administrator": "Administrator",
+      "developer": "Entwickler",
+      "moderator": "Moderator",
+      "supporter": "Supporter",
+      "viewer": "Betrachter"
+    }
+  },
+  "audit": {
+    "title": "Audit-Protokoll",
+    "subtitle": "Jede administrative Aktion wird hier protokolliert.",
+    "timestamp": "Zeitpunkt",
+    "actor": "Ausgeführt von",
+    "action": "Aktion",
+    "target": "Ziel",
+    "system": "System",
+    "empty": "Noch keine Audit-Ereignisse vorhanden.",
+    "filterAction": "Nach Aktionspräfix filtern, z. B. auth."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "subtitle": "Persönliche Einstellungen und Netzwerkkonfiguration.",
+    "preferences": "Persönliche Einstellungen",
+    "preferencesDescription": "Diese Einstellungen gelten nur für dein Konto.",
+    "language": "Sprache",
+    "theme": "Design",
+    "timezone": "Zeitzone",
+    "saved": "Einstellungen gespeichert.",
+    "network": "Netzwerk",
+    "networkDescription": "Allgemeine Informationen über dein Minecraft-Netzwerk.",
+    "languages": "Sprachen",
+    "languagesDescription": "Sprachen aktivieren und die Standardsprache festlegen.",
+    "default": "Standard",
+    "setDefault": "Als Standard festlegen",
+    "enabled": "Aktiviert",
+    "missingKeys": "{count, plural, =0 {Vollständig} one {# fehlender Schlüssel} other {# fehlende Schlüssel}}",
+    "minecraft": "Minecraft-Integration",
+    "minecraftDescription": "Einmalige Registrierungstokens für Velocity- und Paper-Server erstellen.",
+    "createToken": "Registrierungstoken erstellen",
+    "tokenCreated": "Token erstellt. Es wird nur einmal angezeigt und läuft {time} ab.",
+    "serverType": "Servertyp",
+    "serverName": "Servername"
+  },
+  "setup": {
+    "title": "Ersteinrichtung",
+    "stepOf": "Schritt {current} von {total}",
+    "steps": {
+      "welcome": "Willkommen",
+      "database": "Datenbank",
+      "owner": "Owner-Konto",
+      "network": "Netzwerk",
+      "velocity": "Velocity",
+      "finish": "Abschluss"
+    },
+    "welcome": {
+      "heading": "Willkommen bei {appName}",
+      "description": "Dieser Assistent bereitet deine Installation vor. Er prüft alle Dienste und erstellt das erste Owner-Konto.",
+      "backend": "Backend",
+      "database": "Datenbank",
+      "redis": "Redis"
+    },
+    "database": {
+      "heading": "Datenbankprüfung",
+      "description": "Migrationen werden beim Start des Backend-Containers automatisch angewendet. Es ist kein manuelles SQL nötig.",
+      "connectivity": "Verbindung",
+      "version": "Serverversion",
+      "migrations": "Angewendete Migrationen",
+      "pending": "Ausstehende Migrationen",
+      "upToDate": "Das Schema ist aktuell.",
+      "notReady": "Die Datenbank ist nicht bereit. Prüfe die Backend-Logs, bevor du fortfährst."
+    },
+    "owner": {
+      "heading": "Owner-Konto erstellen",
+      "description": "Der Owner besitzt alle Berechtigungen und kann nicht entfernt werden.",
+      "setupCode": "Einrichtungscode",
+      "setupCodeHint": "Wird beim Start im Backend-Log ausgegeben (docker compose logs backend). Er beweist, dass du diese Installation kontrollierst.",
+      "username": "Benutzername",
+      "email": "E-Mail",
+      "password": "Passwort",
+      "confirmPassword": "Passwort bestätigen",
+      "passwordMismatch": "Die Passwörter stimmen nicht überein.",
+      "passwordTooShort": "Das Passwort muss mindestens 12 Zeichen enthalten."
+    },
+    "network": {
+      "heading": "Netzwerkkonfiguration",
+      "name": "Netzwerkname",
+      "description": "Netzwerkbeschreibung",
+      "domain": "Minecraft-Domain",
+      "dashboardUrl": "Dashboard-URL",
+      "defaultLanguage": "Standardsprache",
+      "defaultTimezone": "Standardzeitzone",
+      "defaultTheme": "Standarddesign",
+      "submit": "Installation abschließen"
+    },
+    "velocity": {
+      "heading": "Velocity-Proxy verbinden",
+      "description": "Erzeuge ein einmaliges Registrierungstoken und trage es in die Konfiguration des Velocity-Plugins ein. Das Token läuft nach 30 Minuten ab und wird nach der Verwendung ungültig.",
+      "proxyName": "Proxy-Name",
+      "generate": "Token erzeugen",
+      "token": "Registrierungstoken",
+      "expires": "Läuft {time} ab",
+      "skip": "Vorerst überspringen"
+    },
+    "finish": {
+      "heading": "Einrichtung abgeschlossen",
+      "description": "Deine Netzwerkverwaltung ist einsatzbereit.",
+      "summaryNetwork": "Netzwerk",
+      "summaryOwner": "Owner",
+      "summaryLanguage": "Standardsprache",
+      "summaryVelocity": "Velocity-Token",
+      "generated": "Erzeugt",
+      "skipped": "Übersprungen",
+      "openDashboard": "Zum Dashboard"
+    },
+    "alreadyInitialized": "Diese Installation wurde bereits eingerichtet.",
+    "invalidSetupCode": "Der Einrichtungscode ist ungültig."
+  },
+  "errors": {
+    "generic": "Etwas ist schiefgelaufen. Bitte versuche es erneut.",
+    "network": "Das Backend ist nicht erreichbar.",
+    "forbidden": "Du hast keine Berechtigung für diese Aktion.",
+    "notFound": "Die angeforderte Ressource wurde nicht gefunden.",
+    "validation": "Bitte überprüfe deine Eingaben.",
+    "conflict": "Dies steht im Konflikt mit vorhandenen Daten."
+  }
+}

@@ -1,0 +1,40 @@
+# Minecraft Network Manager – plugin messages (en-US, default)
+# Keys are flat and dot-separated. Placeholders use {name}. Colors use MiniMessage tags.
+# Copy this file to <locale>.yml (e.g. fr-FR.yml) to add a language.
+prefix: "<dark_gray>[<aqua>Network</aqua>]</dark_gray> "
+
+error.no-permission: "<red>You do not have permission to use this command."
+error.player-not-found: "<red>No player named {player} has been seen on this network."
+error.invalid-duration: "<red>Invalid duration \"{input}\". Examples: 30m, 12h, 7d, 1w."
+error.backend-unavailable: "<red>The network backend is currently unavailable. Please try again later."
+error.usage: "<red>Usage: {usage}"
+
+punishment.ban.screen: "<red><bold>You are banned from this network.</bold></red>\n\n<gray>Reason: <white>{reason}</white>\n<gray>Punishment ID: <white>{id}</white>"
+punishment.tempban.screen: "<red><bold>You are temporarily banned from this network.</bold></red>\n\n<gray>Reason: <white>{reason}</white>\n<gray>Expires: <white>{expires}</white>\n<gray>Punishment ID: <white>{id}</white>"
+punishment.kick.screen: "<red>You were kicked from the network.</red>\n\n<gray>Reason: <white>{reason}</white>"
+punishment.mute.notice: "<red>You are muted. Reason: {reason}"
+punishment.tempmute.notice: "<red>You are muted until {expires}. Reason: {reason}"
+punishment.warn.notice: "<gold>You received a warning: <white>{reason}</white>"
+
+command.ban.success: "<green>{player} was banned. ID: {id}"
+command.tempban.success: "<green>{player} was banned for {duration}. ID: {id}"
+command.unban.success: "<green>{player} was unbanned."
+command.mute.success: "<green>{player} was muted. ID: {id}"
+command.tempmute.success: "<green>{player} was muted for {duration}. ID: {id}"
+command.unmute.success: "<green>{player} was unmuted."
+command.kick.success: "<green>{player} was kicked."
+command.warn.success: "<green>{player} was warned."
+command.not-punished: "<yellow>{player} has no active punishment of this type."
+command.history.header: "<gold>Punishment history of {player} ({count}):"
+command.history.entry: "<gray>#{id} <white>{type}</white> – {reason} <dark_gray>({date}, by {issuer}, {status})"
+command.history.empty: "<gray>{player} has no punishment history."
+command.check.header: "<gold>Status of {player}:"
+command.check.banned: "<red>Banned</red> – {reason} (until {expires})"
+command.check.muted: "<red>Muted</red> – {reason} (until {expires})"
+command.check.clean: "<green>No active punishments."
+
+notify.staff.punishment: "<gray>[Staff] <white>{issuer}</white> issued <white>{type}</white> to <white>{player}</white>: {reason}"
+notify.staff.anticheat: "<gray>[AntiCheat] <white>{player}</white> was punished for <white>{cheat}</white> ({provider})"
+
+time.permanent: "permanent"
+time.never: "never"

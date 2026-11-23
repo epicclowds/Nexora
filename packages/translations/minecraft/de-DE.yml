@@ -1,0 +1,38 @@
+# Minecraft Network Manager – plugin messages (de-DE)
+prefix: "<dark_gray>[<aqua>Netzwerk</aqua>]</dark_gray> "
+
+error.no-permission: "<red>Du hast keine Berechtigung für diesen Befehl."
+error.player-not-found: "<red>Ein Spieler namens {player} wurde in diesem Netzwerk noch nicht gesehen."
+error.invalid-duration: "<red>Ungültige Dauer \"{input}\". Beispiele: 30m, 12h, 7d, 1w."
+error.backend-unavailable: "<red>Das Netzwerk-Backend ist derzeit nicht erreichbar. Bitte versuche es später erneut."
+error.usage: "<red>Verwendung: {usage}"
+
+punishment.ban.screen: "<red><bold>Du bist von diesem Netzwerk gebannt.</bold></red>\n\n<gray>Grund: <white>{reason}</white>\n<gray>Strafen-ID: <white>{id}</white>"
+punishment.tempban.screen: "<red><bold>Du bist vorübergehend von diesem Netzwerk gebannt.</bold></red>\n\n<gray>Grund: <white>{reason}</white>\n<gray>Läuft ab: <white>{expires}</white>\n<gray>Strafen-ID: <white>{id}</white>"
+punishment.kick.screen: "<red>Du wurdest vom Netzwerk gekickt.</red>\n\n<gray>Grund: <white>{reason}</white>"
+punishment.mute.notice: "<red>Du bist stummgeschaltet. Grund: {reason}"
+punishment.tempmute.notice: "<red>Du bist bis {expires} stummgeschaltet. Grund: {reason}"
+punishment.warn.notice: "<gold>Du hast eine Verwarnung erhalten: <white>{reason}</white>"
+
+command.ban.success: "<green>{player} wurde gebannt. ID: {id}"
+command.tempban.success: "<green>{player} wurde für {duration} gebannt. ID: {id}"
+command.unban.success: "<green>{player} wurde entbannt."
+command.mute.success: "<green>{player} wurde stummgeschaltet. ID: {id}"
+command.tempmute.success: "<green>{player} wurde für {duration} stummgeschaltet. ID: {id}"
+command.unmute.success: "<green>Die Stummschaltung von {player} wurde aufgehoben."
+command.kick.success: "<green>{player} wurde gekickt."
+command.warn.success: "<green>{player} wurde verwarnt."
+command.not-punished: "<yellow>{player} hat keine aktive Strafe dieses Typs."
+command.history.header: "<gold>Strafhistorie von {player} ({count}):"
+command.history.entry: "<gray>#{id} <white>{type}</white> – {reason} <dark_gray>({date}, von {issuer}, {status})"
+command.history.empty: "<gray>{player} hat keine Strafhistorie."
+command.check.header: "<gold>Status von {player}:"
+command.check.banned: "<red>Gebannt</red> – {reason} (bis {expires})"
+command.check.muted: "<red>Stummgeschaltet</red> – {reason} (bis {expires})"
+command.check.clean: "<green>Keine aktiven Strafen."
+
+notify.staff.punishment: "<gray>[Team] <white>{issuer}</white> hat <white>{player}</white> mit <white>{type}</white> bestraft: {reason}"
+notify.staff.anticheat: "<gray>[AntiCheat] <white>{player}</white> wurde wegen <white>{cheat}</white> bestraft ({provider})"
+
+time.permanent: "permanent"
+time.never: "nie"

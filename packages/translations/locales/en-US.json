@@ -1,0 +1,243 @@
+{
+  "meta": {
+    "locale": "en-US",
+    "name": "English (US)",
+    "nativeName": "English (US)"
+  },
+  "common": {
+    "appName": "Network Manager",
+    "loading": "Loading…",
+    "save": "Save",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "back": "Back",
+    "next": "Next",
+    "retry": "Retry",
+    "copy": "Copy",
+    "copied": "Copied",
+    "create": "Create",
+    "delete": "Delete",
+    "close": "Close",
+    "actions": "Actions",
+    "status": "Status",
+    "unknown": "Unknown",
+    "never": "Never",
+    "signOut": "Sign out",
+    "version": "Version {version}",
+    "online": "Online",
+    "offline": "Offline",
+    "up": "Operational",
+    "down": "Unavailable",
+    "previous": "Previous",
+    "page": "Page {page} of {pages}"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "players": "Players",
+    "onlinePlayers": "Online Players",
+    "statistics": "Statistics",
+    "moderation": "Moderation",
+    "anticheat": "AntiCheat",
+    "servers": "Servers",
+    "auditLogs": "Audit Logs",
+    "users": "User Management",
+    "settings": "Settings",
+    "toggleSidebar": "Toggle navigation"
+  },
+  "theme": {
+    "label": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
+  },
+  "language": {
+    "label": "Language"
+  },
+  "auth": {
+    "title": "Sign in",
+    "subtitle": "Sign in to manage your Minecraft network.",
+    "identifier": "Username or email",
+    "password": "Password",
+    "submit": "Sign in",
+    "submitting": "Signing in…",
+    "invalidCredentials": "Invalid username or password.",
+    "rateLimited": "Too many attempts. Please wait a moment and try again."
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "Overview of your network.",
+    "onlinePlayers": "Online Players",
+    "totalPlayers": "Registered Players",
+    "newPlayersToday": "New Players Today",
+    "connectionsToday": "Connections Today",
+    "playerRecord": "Network Player Record",
+    "activeBans": "Active Bans",
+    "activeMutes": "Active Mutes",
+    "anticheatToday": "AntiCheat Punishments Today",
+    "notRecorded": "Not recorded yet",
+    "servers": "Connected Servers",
+    "serversEmpty": "No Minecraft servers are connected yet.",
+    "serversEmptyHint": "Create a registration token under Settings → Minecraft Integration and enter it in the plugin configuration.",
+    "serverPlayers": "{count, plural, =0 {No players} one {# player} other {# players}}",
+    "pluginVersion": "Plugin {version}",
+    "lastHeartbeat": "Last heartbeat: {time}",
+    "recentActivity": "Recent Activity",
+    "recentActivityEmpty": "No audit events recorded yet."
+  },
+  "planned": {
+    "title": "Not available yet",
+    "description": "The {module} module is planned for a later development phase and is not implemented in this version."
+  },
+  "users": {
+    "title": "User Management",
+    "subtitle": "Dashboard accounts and their roles.",
+    "create": "Add user",
+    "username": "Username",
+    "email": "Email",
+    "password": "Password",
+    "passwordHint": "At least 12 characters.",
+    "role": "Role",
+    "lastLogin": "Last login",
+    "active": "Active",
+    "disabled": "Disabled",
+    "disable": "Disable",
+    "enable": "Enable",
+    "empty": "No users found.",
+    "created": "User {username} was created.",
+    "updated": "User {username} was updated.",
+    "count": "{count, plural, one {# user} other {# users}}"
+  },
+  "roles": {
+    "title": "Roles & Permissions",
+    "subtitle": "Control what each role is allowed to do.",
+    "system": "System role",
+    "users": "{count, plural, =0 {No users} one {# user} other {# users}}",
+    "saved": "Permissions for {role} were saved.",
+    "ownerLocked": "The Owner role always has every permission.",
+    "names": {
+      "owner": "Owner",
+      "administrator": "Administrator",
+      "developer": "Developer",
+      "moderator": "Moderator",
+      "supporter": "Supporter",
+      "viewer": "Viewer"
+    }
+  },
+  "audit": {
+    "title": "Audit Logs",
+    "subtitle": "Every administrative action is recorded here.",
+    "timestamp": "Time",
+    "actor": "Actor",
+    "action": "Action",
+    "target": "Target",
+    "system": "System",
+    "empty": "No audit events recorded yet.",
+    "filterAction": "Filter by action prefix, e.g. auth."
+  },
+  "settings": {
+    "title": "Settings",
+    "subtitle": "Personal preferences and network configuration.",
+    "preferences": "Personal Preferences",
+    "preferencesDescription": "These settings only apply to your account.",
+    "language": "Language",
+    "theme": "Theme",
+    "timezone": "Timezone",
+    "saved": "Settings saved.",
+    "network": "Network",
+    "networkDescription": "General information about your Minecraft network.",
+    "languages": "Languages",
+    "languagesDescription": "Enable languages and choose the network default.",
+    "default": "Default",
+    "setDefault": "Make default",
+    "enabled": "Enabled",
+    "missingKeys": "{count, plural, =0 {Complete} one {# missing key} other {# missing keys}}",
+    "minecraft": "Minecraft Integration",
+    "minecraftDescription": "Create single-use registration tokens for Velocity and Paper servers.",
+    "createToken": "Create registration token",
+    "tokenCreated": "Token created. It is shown only once and expires {time}.",
+    "serverType": "Server type",
+    "serverName": "Server name"
+  },
+  "setup": {
+    "title": "Initial Setup",
+    "stepOf": "Step {current} of {total}",
+    "steps": {
+      "welcome": "Welcome",
+      "database": "Database",
+      "owner": "Owner Account",
+      "network": "Network",
+      "velocity": "Velocity",
+      "finish": "Finish"
+    },
+    "welcome": {
+      "heading": "Welcome to {appName}",
+      "description": "This wizard prepares your installation. It checks all services and creates the first Owner account.",
+      "backend": "Backend",
+      "database": "Database",
+      "redis": "Redis"
+    },
+    "database": {
+      "heading": "Database verification",
+      "description": "Migrations are applied automatically when the backend container starts. No manual SQL is required.",
+      "connectivity": "Connectivity",
+      "version": "Server version",
+      "migrations": "Applied migrations",
+      "pending": "Pending migrations",
+      "upToDate": "Schema is up to date.",
+      "notReady": "The database is not ready. Check the backend logs before continuing."
+    },
+    "owner": {
+      "heading": "Create the Owner account",
+      "description": "The Owner has every permission and cannot be removed.",
+      "setupCode": "Setup code",
+      "setupCodeHint": "Printed in the backend log at startup (docker compose logs backend). It proves you control this installation.",
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password",
+      "passwordMismatch": "Passwords do not match.",
+      "passwordTooShort": "The password must contain at least 12 characters."
+    },
+    "network": {
+      "heading": "Network configuration",
+      "name": "Network name",
+      "description": "Network description",
+      "domain": "Minecraft domain",
+      "dashboardUrl": "Dashboard URL",
+      "defaultLanguage": "Default language",
+      "defaultTimezone": "Default timezone",
+      "defaultTheme": "Default theme",
+      "submit": "Complete installation"
+    },
+    "velocity": {
+      "heading": "Connect your Velocity proxy",
+      "description": "Generate a single-use registration token and enter it in the Velocity plugin configuration. The token expires after 30 minutes and becomes invalid once used.",
+      "proxyName": "Proxy name",
+      "generate": "Generate token",
+      "token": "Registration token",
+      "expires": "Expires {time}",
+      "skip": "Skip for now"
+    },
+    "finish": {
+      "heading": "Setup complete",
+      "description": "Your network management platform is ready.",
+      "summaryNetwork": "Network",
+      "summaryOwner": "Owner",
+      "summaryLanguage": "Default language",
+      "summaryVelocity": "Velocity token",
+      "generated": "Generated",
+      "skipped": "Skipped",
+      "openDashboard": "Open dashboard"
+    },
+    "alreadyInitialized": "This installation has already been initialized.",
+    "invalidSetupCode": "The setup code is invalid."
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "The backend could not be reached.",
+    "forbidden": "You do not have permission to perform this action.",
+    "notFound": "The requested resource was not found.",
+    "validation": "Please check your input.",
+    "conflict": "This conflicts with existing data."
+  }
+}
