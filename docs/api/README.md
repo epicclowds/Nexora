@@ -44,6 +44,8 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `GET /api/players/:uuid/connections` | session | `players.view` (+ `players.view.ip`, `players.view.location`) | Connection history, IP summary, related accounts |
 | `GET /api/players/:uuid/statistics` · `…/statistics/series` · `GET /api/statistics/overview` · `…/leaderboard` | session | `players.view.statistics` | Statistics ([details](../architecture/statistics.md)) |
 | `GET /api/anticheat/events` · `…/summary` · `GET/PUT …/settings` · `GET /api/players/:uuid/anticheat` | session | `anticheat.view` / `anticheat.manage` | AntiCheat ([details](../architecture/anticheat.md)) |
+| `GET /api/players/:uuid/inventories` · `GET …/:server/inventory` · `GET …/:server/ender-chest` · `POST …/:server/refresh` | session | `players.view.inventory` | Inventory overview, snapshot and history, snapshot request ([details](../architecture/inventory.md)) |
+| `POST /api/players/:uuid/inventories/:server/:kind/revisions` · `POST …/revisions/:id/rollback` · `…/cancel` | session | `players.edit.inventory` | Edit, roll back, cancel |
 | `GET/PATCH /api/settings/privacy` | session | `settings.manage` | IP retention period |
 | `GET /api/punishments` | session | `punishments.history` | Search/filter punishments (`type`, `status`, `search`) |
 | `POST /api/punishments` | session | per type (e.g. `punishments.ban`) | Issue a punishment |
@@ -54,6 +56,7 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `POST /api/plugin/v1/register` | registration token | – | Plugin exchanges a token for a credential |
 | `GET /api/plugin/v1/ping` · `POST …/heartbeat` · `…/events` · `…/sync` · `…/shutdown` | request signature | – | Plugin API ([protocol](../architecture/plugin-protocol.md)) |
 | `POST /api/plugin/v1/anticheat/reports` | request signature | – | AntiCheat report |
+| `POST /api/plugin/v1/inventories` · `GET …/inventories/pending` · `POST …/inventories/revisions/:id/result` | request signature (Paper) | – | Inventory snapshots and edits |
 | `POST /api/plugin/v1/statistics` | request signature (Paper) | – | Statistics upload |
 | `GET /api/plugin/v1/punishments/active` · `…/changes?after=` · `POST …/punishments` · `…/punishments/revoke` · `GET …/players/lookup` | request signature | – | Punishment feed and in-game moderation ([punishments](../architecture/punishments.md)) |
 

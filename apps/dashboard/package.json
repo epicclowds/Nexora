@@ -1,6 +1,6 @@
 {
   "name": "@mnm/dashboard",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Next.js administration dashboard for Minecraft Network Manager.",
   "scripts": {
@@ -12,8 +12,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@mnm/shared-types": "0.6.0",
-    "@mnm/translations": "0.6.0",
+    "@mnm/shared-types": "0.7.0",
+    "@mnm/translations": "0.7.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "*",

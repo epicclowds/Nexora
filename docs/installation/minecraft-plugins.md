@@ -43,7 +43,7 @@ All options are documented in the generated `config.properties`.
 | Velocity | join/leave times, server switches, username history, client protocol/version, client brand, virtual host, IP address (disable with `collect-ip-addresses=false`), proxy player count, memory, CPU |
 | Paper | TPS, MSPT, player count, memory, CPU, players' game mode, player statistics (see [Statistics](../architecture/statistics.md); configurable or disable with `statistics-enabled=false`) |
 
-Inventories arrive in a later release. Nothing is estimated: values that were not collected are shown as "not collected".
+Nothing is estimated: values that were not collected are shown as "not collected".
 
 ## Moderation
 
@@ -52,6 +52,10 @@ The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`,
 ## AntiCheat
 
 Allow-list AntiCheat plugins with `anticheat-integrations=Grim,Vulcan` (Paper `config.properties`) and configure rules in the dashboard. Details: [AntiCheat](../architecture/anticheat.md).
+
+## Inventories
+
+The Paper plugin uploads inventory and Ender Chest snapshots on join, on quit and every `inventory-sync-interval-seconds` (default 300), and applies dashboard edits within a few seconds. Disable with `inventory-sync=false` / `enderchest-sync=false`. Details: [Inventory management](../architecture/inventory.md).
 
 ## Outages and restarts
 
