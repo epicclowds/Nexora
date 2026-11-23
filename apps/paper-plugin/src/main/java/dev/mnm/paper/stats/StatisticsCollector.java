@@ -41,7 +41,8 @@ public final class StatisticsCollector implements Listener {
 
     private final BackendClient client;
     private final ActivityTracker activity;
-    private final Set<String> categories;
+    private final java.util.function.Supplier<Set<String>> categories;
+    private final java.util.function.BooleanSupplier enabled;
     private final Logger logger;
     private final List<Material> blocks;
     private final List<Material> items;
@@ -50,10 +51,11 @@ public final class StatisticsCollector implements Listener {
     private final Deque<UUID> queue = new ArrayDeque<>();
     private final List<JsonObject> collected = new ArrayList<>();
 
-    public StatisticsCollector(BackendClient client, ActivityTracker activity, Set<String> categories, Logger logger) {
+    public StatisticsCollector(BackendClient client, ActivityTracker activity, java.util.function.Supplier<Set<String>> categories, java.util.function.BooleanSupplier enabled, Logger logger) {
         this.client = client;
         this.activity = activity;
         this.categories = categories;
+        this.enabled = enabled;
         this.logger = logger;
         this.blocks = Arrays.stream(Material.values()).filter(m -> !m.isLegacy() && m.isBlock() && !m.isAir()).toList();
         this.items = Arrays.stream(Material.values()).filter(m -> !m.isLegacy() && m.isItem() && !m.isAir()).toList();
@@ -62,7 +64,7 @@ public final class StatisticsCollector implements Listener {
 
     /** Starts a new collection round (main thread). Ignored while a round is still running. */
     public void startRound() {
-        if (!queue.isEmpty()) return;
+        if (!enabled.getAsBoolean() || !queue.isEmpty()) return;
         Bukkit.getOnlinePlayers().forEach(p -> queue.add(p.getUniqueId()));
     }
 
@@ -81,12 +83,14 @@ public final class StatisticsCollector implements Listener {
     /** Final values when a player leaves this server (main thread). */
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
+        if (!enabled.getAsBoolean()) return;
         send(List.of(snapshot(event.getPlayer())));
     }
 
     JsonObject snapshot(Player player) {
         activity.flush(player);
         JsonObject stats = new JsonObject();
+        Set<String> categories = this.categories.get();
         if (categories.contains("movement")) MOVEMENT.forEach(s -> put(stats, "custom:" + s.getKey(), player.getStatistic(s)));
         if (categories.contains("combat")) {
             COMBAT.forEach(s -> put(stats, "custom:" + s.getKey(), player.getStatistic(s)));

@@ -1,6 +1,7 @@
 package dev.mnm.paper;
 
 import dev.mnm.plugin.BackendConnector;
+import dev.mnm.plugin.ManagedSettings;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.PluginConfig;
 import dev.mnm.plugin.StatusLines;
@@ -41,7 +42,10 @@ public final class NetworkManagerPaper extends JavaPlugin {
             return;
         }
 
+        ManagedSettings managed = new ManagedSettings(config, getDataFolder().toPath(), getSLF4JLogger());
+        managed.bind(messages);
         connector = new BackendConnector(getDataFolder().toPath(), config, new PaperPlatform(this), getPluginMeta().getVersion(), getSLF4JLogger());
+        connector.useManagedSettings(managed);
         BackendConnector statusSource = connector;
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> event.registrar().register(
                 "networkmanager",
@@ -64,11 +68,15 @@ public final class NetworkManagerPaper extends JavaPlugin {
                     }
                 }));
         // Mutes are enforced here (chat); bans and kicks are handled by the proxy.
-        PunishmentCache cache = new PunishmentCache();
         PunishmentTexts texts = new PunishmentTexts(messages);
-        PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, getDataFolder().toPath(), punishment -> {}, getSLF4JLogger());
-        connector.every3Seconds(feed::poll);
-        getServer().getPluginManager().registerEvents(new ChatMuteListener(cache, texts), this);
+        if (config.punishmentsEnabled()) {
+            PunishmentCache cache = new PunishmentCache();
+            PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, getDataFolder().toPath(), punishment -> {}, getSLF4JLogger());
+            connector.every3Seconds(feed::poll);
+            getServer().getPluginManager().registerEvents(new ChatMuteListener(cache, texts), this);
+        } else {
+            getSLF4JLogger().warn("punishments-enabled=false: network mutes are NOT enforced on this server.");
+        }
 
         // AntiCheat: Java API (allow-listed integrations) and /anticheatban.
         AntiCheatBridge anticheat = new AntiCheatBridge(this, connector.client(), config.anticheatIntegrations(), config.anticheatMaxReportsPerMinute(), texts, getSLF4JLogger());
@@ -76,24 +84,23 @@ public final class NetworkManagerPaper extends JavaPlugin {
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> event.registrar().register(
                 "anticheatban", "Requests an AntiCheat punishment according to the network rules", List.of(), new AntiCheatBanCommand(anticheat, messages)));
 
-        if (config.inventorySync() || config.enderChestSync()) {
-            InventorySync inventories = new InventorySync(this, connector.client(), config.inventorySync(), config.enderChestSync(), getSLF4JLogger());
-            getServer().getPluginManager().registerEvents(inventories, this);
-            connector.every3Seconds(inventories::poll);
-            long interval = config.inventorySyncIntervalSeconds() * 20L;
-            getServer().getScheduler().runTaskTimer(this, inventories::snapshotAll, interval, interval);
-        }
+        // Inventories and statistics follow the managed settings live: the
+        // components are always registered and check the effective values,
+        // and intervals are re-read on every timer check.
+        InventorySync inventories = new InventorySync(this, connector.client(), managed::inventorySync, managed::enderChestSync, getSLF4JLogger());
+        getServer().getPluginManager().registerEvents(inventories, this);
+        connector.every3Seconds(inventories::poll);
+        getServer().getScheduler().runTaskTimer(this, new IntervalTask(managed::inventorySyncIntervalSeconds, inventories::snapshotAll), 20L, 20L);
 
-        if (config.statisticsEnabled()) {
-            ActivityTracker activity = new ActivityTracker(this, config.afkTimeoutSeconds());
-            StatisticsCollector statistics = new StatisticsCollector(connector.client(), activity, config.statisticsCategories(), getSLF4JLogger());
-            getServer().getPluginManager().registerEvents(activity, this);
-            getServer().getPluginManager().registerEvents(statistics, this);
-            getServer().getScheduler().runTaskTimer(this, activity::tick, 20L, 20L);
-            getServer().getScheduler().runTaskTimer(this, statistics::tick, 1L, 1L);
-            long interval = config.statisticsIntervalSeconds() * 20L;
-            getServer().getScheduler().runTaskTimer(this, statistics::startRound, interval, interval);
-        }
+        ActivityTracker activity = new ActivityTracker(this, config.afkTimeoutSeconds());
+        StatisticsCollector statistics = new StatisticsCollector(connector.client(), activity, managed::statisticsCategories, managed::statisticsEnabled, getSLF4JLogger());
+        getServer().getPluginManager().registerEvents(activity, this);
+        getServer().getPluginManager().registerEvents(statistics, this);
+        getServer().getScheduler().runTaskTimer(this, () -> {
+            if (managed.statisticsEnabled()) activity.tick();
+        }, 20L, 20L);
+        getServer().getScheduler().runTaskTimer(this, statistics::tick, 1L, 1L);
+        getServer().getScheduler().runTaskTimer(this, new IntervalTask(managed::statisticsIntervalSeconds, statistics::startRound), 20L, 20L);
 
         connector.start();
     }

@@ -30,6 +30,9 @@ public record PluginConfig(
         boolean inventorySync,
         boolean enderChestSync,
         int inventorySyncIntervalSeconds,
+        boolean punishmentsEnabled,
+        boolean moderationCommands,
+        boolean managedSettings,
         boolean debug) {
 
     public static final java.util.Set<String> STATISTIC_CATEGORIES = java.util.Set.of("movement", "combat", "blocks", "general");
@@ -69,6 +72,9 @@ public record PluginConfig(
                 bool(p, "inventory-sync", true),
                 bool(p, "enderchest-sync", true),
                 clamp(integer(p, "inventory-sync-interval-seconds", 300), 30, 3600),
+                bool(p, "punishments-enabled", true),
+                bool(p, "moderation-commands", true),
+                bool(p, "managed-settings", true),
                 bool(p, "debug", false));
     }
 

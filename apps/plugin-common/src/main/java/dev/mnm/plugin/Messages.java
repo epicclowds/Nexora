@@ -27,16 +27,33 @@ public final class Messages {
     public static final String DEFAULT_LOCALE = "en-US";
     private static final Pattern VARIABLE = Pattern.compile("\\{([a-zA-Z][a-zA-Z0-9_-]*)}");
 
-    private final String locale;
-    private final Map<String, String> messages;
+    private final ClassLoader resources;
+    /** Swapped atomically when the dashboard changes the language or message overrides. */
+    private volatile State state;
 
-    private Messages(String locale, Map<String, String> messages) {
-        this.locale = locale;
-        this.messages = messages;
+    private record State(String locale, Map<String, String> messages) {}
+
+    private Messages(ClassLoader resources, State state) {
+        this.resources = resources;
+        this.state = state;
     }
 
     public static Messages load(ClassLoader resources, String locale) throws IOException {
-        Map<String, String> merged = new HashMap<>(read(resources, DEFAULT_LOCALE));
+        return new Messages(resources, build(resources, locale, Map.of()));
+    }
+
+    /**
+     * Switches language and applies message overrides from the dashboard.
+     * Order: en-US, bundled catalogue of {@code locale}, overrides. Unknown keys
+     * are ignored; a locale without bundled file or overrides falls back to en-US.
+     */
+    public void apply(String locale, Map<String, String> overrides) throws IOException {
+        state = build(resources, locale, overrides);
+    }
+
+    private static State build(ClassLoader resources, String locale, Map<String, String> overrides) throws IOException {
+        Map<String, String> base = read(resources, DEFAULT_LOCALE);
+        Map<String, String> merged = new HashMap<>(base);
         String effective = DEFAULT_LOCALE;
         if (!DEFAULT_LOCALE.equals(locale)) {
             Map<String, String> localized = read(resources, locale);
@@ -45,7 +62,15 @@ public final class Messages {
                 effective = locale;
             }
         }
-        return new Messages(effective, Map.copyOf(merged));
+        boolean overridden = false;
+        for (Map.Entry<String, String> e : overrides.entrySet()) {
+            if (base.containsKey(e.getKey()) && e.getValue() != null) {
+                merged.put(e.getKey(), e.getValue());
+                overridden = true;
+            }
+        }
+        if (overridden && locale.matches("[a-z]{2,3}-[A-Z]{2}")) effective = locale;
+        return new State(effective, Map.copyOf(merged));
     }
 
     static Map<String, String> read(ClassLoader resources, String locale) throws IOException {
@@ -66,12 +91,12 @@ public final class Messages {
     }
 
     public String locale() {
-        return locale;
+        return state.locale();
     }
 
     /** Raw MiniMessage template, or the key itself when unknown. */
     public String raw(String key) {
-        return messages.getOrDefault(key, key);
+        return state.messages().getOrDefault(key, key);
     }
 
     /** Renders a message with the network prefix. */

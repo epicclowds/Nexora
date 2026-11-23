@@ -33,6 +33,21 @@ class MessagesTest {
     }
 
     @Test
+    void appliesLanguageAndOverridesLive() throws Exception {
+        Messages messages = Messages.load(getClass().getClassLoader(), "en-US");
+        messages.apply("de-DE", Map.of("command.kick.success", "<green>{player} ist weg.", "not.a.key", "ignored"));
+        assertEquals("de-DE", messages.locale());
+        assertEquals("Steve ist weg.", PLAIN.serialize(messages.render("command.kick.success", Map.of("player", "Steve"))));
+        assertEquals("not.a.key", messages.raw("not.a.key"));
+        // A language without bundled file uses English plus its overrides.
+        messages.apply("fr-FR", Map.of("command.kick.success", "{player} a été expulsé."));
+        assertEquals("fr-FR", messages.locale());
+        assertTrue(messages.raw("command.ban.success").contains("was banned"));
+        messages.apply("en-US", Map.of());
+        assertEquals("Steve was kicked.", PLAIN.serialize(messages.render("command.kick.success", Map.of("player", "Steve"))));
+    }
+
+    @Test
     void unknownKeysRenderAsKey() throws Exception {
         Messages messages = Messages.load(getClass().getClassLoader(), "en-US");
         assertEquals("does.not.exist", messages.raw("does.not.exist"));

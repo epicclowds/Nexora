@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -41,14 +42,14 @@ public final class InventorySync implements Listener {
 
     private final Plugin plugin;
     private final BackendClient client;
-    private final boolean syncInventory;
-    private final boolean syncEnderChest;
+    private final BooleanSupplier syncInventory;
+    private final BooleanSupplier syncEnderChest;
     private final Logger logger;
     private final AtomicBoolean polling = new AtomicBoolean();
     /** Results not yet acknowledged by the backend (revision id → result body). */
     private final Map<String, JsonObject> unacknowledged = new ConcurrentHashMap<>();
 
-    public InventorySync(Plugin plugin, BackendClient client, boolean syncInventory, boolean syncEnderChest, Logger logger) {
+    public InventorySync(Plugin plugin, BackendClient client, BooleanSupplier syncInventory, BooleanSupplier syncEnderChest, Logger logger) {
         this.plugin = plugin;
         this.client = client;
         this.syncInventory = syncInventory;
@@ -62,13 +63,14 @@ public final class InventorySync implements Listener {
     JsonObject snapshot(Player player) {
         JsonObject entry = new JsonObject();
         entry.addProperty("uuid", player.getUniqueId().toString());
-        if (syncInventory) entry.add("inventory", ItemCodec.container(player.getInventory(), INVENTORY_SIZE));
-        if (syncEnderChest) entry.add("enderChest", ItemCodec.container(player.getEnderChest(), ENDER_CHEST_SIZE));
+        if (syncInventory.getAsBoolean()) entry.add("inventory", ItemCodec.container(player.getInventory(), INVENTORY_SIZE));
+        if (syncEnderChest.getAsBoolean()) entry.add("enderChest", ItemCodec.container(player.getEnderChest(), ENDER_CHEST_SIZE));
         return entry;
     }
 
     /** Main thread: snapshots of all online players (periodic). */
     public void snapshotAll() {
+        if (!active()) return;
         List<JsonObject> players = new ArrayList<>();
         for (Player player : Bukkit.getOnlinePlayers()) players.add(snapshot(player));
         send(players);
@@ -90,6 +92,7 @@ public final class InventorySync implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onJoin(PlayerJoinEvent event) {
+        if (!active()) return;
         Player player = event.getPlayer();
         // One tick later the inventory is fully loaded.
         Bukkit.getScheduler().runTask(plugin, () -> {
@@ -99,7 +102,12 @@ public final class InventorySync implements Listener {
 
     @EventHandler(priority = EventPriority.MONITOR)
     public void onQuit(PlayerQuitEvent event) {
+        if (!active()) return;
         send(List.of(snapshot(event.getPlayer())));
+    }
+
+    private boolean active() {
+        return syncInventory.getAsBoolean() || syncEnderChest.getAsBoolean();
     }
 
     // ── Pending edits ─────────────────────────────────────────────
@@ -109,6 +117,10 @@ public final class InventorySync implements Listener {
         if (!client.hasCredentials() || !polling.compareAndSet(false, true)) return;
         // Re-send results the backend has not acknowledged yet before fetching new work.
         unacknowledged.forEach(this::report);
+        if (!active()) {
+            polling.set(false);
+            return;
+        }
         client.get("/api/plugin/v1/inventories/pending").whenComplete((body, error) -> {
             polling.set(false);
             if (error != null || !plugin.isEnabled()) return;
@@ -137,6 +149,10 @@ public final class InventorySync implements Listener {
         Player player = Bukkit.getPlayer(UUID.fromString(revision.get("playerUuid").getAsString()));
         if (player == null) return; // left meanwhile: stays pending until the next join
         boolean enderChest = "ENDER_CHEST".equals(revision.get("kind").getAsString());
+        if (!(enderChest ? syncEnderChest : syncInventory).getAsBoolean()) {
+            finish(id, "REJECTED", (enderChest ? "Ender Chest" : "Inventory") + " synchronisation is disabled on this server", null, player, enderChest);
+            return;
+        }
         Inventory inventory = enderChest ? player.getEnderChest() : player.getInventory();
         int size = enderChest ? ENDER_CHEST_SIZE : INVENTORY_SIZE;
 

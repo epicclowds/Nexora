@@ -8,6 +8,7 @@ import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
 import dev.mnm.plugin.BackendConnector;
+import dev.mnm.plugin.ManagedSettings;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.PluginConfig;
 import dev.mnm.plugin.punish.ModerationClient;
@@ -51,24 +52,33 @@ public final class NetworkManagerVelocity {
             return;
         }
 
+        ManagedSettings managed = new ManagedSettings(config, dataDirectory, logger);
+        managed.bind(messages);
         SessionRegistry sessions = new SessionRegistry();
         connector = new BackendConnector(dataDirectory, config, new VelocityPlatform(proxy, sessions), BuildInfo.VERSION, logger);
+        connector.useManagedSettings(managed);
         proxy.getEventManager().register(this, new PlayerListener(connector, sessions, config.collectIpAddresses()));
         proxy.getCommandManager().register(
                 proxy.getCommandManager().metaBuilder("networkmanager").aliases("nm").plugin(this).build(),
                 new StatusCommand(connector, messages, "VELOCITY"));
         // Punishments: local cache (login checks), change feed (actions), commands.
-        PunishmentCache cache = new PunishmentCache();
-        PunishmentTexts texts = new PunishmentTexts(messages);
-        Enforcer enforcer = new Enforcer(proxy, cache, texts, logger);
-        PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, dataDirectory, enforcer, logger);
-        connector.every3Seconds(feed::poll);
-        proxy.getEventManager().register(this, enforcer);
-        ModerationClient moderation = new ModerationClient(connector.client());
-        for (ModerationCommand.Kind kind : ModerationCommand.Kind.values()) {
-            proxy.getCommandManager().register(
-                    proxy.getCommandManager().metaBuilder(kind.command()).plugin(this).build(),
-                    new ModerationCommand(kind, proxy, moderation, texts, enforcer));
+        if (config.punishmentsEnabled()) {
+            PunishmentCache cache = new PunishmentCache();
+            PunishmentTexts texts = new PunishmentTexts(messages);
+            Enforcer enforcer = new Enforcer(proxy, cache, texts, logger);
+            PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, dataDirectory, enforcer, logger);
+            connector.every3Seconds(feed::poll);
+            proxy.getEventManager().register(this, enforcer);
+            if (config.moderationCommands()) {
+                ModerationClient moderation = new ModerationClient(connector.client());
+                for (ModerationCommand.Kind kind : ModerationCommand.Kind.values()) {
+                    proxy.getCommandManager().register(
+                            proxy.getCommandManager().metaBuilder(kind.command()).plugin(this).build(),
+                            new ModerationCommand(kind, proxy, moderation, texts, enforcer));
+                }
+            }
+        } else {
+            logger.warn("punishments-enabled=false: network bans and mutes are NOT enforced on this proxy.");
         }
 
         connector.start();

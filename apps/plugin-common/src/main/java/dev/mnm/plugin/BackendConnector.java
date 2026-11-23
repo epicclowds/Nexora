@@ -61,6 +61,8 @@ public final class BackendConnector {
 
     private final AtomicBoolean flushing = new AtomicBoolean();
     private final List<Runnable> periodicTasks = new java.util.concurrent.CopyOnWriteArrayList<>();
+    private volatile ManagedSettings managedSettings;
+    private final AtomicBoolean fetchingConfig = new AtomicBoolean();
     private volatile Credentials credentials;
     private volatile boolean connected;
     private volatile boolean syncRequested = true;
@@ -148,6 +150,11 @@ public final class BackendConnector {
         periodicTasks.add(task);
     }
 
+    /** Receives centrally managed settings whenever their revision changes. */
+    public void useManagedSettings(ManagedSettings settings) {
+        this.managedSettings = settings;
+    }
+
     /** Shared, signed HTTP client (for feature modules such as moderation). */
     public BackendClient client() {
         return client;
@@ -181,10 +188,25 @@ public final class BackendConnector {
                     if (platform.minecraftVersion() != null) body.addProperty("minecraftVersion", platform.minecraftVersion());
                     return client.post("/api/plugin/v1/heartbeat", body);
                 })
-                .whenComplete((ok, error) -> {
-                    if (error == null) onSuccess();
-                    else onFailure("heartbeat", unwrap(error));
+                .whenComplete((response, error) -> {
+                    if (error != null) {
+                        onFailure("heartbeat", unwrap(error));
+                        return;
+                    }
+                    onSuccess();
+                    if (response != null && response.has("configRevision")) checkConfig(response.get("configRevision").getAsLong());
                 });
+    }
+
+    /** Fetches managed settings when the backend reports a revision we have not applied. */
+    private void checkConfig(long revision) {
+        ManagedSettings settings = managedSettings;
+        if (settings == null || !settings.enabled() || settings.revision() == revision || !fetchingConfig.compareAndSet(false, true)) return;
+        client.get("/api/plugin/v1/config").whenComplete((config, error) -> {
+            fetchingConfig.set(false);
+            if (error != null) logger.warn("Could not fetch managed settings: {}", unwrap(error).getMessage());
+            else settings.apply(config);
+        });
     }
 
     /** Sends the next batch (or a sync) unless one is in flight or we are backing off. */
