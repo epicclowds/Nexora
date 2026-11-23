@@ -41,7 +41,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     Object.assign(process.env, {
       DATABASE_URL: process.env.E2E_DATABASE_URL,
       REDIS_URL: process.env.E2E_REDIS_URL,
-      JWT_SECRET: 'e2e-secret-that-is-long-enough-for-validation',
+      JWT_SECRET: 'e2e-secret-that-is-long-enough-for-validation', // gitleaks:allow (test-only fixture)
       SETUP_TOKEN: SETUP_CODE,
       COOKIE_SECURE: 'false',
       NODE_ENV: 'test',
