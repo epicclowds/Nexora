@@ -1,0 +1,151 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '22'
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  quality:
+    name: Lint, typecheck & unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm install -g npm@12
+      - run: npm ci
+      - name: Build shared packages
+        run: npm run build:packages
+      - name: Validate translations
+        run: npm run translations:validate
+      - name: Validate Prisma schema
+        run: npx prisma validate
+        working-directory: apps/backend
+      - name: Lint
+        run: npm run lint
+      - name: Typecheck
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test
+
+  backend-e2e:
+    name: Backend e2e & migrations (MySQL 8.4 + Redis)
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_DATABASE: mnm
+          MYSQL_USER: mnm
+          MYSQL_PASSWORD: ci-password
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pci-root-password --silent"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd="redis-cli ping" --health-interval=5s --health-timeout=3s --health-retries=20
+    env:
+      DATABASE_URL: mysql://mnm:ci-password@127.0.0.1:3306/mnm
+      E2E_DATABASE_URL: mysql://mnm:ci-password@127.0.0.1:3306/mnm
+      E2E_REDIS_URL: redis://127.0.0.1:6379
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm install -g npm@12
+      - run: npm ci
+      - run: npm run build:packages
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+        working-directory: apps/backend
+      - name: Check schema and migrations are in sync
+        run: npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code
+        working-directory: apps/backend
+      - name: Generate Prisma client
+        run: npx prisma generate
+        working-directory: apps/backend
+      - name: End-to-end tests
+        run: npx vitest run test/e2e.spec.ts
+        working-directory: apps/backend
+
+  dashboard:
+    name: Dashboard production build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+      - run: npm install -g npm@12
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npm run build -w @mnm/dashboard
+
+  docker:
+    name: Docker images
+    runs-on: ubuntu-latest
+    needs: [quality]
+    strategy:
+      matrix:
+        component: [backend, dashboard]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infrastructure/docker/${{ matrix.component }}.Dockerfile
+          push: false
+          tags: mnm/${{ matrix.component }}:ci
+          cache-from: type=gha,scope=${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.component }}
+
+  compose:
+    name: Docker Compose configuration
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate compose file with example environment
+        run: |
+          sed 's/CHANGE_ME/ci-placeholder-value-0123456789abcdef/' .env.example > .env
+          docker compose config --quiet
+          docker compose --profile https config --quiet
+
+  security:
+    name: Secret & dependency scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - run: npm install -g npm@12
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=critical
