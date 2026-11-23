@@ -45,6 +45,10 @@ All options are documented in the generated `config.properties`.
 
 Statistics, AFK time and inventories arrive in later releases. Nothing is estimated: values that were not collected are shown as "not collected".
 
+## Moderation
+
+The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`, `/unmute`, `/kick`, `/warn`, `/history` and `/check`. Permissions and behaviour are described in [Punishments](../architecture/punishments.md). Both plugins keep `punishments-cache.json` in their folder so bans and mutes stay enforced during backend outages; do not delete it while the backend is unreachable.
+
 ## Outages and restarts
 
 - Player events are buffered in memory (default 50 000) while the backend is unreachable and delivered in order when it returns. If the buffer overflows, the oldest events are dropped and the proxy sends a full **sync** of all connected players, which repairs session state.
