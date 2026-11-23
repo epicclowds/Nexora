@@ -45,3 +45,23 @@ status.connected: "<gray>Backend: <green>connected</green> <dark_gray>(last cont
 status.disconnected: "<gray>Backend: <red>not connected</red> <dark_gray>({error})"
 status.unregistered: "<red>This server is not registered. Set registration-token in config.properties and restart."
 status.queue: "<gray>Pending events: <white>{pending}</white> <dark_gray>(dropped: {dropped})"
+
+error.already-banned: "<yellow>{player} is already banned."
+error.already-muted: "<yellow>{player} is already muted."
+error.player-offline: "<yellow>{player} is not online."
+error.request-failed: "<red>The request failed: {reason}"
+error.not-synced: "<yellow>Punishment data has not been loaded from the backend yet; using the local cache."
+
+command.history.more: "<dark_gray>… and {count} more. See the dashboard for the full history."
+
+type.ban: "Ban"
+type.temp-ban: "Temporary ban"
+type.mute: "Mute"
+type.temp-mute: "Temporary mute"
+type.kick: "Kick"
+type.warning: "Warning"
+type.blacklist: "Blacklist"
+
+state.active: "active"
+state.expired: "expired"
+state.revoked: "revoked"

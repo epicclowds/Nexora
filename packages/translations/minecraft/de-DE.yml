@@ -43,3 +43,23 @@ status.connected: "<gray>Backend: <green>verbunden</green> <dark_gray>(letzter K
 status.disconnected: "<gray>Backend: <red>nicht verbunden</red> <dark_gray>({error})"
 status.unregistered: "<red>Dieser Server ist nicht registriert. Setze registration-token in config.properties und starte neu."
 status.queue: "<gray>Ausstehende Ereignisse: <white>{pending}</white> <dark_gray>(verworfen: {dropped})"
+
+error.already-banned: "<yellow>{player} ist bereits gebannt."
+error.already-muted: "<yellow>{player} ist bereits stummgeschaltet."
+error.player-offline: "<yellow>{player} ist nicht online."
+error.request-failed: "<red>Die Anfrage ist fehlgeschlagen: {reason}"
+error.not-synced: "<yellow>Strafdaten wurden noch nicht vom Backend geladen; der lokale Cache wird verwendet."
+
+command.history.more: "<dark_gray>… und {count} weitere. Die vollständige Historie findest du im Dashboard."
+
+type.ban: "Bann"
+type.temp-ban: "Temporärer Bann"
+type.mute: "Stummschaltung"
+type.temp-mute: "Temporäre Stummschaltung"
+type.kick: "Kick"
+type.warning: "Verwarnung"
+type.blacklist: "Blacklist"
+
+state.active: "aktiv"
+state.expired: "abgelaufen"
+state.revoked: "aufgehoben"

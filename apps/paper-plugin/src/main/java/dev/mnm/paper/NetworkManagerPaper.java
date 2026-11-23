@@ -4,6 +4,9 @@ import dev.mnm.plugin.BackendConnector;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.PluginConfig;
 import dev.mnm.plugin.StatusLines;
+import dev.mnm.plugin.punish.PunishmentCache;
+import dev.mnm.plugin.punish.PunishmentFeed;
+import dev.mnm.plugin.punish.PunishmentTexts;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
@@ -53,6 +56,13 @@ public final class NetworkManagerPaper extends JavaPlugin {
                         return ADMIN_PERMISSION;
                     }
                 }));
+        // Mutes are enforced here (chat); bans and kicks are handled by the proxy.
+        PunishmentCache cache = new PunishmentCache();
+        PunishmentTexts texts = new PunishmentTexts(messages);
+        PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, getDataFolder().toPath(), punishment -> {}, getSLF4JLogger());
+        connector.every3Seconds(feed::poll);
+        getServer().getPluginManager().registerEvents(new ChatMuteListener(cache, texts), this);
+
         connector.start();
     }
 

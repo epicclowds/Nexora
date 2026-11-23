@@ -10,6 +10,10 @@ import com.velocitypowered.api.proxy.ProxyServer;
 import dev.mnm.plugin.BackendConnector;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.PluginConfig;
+import dev.mnm.plugin.punish.ModerationClient;
+import dev.mnm.plugin.punish.PunishmentCache;
+import dev.mnm.plugin.punish.PunishmentFeed;
+import dev.mnm.plugin.punish.PunishmentTexts;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -53,6 +57,20 @@ public final class NetworkManagerVelocity {
         proxy.getCommandManager().register(
                 proxy.getCommandManager().metaBuilder("networkmanager").aliases("nm").plugin(this).build(),
                 new StatusCommand(connector, messages, "VELOCITY"));
+        // Punishments: local cache (login checks), change feed (actions), commands.
+        PunishmentCache cache = new PunishmentCache();
+        PunishmentTexts texts = new PunishmentTexts(messages);
+        Enforcer enforcer = new Enforcer(proxy, cache, texts, logger);
+        PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, dataDirectory, enforcer, logger);
+        connector.every3Seconds(feed::poll);
+        proxy.getEventManager().register(this, enforcer);
+        ModerationClient moderation = new ModerationClient(connector.client());
+        for (ModerationCommand.Kind kind : ModerationCommand.Kind.values()) {
+            proxy.getCommandManager().register(
+                    proxy.getCommandManager().metaBuilder(kind.command()).plugin(this).build(),
+                    new ModerationCommand(kind, proxy, moderation, texts, enforcer));
+        }
+
         connector.start();
     }
 

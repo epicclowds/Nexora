@@ -60,6 +60,7 @@ public final class BackendConnector {
     private final EventQueue queue;
 
     private final AtomicBoolean flushing = new AtomicBoolean();
+    private final List<Runnable> periodicTasks = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile Credentials credentials;
     private volatile boolean connected;
     private volatile boolean syncRequested = true;
@@ -139,6 +140,27 @@ public final class BackendConnector {
         scheduler.scheduleWithFixedDelay(this::heartbeat, config.heartbeatIntervalSeconds(), config.heartbeatIntervalSeconds(), TimeUnit.SECONDS);
         scheduler.scheduleWithFixedDelay(this::flush, 1, 1, TimeUnit.SECONDS);
         if (isProxy()) scheduler.scheduleWithFixedDelay(() -> syncRequested = true, config.syncIntervalSeconds(), config.syncIntervalSeconds(), TimeUnit.SECONDS);
+        scheduler.scheduleWithFixedDelay(this::runPeriodicTasks, 0, 3, TimeUnit.SECONDS);
+    }
+
+    /** Registers work that runs every 3 seconds once the plugin is registered (e.g. the punishment feed). */
+    public void every3Seconds(Runnable task) {
+        periodicTasks.add(task);
+    }
+
+    /** Shared, signed HTTP client (for feature modules such as moderation). */
+    public BackendClient client() {
+        return client;
+    }
+
+    private void runPeriodicTasks() {
+        for (Runnable task : periodicTasks) {
+            try {
+                task.run();
+            } catch (RuntimeException e) {
+                logger.warn("Periodic task failed: {}", e.getMessage());
+            }
+        }
     }
 
     /** Queues a player event; delivery is asynchronous and ordered. Safe to call from any thread. */
