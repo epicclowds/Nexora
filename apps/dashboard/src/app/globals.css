@@ -1,0 +1,105 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Design tokens. Dark is the default theme; light is opt-in. */
+:root {
+  --background: oklch(0.985 0.003 145);
+  --foreground: oklch(0.2 0.02 150);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.2 0.02 150);
+  --muted: oklch(0.95 0.006 145);
+  --muted-foreground: oklch(0.5 0.02 150);
+  --border: oklch(0.9 0.01 145);
+  --input: oklch(0.88 0.01 145);
+  --primary: oklch(0.6 0.16 140);
+  --primary-foreground: oklch(0.99 0 0);
+  --accent: oklch(0.94 0.03 140);
+  --accent-foreground: oklch(0.3 0.08 145);
+  --diamond: oklch(0.7 0.12 200);
+  --gold: oklch(0.78 0.15 85);
+  --destructive: oklch(0.58 0.21 27);
+  --ring: oklch(0.6 0.16 140);
+  --sidebar: oklch(0.97 0.006 145);
+}
+
+.dark {
+  --background: oklch(0.16 0.012 160);
+  --foreground: oklch(0.95 0.008 145);
+  --card: oklch(0.2 0.014 160);
+  --card-foreground: oklch(0.95 0.008 145);
+  --muted: oklch(0.25 0.014 160);
+  --muted-foreground: oklch(0.7 0.02 150);
+  --border: oklch(0.3 0.016 160);
+  --input: oklch(0.34 0.016 160);
+  --primary: oklch(0.72 0.17 140);
+  --primary-foreground: oklch(0.16 0.03 150);
+  --accent: oklch(0.28 0.04 150);
+  --accent-foreground: oklch(0.9 0.08 140);
+  --diamond: oklch(0.78 0.12 200);
+  --gold: oklch(0.82 0.15 85);
+  --destructive: oklch(0.65 0.2 25);
+  --ring: oklch(0.72 0.17 140);
+  --sidebar: oklch(0.18 0.013 160);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-diamond: var(--diamond);
+  --color-gold: var(--gold);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Code', 'JetBrains Mono', Menlo, Consolas, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Subtle block-grid backdrop used on auth and setup screens. */
+.bg-blocks {
+  background-image:
+    linear-gradient(to right, color-mix(in oklch, var(--border) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--border) 45%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
