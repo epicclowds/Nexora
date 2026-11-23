@@ -12,7 +12,7 @@ const VECTOR = {
   timestamp: '1795400000000',
   nonce: 'nonce-0123456789abcdef',
   body: '{"onlinePlayers":3}',
-  signingKeyHex: '2d82f41db33f1785036be6980f75ca56279ad6c7a3a2de9dad2374e2d1ea85ca',
+  signingKeyHex: '2d82f41db33f1785036be6980f75ca56279ad6c7a3a2de9dad2374e2d1ea85ca', // gitleaks:allow (test vector)
   signature: 'abbe9d82b6527986e5434b4df02b8ff6d6ce279d6cffebd9a722221ac561bb03',
 };
 

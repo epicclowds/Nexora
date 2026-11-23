@@ -1,3 +1,6 @@
 # Reviewed false positives (format: <commit>:<file>:<rule>:<line>).
 # Test-only JWT secret used by the e2e suite against a throwaway CI database.
 42073f9e2fab3b888840df83456dcc8317d0b0c1:apps/backend/test/e2e.spec.ts:generic-api-key:44
+# Shared HMAC test vector (fixed, test-only signing key) asserted by the TS and Java tests.
+5f8376e90d402c9ae58fad7ab94ade283f435b53:apps/backend/test/plugin.spec.ts:generic-api-key:15
+a685f53e58b37a569b57de707a0d8af40df3e852:apps/plugin-common/src/test/java/dev/mnm/plugin/RequestSignerTest.java:generic-api-key:15

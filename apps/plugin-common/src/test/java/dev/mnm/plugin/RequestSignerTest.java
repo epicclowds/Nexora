@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class RequestSignerTest {
     // Shared test vector - identical values are asserted in apps/backend/test/plugin.spec.ts.
     private static final String SECRET = "mnm_sk_test-vector-secret";
-    private static final String SIGNING_KEY_HEX = "2d82f41db33f1785036be6980f75ca56279ad6c7a3a2de9dad2374e2d1ea85ca";
+    private static final String SIGNING_KEY_HEX = "2d82f41db33f1785036be6980f75ca56279ad6c7a3a2de9dad2374e2d1ea85ca"; // gitleaks:allow (test vector)
     private static final String EXPECTED = "abbe9d82b6527986e5434b4df02b8ff6d6ce279d6cffebd9a722221ac561bb03";
     private static final byte[] BODY = "{\"onlinePlayers\":3}".getBytes(StandardCharsets.UTF_8);
 

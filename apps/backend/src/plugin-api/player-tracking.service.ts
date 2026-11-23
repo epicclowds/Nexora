@@ -116,7 +116,11 @@ export class PlayerTrackingService {
   }
 
   private async brand(tx: Tx, uuid: string, brand: string): Promise<boolean> {
-    const result = await tx.player.updateMany({ where: { uuid }, data: { clientBrand: brand } });
+    // Only a real change counts, so retried batches are reported as skipped.
+    const result = await tx.player.updateMany({
+      where: { uuid, OR: [{ clientBrand: null }, { clientBrand: { not: brand } }] },
+      data: { clientBrand: brand },
+    });
     if (result.count) {
       const connection = await tx.playerConnection.findFirst({ where: { playerUuid: uuid }, orderBy: { connectedAt: 'desc' }, select: { id: true } });
       if (connection) await tx.playerConnection.update({ where: { id: connection.id }, data: { clientBrand: brand } });
