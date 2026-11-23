@@ -1,0 +1,15 @@
+# HTTPS reverse proxy for the dashboard (enabled with: docker compose --profile https up -d).
+# Caddy obtains and renews certificates automatically for DASHBOARD_DOMAIN.
+# It replaces client-supplied X-Forwarded-For headers, so the backend sees real client IPs.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DASHBOARD_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		-Server
+	}
+	reverse_proxy dashboard:3000
+}

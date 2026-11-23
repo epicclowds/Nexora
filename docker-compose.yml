@@ -1,0 +1,121 @@
+# Minecraft Network Manager – production stack.
+#   cp .env.example .env   # then fill in the secrets (see docs/installation/README.md)
+#   docker compose up -d
+# MySQL and Redis are only reachable on the internal network.
+
+name: minecraft-network-manager
+
+x-restart: &restart
+  restart: unless-stopped
+
+services:
+  mysql:
+    <<: *restart
+    image: mysql:8.4
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-name-resolve
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-mnm}
+      MYSQL_USER: ${MYSQL_USER:-mnm}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [internal]
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -u root -p"$$MYSQL_ROOT_PASSWORD" --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    stop_grace_period: 60s
+
+  redis:
+    <<: *restart
+    image: redis:7.4-alpine
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}']
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD}
+    volumes:
+      - redis-data:/data
+    networks: [internal]
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    <<: *restart
+    image: ${MNM_IMAGE_PREFIX:-mnm}/backend:${MNM_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: mysql://${MYSQL_USER:-mnm}:${MYSQL_PASSWORD}@mysql:3306/${MYSQL_DATABASE:-mnm}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      SETUP_TOKEN: ${SETUP_TOKEN:-}
+      COOKIE_SECURE: ${COOKIE_SECURE:-auto}
+      TRUST_PROXY: ${TRUST_PROXY:-loopback, linklocal, uniquelocal}
+      API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-log}
+      RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks: [internal]
+    stop_grace_period: 30s
+
+  dashboard:
+    <<: *restart
+    image: ${MNM_IMAGE_PREFIX:-mnm}/dashboard:${MNM_VERSION:-latest}
+    build:
+      context: .
+      dockerfile: infrastructure/docker/dashboard.Dockerfile
+    environment:
+      BACKEND_INTERNAL_URL: http://backend:4000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '${DASHBOARD_BIND:-0.0.0.0}:${DASHBOARD_PORT:-3000}:3000'
+    networks: [internal]
+    stop_grace_period: 20s
+
+  # Optional HTTPS front with automatic certificates: docker compose --profile https up -d
+  caddy:
+    <<: *restart
+    profiles: [https]
+    image: caddy:2.10-alpine
+    environment:
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-localhost}
+      ACME_EMAIL: ${ACME_EMAIL:-}
+    volumes:
+      - ./infrastructure/docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    depends_on:
+      dashboard:
+        condition: service_healthy
+    networks: [internal]
+
+volumes:
+  mysql-data:
+  redis-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  internal:
+    driver: bridge
