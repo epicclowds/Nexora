@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useFormatter, useLocale, useNow, useTranslations } from 'next-intl';
 import { type ReactNode, Suspense, useCallback, useEffect, useState } from 'react';
+import { AntiCheatEvents } from '@/components/anticheat-events';
 import { useAuth } from '@/components/auth-provider';
 import { PlayerActivity } from '@/components/player-activity';
 import { PlayerConnections } from '@/components/player-connections';
@@ -204,6 +205,16 @@ function ProfileContent() {
             <div className="rounded-xl border border-dashed p-10 text-center text-sm text-muted-foreground">{t('profileTabs.planned', { tab: t(`profileTabs.${tab}`) })}</div>
           )}
           {tab === 'moderation' && <PlayerModeration uuid={player.uuid} username={player.username} />}
+          {tab === 'moderation' && can(PERMISSIONS.ANTICHEAT_VIEW) && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('anticheat.title')}</CardTitle>
+              </CardHeader>
+              <CardContent className="px-0">
+                <AntiCheatEvents endpoint={`/players/${player.uuid}/anticheat`} showPlayer={false} />
+              </CardContent>
+            </Card>
+          )}
           {tab === 'connections' && <PlayerConnections uuid={player.uuid} locale={locale} />}
           {tab === 'activity' && <PlayerActivity uuid={player.uuid} />}
           {tab === 'statistics' && <PlayerStatistics uuid={player.uuid} />}
