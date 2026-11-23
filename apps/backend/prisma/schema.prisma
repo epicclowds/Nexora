@@ -368,6 +368,13 @@ model AntiCheatEvent {
   provider       String   @db.VarChar(64)
   cheatType      String   @map("cheat_type") @db.VarChar(64)
   violationLevel Float?   @map("violation_level")
+  /// Outcome of rule evaluation (e.g. TEMP_BAN, LOGGED, SKIPPED_COOLDOWN).
+  outcome        String   @default("LOGGED") @db.VarChar(32)
+  reason         String?  @db.VarChar(500)
+  /// True when requested explicitly via /anticheatban rather than an automatic report.
+  explicit       Boolean  @default(false)
+  /// Plugin-generated key making retried reports idempotent.
+  eventKey       String?  @unique @map("event_key") @db.VarChar(80)
   metadata       Json?
   punishmentId   String?  @map("punishment_id") @db.VarChar(32)
   createdAt      DateTime @default(now()) @map("created_at") @db.DateTime(3)
@@ -379,6 +386,7 @@ model AntiCheatEvent {
   @@index([playerUuid, createdAt])
   @@index([cheatType, createdAt])
   @@index([createdAt])
+  @@index([playerUuid, cheatType, outcome, createdAt])
   @@map("anticheat_events")
 }
 

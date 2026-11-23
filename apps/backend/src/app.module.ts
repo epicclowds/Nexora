@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { AntiCheatModule } from './anticheat/anticheat.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { PermissionsGuard, SessionGuard } from './auth/guards';
@@ -52,6 +53,7 @@ import { UsersModule } from './users/users.module';
     PunishmentsModule,
     MaintenanceModule,
     StatisticsModule,
+    AntiCheatModule,
   ],
   providers: [
     // Order matters: rate limiting → authentication/CSRF → authorization.

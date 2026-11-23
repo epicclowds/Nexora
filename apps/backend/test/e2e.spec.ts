@@ -442,6 +442,48 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(overview.body.trackedPlayers).toBe(1);
   });
 
+  // ── Phase 6: AntiCheat ─────────────────────────────────────────
+
+  it('applies AntiCheat rules with thresholds, cooldowns, idempotency and evidence', async () => {
+    const alex = 'ec561538-f3fd-461d-aff5-086b22154bce';
+    const defaults = await call('GET', '/api/anticheat/settings');
+    expect(defaults.body.settings.defaultRule.action).toBe('NONE');
+    expect(defaults.body.examples).toHaveLength(3);
+
+    const put = await call('PUT', '/api/anticheat/settings', {
+      ...defaults.body.settings,
+      rules: [{ cheatType: 'Speed', action: 'TEMP_BAN', durationSeconds: 2_592_000, minViolationLevel: 10, cooldownSeconds: 300, enabled: true }],
+    });
+    expect(put.status).toBe(200);
+
+    const report = (body: Record<string, unknown>) => signed(paper, 'POST', '/api/plugin/v1/anticheat/reports', { provider: 'Grim', target: 'Alex', ...body });
+
+    expect((await report({ cheatType: 'Speed', violationLevel: 4, eventKey: 'ac-event-0001' })).body.outcome).toBe('SKIPPED_THRESHOLD');
+    expect((await report({ cheatType: 'Reach', violationLevel: 50, eventKey: 'ac-event-0002' })).body.outcome).toBe('LOGGED');
+
+    const ban = await report({ cheatType: 'speed', violationLevel: 15, evidence: 'moved 12.3 b/s', metadata: { ping: 42 }, eventKey: 'ac-event-0003' });
+    expect(ban.body.outcome).toBe('TEMP_BAN');
+    expect(ban.body.punishmentId).toBeTruthy();
+    const retry = await report({ cheatType: 'speed', violationLevel: 15, eventKey: 'ac-event-0003' });
+    expect(retry.body).toEqual(ban.body);
+
+    expect((await report({ cheatType: 'Speed', violationLevel: 20, eventKey: 'ac-event-0004' })).body.outcome).toBe('SKIPPED_COOLDOWN');
+    // Explicit request without a rule → fallback ban, but Alex is already banned.
+    expect((await report({ cheatType: 'Fly', explicit: true, eventKey: 'ac-event-0005' })).body.outcome).toBe('SKIPPED_DUPLICATE');
+
+    const punishments = await call('GET', `/api/players/${alex}/punishments`);
+    expect(punishments.body.active.ban).toMatchObject({ source: 'ANTICHEAT', issuer: { type: 'SERVER', name: 'AntiCheat (Grim)' } });
+
+    const events = await call('GET', `/api/players/${alex}/anticheat`);
+    expect(events.body.total).toBe(5);
+    const summary = await call('GET', '/api/anticheat/summary');
+    expect(summary.body).toMatchObject({ events: 5, punished: 1, providers: ['Grim'] });
+    expect((await call('GET', '/api/anticheat/events?punished=true')).body.total).toBe(1);
+
+    // Unban Alex again so later tests are unaffected.
+    await call('POST', `/api/punishments/${ban.body.punishmentId}/revoke`, { reason: 'test cleanup' });
+  });
+
   it('enforces RBAC for lower roles', async () => {
     const roles = await call('GET', '/api/roles');
     const viewer = roles.body.find((r: { key: string }) => r.key === 'viewer');
@@ -459,6 +501,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     // Viewers may not see or issue punishments (server-side check, not just hidden UI).
     expect((await call('GET', '/api/punishments')).status).toBe(403);
     expect((await call('POST', '/api/punishments', { type: 'WARNING', target: 'Steve', reason: 'x' })).status).toBe(403);
+    expect((await call('GET', '/api/anticheat/events')).status).toBe(403);
   });
 
   it('switches the language preference per user', async () => {
