@@ -135,17 +135,28 @@ jobs:
   security:
     name: Secret & dependency scanning
     runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.28.0
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Gitleaks
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: npm install -g npm@12
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=critical
+      - name: Gitleaks (full history)
+        if: ${{ !cancelled() }}
+        run: |
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" | tar -xz gitleaks
+          set +e
+          ./gitleaks git --redact --no-banner --report-format json --report-path gitleaks-report.json .
+          code=$?
+          set -e
+          # Surface findings as annotations (rule, file, line only - never the secret).
+          if [ -s gitleaks-report.json ]; then
+            jq -r '.[] | "::error file=\(.File),line=\(.StartLine),title=Gitleaks \(.RuleID)::Possible secret (\(.RuleID)) in commit \(.Commit[0:7])"' gitleaks-report.json
+          fi
+          exit $code
