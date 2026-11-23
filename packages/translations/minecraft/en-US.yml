@@ -38,3 +38,10 @@ notify.staff.anticheat: "<gray>[AntiCheat] <white>{player}</white> was punished 
 
 time.permanent: "permanent"
 time.never: "never"
+
+status.title: "<gold>Network Manager status"
+status.server: "<gray>Server: <white>{server}</white> <dark_gray>({type})"
+status.connected: "<gray>Backend: <green>connected</green> <dark_gray>(last contact {time})"
+status.disconnected: "<gray>Backend: <red>not connected</red> <dark_gray>({error})"
+status.unregistered: "<red>This server is not registered. Set registration-token in config.properties and restart."
+status.queue: "<gray>Pending events: <white>{pending}</white> <dark_gray>(dropped: {dropped})"

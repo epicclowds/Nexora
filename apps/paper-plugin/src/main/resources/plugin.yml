@@ -1,0 +1,10 @@
+name: NetworkManager
+version: '${version}'
+main: dev.mnm.paper.NetworkManagerPaper
+description: Connects this Paper server to the Network Manager platform
+authors: [Network Manager contributors]
+api-version: '26.1'
+permissions:
+  networkmanager.admin:
+    description: Allows /networkmanager (connection status)
+    default: op

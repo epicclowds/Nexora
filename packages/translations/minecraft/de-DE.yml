@@ -36,3 +36,10 @@ notify.staff.anticheat: "<gray>[AntiCheat] <white>{player}</white> wurde wegen <
 
 time.permanent: "permanent"
 time.never: "nie"
+
+status.title: "<gold>Network-Manager-Status"
+status.server: "<gray>Server: <white>{server}</white> <dark_gray>({type})"
+status.connected: "<gray>Backend: <green>verbunden</green> <dark_gray>(letzter Kontakt {time})"
+status.disconnected: "<gray>Backend: <red>nicht verbunden</red> <dark_gray>({error})"
+status.unregistered: "<red>Dieser Server ist nicht registriert. Setze registration-token in config.properties und starte neu."
+status.queue: "<gray>Ausstehende Ereignisse: <white>{pending}</white> <dark_gray>(verworfen: {dropped})"
