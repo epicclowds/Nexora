@@ -1,0 +1,38 @@
+{
+  "name": "minecraft-network-manager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Network-wide administration and player intelligence platform for Velocity/Paper Minecraft networks.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/backend",
+    "apps/dashboard"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "npm run build -w @mnm/shared-types -w @mnm/translations && npm run build -w @mnm/backend -w @mnm/dashboard",
+    "build:packages": "npm run build -w @mnm/shared-types -w @mnm/translations",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "translations:validate": "npm run validate -w @mnm/translations"
+  },
+  "devDependencies": {
+    "eslint": "^10.15.0",
+    "typescript-eslint": "^8.73.0",
+    "typescript": "~6.0.2",
+    "@eslint/js": "^10.0.0",
+    "globals": "*"
+  },
+  "allowScripts": {
+    "@swc/core@1.16.22": true,
+    "argon2@0.45.2": true,
+    "prisma@7.10.1": true,
+    "@prisma/engines@7.10.1": true,
+    "@parcel/watcher@2.6.0": true,
+    "@scarf/scarf": false
+  }
+}

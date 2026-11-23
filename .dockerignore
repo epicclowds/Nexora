@@ -1,0 +1,16 @@
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/*.tsbuildinfo
+apps/backend/src/generated
+.git
+.github
+.env
+.env.*
+!.env.example
+backups
+docs
+**/*.log
+**/.gradle
+**/build

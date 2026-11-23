@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+.next/
+out/
+*.tsbuildinfo
+coverage/
+
+# Generated
+apps/backend/src/generated/
+
+# Java / Gradle
+.gradle/
+**/build/
+*.class
+!gradle/wrapper/gradle-wrapper.jar
+
+# Environment & secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Data, backups, dumps
+backups/
+*.sql.gz
+*.dump
+
+# IDE / OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.iml
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
