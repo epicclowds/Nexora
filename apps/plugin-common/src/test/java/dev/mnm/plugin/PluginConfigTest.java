@@ -35,6 +35,17 @@ class PluginConfigTest {
     }
 
     @Test
+    void parsesStatisticCategoriesAndIgnoresUnknownOnes() {
+        assertEquals(java.util.Set.of("combat", "movement"), PluginConfig.categories(" Movement, combat ,flying"));
+        Properties p = new Properties();
+        p.setProperty("backend-url", "http://x.test");
+        PluginConfig config = PluginConfig.fromProperties(p);
+        assertEquals(PluginConfig.STATISTIC_CATEGORIES, config.statisticsCategories());
+        assertEquals(300, config.statisticsIntervalSeconds());
+        assertEquals(300, config.afkTimeoutSeconds());
+    }
+
+    @Test
     void rejectsInvalidBackendUrls() {
         assertThrows(IllegalArgumentException.class, () -> PluginConfig.parseBackendUrl(""));
         assertThrows(IllegalArgumentException.class, () -> PluginConfig.parseBackendUrl("ftp://example.net"));

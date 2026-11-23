@@ -21,7 +21,13 @@ public record PluginConfig(
         int heartbeatIntervalSeconds,
         int syncIntervalSeconds,
         int maxQueuedEvents,
+        boolean statisticsEnabled,
+        int statisticsIntervalSeconds,
+        java.util.Set<String> statisticsCategories,
+        int afkTimeoutSeconds,
         boolean debug) {
+
+    public static final java.util.Set<String> STATISTIC_CATEGORIES = java.util.Set.of("movement", "combat", "blocks", "general");
 
     public static final String FILE_NAME = "config.properties";
 
@@ -49,6 +55,10 @@ public record PluginConfig(
                 clamp(integer(p, "heartbeat-interval-seconds", 15), 5, 300),
                 clamp(integer(p, "sync-interval-seconds", 60), 15, 3600),
                 clamp(integer(p, "max-queued-events", 50_000), 1_000, 1_000_000),
+                bool(p, "statistics-enabled", true),
+                clamp(integer(p, "statistics-interval-seconds", 300), 60, 3600),
+                categories(p.getProperty("statistics-categories", String.join(",", STATISTIC_CATEGORIES))),
+                clamp(integer(p, "afk-timeout-seconds", 300), 30, 3600),
                 bool(p, "debug", false));
     }
 
@@ -65,6 +75,15 @@ public record PluginConfig(
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException("backend-url is not a valid URL: " + raw, e);
         }
+    }
+
+    static java.util.Set<String> categories(String raw) {
+        java.util.Set<String> out = new java.util.TreeSet<>();
+        for (String part : raw.split(",")) {
+            String c = part.trim().toLowerCase(Locale.ROOT);
+            if (STATISTIC_CATEGORIES.contains(c)) out.add(c);
+        }
+        return java.util.Collections.unmodifiableSet(out);
     }
 
     private static boolean bool(Properties p, String key, boolean fallback) {
