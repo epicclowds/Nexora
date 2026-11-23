@@ -417,5 +417,58 @@
     "add": "Notiz hinzufügen",
     "empty": "Noch keine Notizen.",
     "deleted": "Notiz gelöscht."
+  },
+  "profileTabs": {
+    "overview": "Übersicht",
+    "statistics": "Statistiken",
+    "inventory": "Inventar",
+    "enderChest": "Endertruhe",
+    "moderation": "Moderation",
+    "connections": "Verbindungen",
+    "activity": "Aktivität",
+    "notes": "Notizen",
+    "planned": "{tab} wird in einer späteren Version verfügbar. Bis echte Daten erfasst werden, wird nichts angezeigt."
+  },
+  "skin": {
+    "preview": "3D-Skin-Vorschau",
+    "unavailable": "Skin nicht verfügbar",
+    "dragHint": "Zum Drehen ziehen"
+  },
+  "activity": {
+    "dailyPlaytime": "Tägliche Spielzeit",
+    "heatmap": "Aktivität nach Wochentag und Uhrzeit",
+    "total": "Spielzeit im Zeitraum",
+    "sessions": "Sitzungen",
+    "average": "Durchschnittliche Sitzung",
+    "range": "{days} Tage",
+    "timezone": "Zeiten in {timezone}.",
+    "noData": "In diesem Zeitraum wurden keine Sitzungen erfasst.",
+    "hours": "Stunden"
+  },
+  "connections": {
+    "history": "Verbindungsverlauf",
+    "connected": "Verbunden",
+    "client": "Client",
+    "joinedVia": "Beigetreten über",
+    "ipAddresses": "IP-Adressen",
+    "relatedAccounts": "Weitere Konten mit diesen IP-Adressen",
+    "relatedHint": "Konten, die sich von mindestens einer IP-Adresse dieses Spielers verbunden haben. Geteilte Netze (Haushalte, Schulen, VPNs) sind häufig; dies ist ein Hinweis, kein Beweis.",
+    "noRelated": "Keine weiteren Konten gefunden.",
+    "location": "Ungefährer Standort",
+    "approximate": "Ungefähr, aus der IP-Adresse abgeleitet. Kein genauer Standort.",
+    "geoipDisabled": "IP-Geolokalisierung ist nicht eingerichtet (siehe Installationsanleitung).",
+    "network": "Netz (Provider / ASN)",
+    "ipPermission": "IP-Adressen erfordern die Berechtigung players.view.ip.",
+    "locationPermission": "Standortdaten erfordern die Berechtigung players.view.location.",
+    "count": "{count, plural, one {# Verbindung} other {# Verbindungen}}",
+    "anonymised": "entfernt (Aufbewahrung)"
+  },
+  "privacy": {
+    "title": "Datenschutz",
+    "description": "Datensparsamkeit für personenbezogene Daten, die von den Plugins erfasst werden.",
+    "ipRetention": "IP-Adressen aufbewahren für",
+    "ipRetentionHint": "Ältere IP-Adressen werden stündlich aus Verbindungsdaten und dem Audit-Protokoll entfernt. Ungefähres Land und Netz bleiben erhalten. Blacklist-Einträge sind nicht betroffen.",
+    "keepForever": "Unbegrenzt aufbewahren",
+    "days": "{count, plural, one {# Tag} other {# Tage}}"
   }
 }

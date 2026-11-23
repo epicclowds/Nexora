@@ -7,9 +7,10 @@ import { type AuthenticatedUser, clientIp, CurrentUser, RequirePermissions } fro
 import { ZodBody } from '../common/zod';
 import { AuditService, userActor } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { networkSettingsSchema, SETTING_KEYS, SettingsService } from './settings.service';
+import { networkSettingsSchema, privacySettingsSchema, SETTING_KEYS, SettingsService } from './settings.service';
 
 const updateNetworkSchema = networkSettingsSchema.partial().strict();
+const updatePrivacySchema = privacySettingsSchema.strict();
 
 @ApiTags('settings')
 @Controller('settings')
@@ -23,6 +24,24 @@ export class SettingsController {
   @Get('network')
   network() {
     return this.settings.getNetwork();
+  }
+
+  @Get('privacy')
+  @RequirePermissions(PERMISSIONS.SETTINGS_MANAGE)
+  privacy() {
+    return this.settings.getPrivacy();
+  }
+
+  @Patch('privacy')
+  @RequirePermissions(PERMISSIONS.SETTINGS_MANAGE)
+  @ZodBody(updatePrivacySchema)
+  async updatePrivacy(@CurrentUser() actor: AuthenticatedUser, @Body() body: z.infer<typeof updatePrivacySchema>, @Req() req: Request) {
+    const before = await this.settings.getPrivacy();
+    await this.prisma.$transaction(async (tx) => {
+      await this.settings.set(SETTING_KEYS.PRIVACY, body, actor.id, tx);
+      await this.audit.record({ actor: userActor(actor), action: 'settings.privacy_updated', targetType: 'setting', targetId: SETTING_KEYS.PRIVACY, metadata: { before, after: body }, ipAddress: clientIp(req) }, tx);
+    });
+    return body;
   }
 
   @Patch('network')

@@ -1,17 +1,24 @@
-import { Controller, Get, NotFoundException, Param, Query } from '@nestjs/common';
+import { Controller, Get, NotFoundException, Param, Query, Res } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { hasPermission, PERMISSIONS } from '@mnm/shared-types';
 import { z } from 'zod';
 import { type AuthenticatedUser, CurrentUser, RequirePermissions } from '../common/auth-context';
 import { paginationSchema, ZodQuery } from '../common/zod';
 import type { Prisma } from '../generated/prisma/client';
+import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service';
+import { SettingsService } from '../settings/settings.service';
+import { buildActivity } from './activity';
+import { GeoIpService } from './geoip.service';
+import { SkinService } from './skin.service';
 
 const listQuery = paginationSchema.extend({
   search: z.string().trim().max(36).optional(),
   online: z.enum(['true', 'false']).optional(),
   sort: z.enum(['lastSeen', 'firstSeen', 'username', 'playtime']).default('lastSeen'),
 });
+
+const activityQuery = z.object({ days: z.coerce.number().int().min(7).max(365).default(30) });
 
 const UUID_LOOSE = /^[0-9a-f]{32}$|^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -53,7 +60,12 @@ function serializeListRow(p: ListRow, openSessionStart?: Date) {
 @ApiTags('players')
 @Controller('players')
 export class PlayersController {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly skins: SkinService,
+    private readonly settings: SettingsService,
+    private readonly geoip: GeoIpService,
+  ) {}
 
   /** Search by current name, previous names or UUID (dashed or undashed). */
   @Get()
@@ -113,6 +125,7 @@ export class PlayersController {
       clientProtocol: player.clientProtocol,
       clientBrand: player.clientBrand,
       rank: player.rank,
+      skinModel: player.skinModel,
       // Not collected yet (requires AFK tracking on Paper, Phase 5): null means "not recorded".
       activePlaytimeSeconds: player.activePlaytimeSeconds === null ? null : Number(player.activePlaytimeSeconds),
       afkSeconds: player.afkSeconds === null ? null : Number(player.afkSeconds),
@@ -135,6 +148,123 @@ export class PlayersController {
           : null,
       })),
     };
+  }
+
+  /** Skin texture (64×64 PNG), resolved and cached server-side. 404 when unknown. */
+  @Get(':uuid/skin')
+  @RequirePermissions(PERMISSIONS.PLAYERS_VIEW)
+  async skin(@Param('uuid') raw: string, @Res() res: Response) {
+    const uuid = normalizeUuid(raw);
+    const skin = uuid ? await this.skins.getSkin(uuid) : null;
+    if (!skin) throw new NotFoundException({ code: 'SKIN_UNAVAILABLE', message: 'No skin available' });
+    res.setHeader('Content-Type', 'image/png');
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.setHeader('X-Skin-Model', skin.model);
+    res.setHeader('Content-Security-Policy', "default-src 'none'");
+    res.send(skin.png);
+  }
+
+  /** Daily playtime and weekday/hour heatmap from recorded sessions, in the viewer's time zone. */
+  @Get(':uuid/activity')
+  @RequirePermissions(PERMISSIONS.PLAYERS_VIEW)
+  @ZodQuery(activityQuery)
+  async activity(@Param('uuid') raw: string, @Query() q: z.infer<typeof activityQuery>, @CurrentUser() user: AuthenticatedUser) {
+    const uuid = normalizeUuid(raw);
+    if (!uuid || !(await this.prisma.player.findUnique({ where: { uuid }, select: { uuid: true } }))) throw new NotFoundException();
+    const timezone = user.timezone ?? (await this.settings.getNetwork()).defaultTimezone;
+    const from = new Date(Date.now() - q.days * 86_400_000);
+    const sessions = await this.prisma.playerSession.findMany({
+      where: { playerUuid: uuid, startedAt: { lt: new Date() }, OR: [{ endedAt: null }, { endedAt: { gt: from } }] },
+      select: { startedAt: true, endedAt: true },
+      take: 10_000,
+    });
+    return buildActivity(sessions, { timezone, days: q.days });
+  }
+
+  /**
+   * Connection history. IP addresses require players.view.ip, approximate
+   * location requires players.view.location; other fields players.view.
+   */
+  @Get(':uuid/connections')
+  @RequirePermissions(PERMISSIONS.PLAYERS_VIEW)
+  @ZodQuery(paginationSchema)
+  async connections(@Param('uuid') raw: string, @Query() q: z.infer<typeof paginationSchema>, @CurrentUser() user: AuthenticatedUser) {
+    const uuid = normalizeUuid(raw);
+    if (!uuid || !(await this.prisma.player.findUnique({ where: { uuid }, select: { uuid: true } }))) throw new NotFoundException();
+    const canIp = hasPermission(user.permissions, PERMISSIONS.PLAYERS_VIEW_IP);
+    const canLocation = hasPermission(user.permissions, PERMISSIONS.PLAYERS_VIEW_LOCATION);
+
+    const [total, rows] = await this.prisma.$transaction([
+      this.prisma.playerConnection.count({ where: { playerUuid: uuid } }),
+      this.prisma.playerConnection.findMany({
+        where: { playerUuid: uuid },
+        orderBy: { connectedAt: 'desc' },
+        skip: (q.page - 1) * q.pageSize,
+        take: q.pageSize,
+        include: { session: { select: { endedAt: true, durationSeconds: true, proxyServer: { select: { name: true } } } } },
+      }),
+    ]);
+    const location = (c: { countryCode: string | null; region: string | null; city: string | null; isp: string | null; asn: number | null }) =>
+      canLocation ? { countryCode: c.countryCode, region: c.region, city: c.city, isp: c.isp, asn: c.asn } : undefined;
+
+    const items = rows.map((c) => ({
+      id: c.id.toString(),
+      connectedAt: c.connectedAt.toISOString(),
+      endedAt: c.session?.endedAt?.toISOString() ?? null,
+      durationSeconds: c.session?.durationSeconds ?? null,
+      proxy: c.session?.proxyServer?.name ?? null,
+      clientProtocol: c.clientProtocol,
+      clientBrand: c.clientBrand,
+      ...(canIp ? { ipAddress: c.ipAddress, virtualHost: c.virtualHost } : {}),
+      ...(canLocation ? { location: location(c) } : {}),
+    }));
+
+    let ipSummary: unknown = undefined;
+    let relatedAccounts: unknown = undefined;
+    if (canIp) {
+      const groups = await this.prisma.playerConnection.groupBy({
+        by: ['ipAddress'],
+        where: { playerUuid: uuid, ipAddress: { not: null } },
+        _count: { _all: true },
+        _min: { connectedAt: true },
+        _max: { connectedAt: true },
+        orderBy: { _max: { connectedAt: 'desc' } },
+        take: 50,
+      });
+      const ips = groups.map((g) => g.ipAddress!).filter(Boolean);
+      const latest = canLocation
+        ? await this.prisma.playerConnection.findMany({ where: { playerUuid: uuid, ipAddress: { in: ips } }, orderBy: { connectedAt: 'desc' }, distinct: ['ipAddress'] })
+        : [];
+      ipSummary = groups.map((g) => {
+        const loc = latest.find((l) => l.ipAddress === g.ipAddress);
+        return {
+          ipAddress: g.ipAddress,
+          connections: g._count._all,
+          firstSeenAt: g._min.connectedAt?.toISOString() ?? null,
+          lastSeenAt: g._max.connectedAt?.toISOString() ?? null,
+          ...(canLocation && loc ? { location: location(loc) } : {}),
+        };
+      });
+      // Other accounts that connected from the same addresses (possible alternate accounts).
+      const shared = ips.length
+        ? await this.prisma.playerConnection.groupBy({
+            by: ['playerUuid'],
+            where: { ipAddress: { in: ips }, playerUuid: { not: uuid } },
+            _count: { _all: true },
+            _max: { connectedAt: true },
+            orderBy: { _max: { connectedAt: 'desc' } },
+            take: 25,
+          })
+        : [];
+      const players = await this.prisma.player.findMany({ where: { uuid: { in: shared.map((s) => s.playerUuid) } }, select: { uuid: true, username: true, online: true } });
+      relatedAccounts = shared.map((s) => ({
+        ...players.find((p) => p.uuid === s.playerUuid),
+        connections: s._count._all,
+        lastSeenAt: s._max.connectedAt?.toISOString() ?? null,
+      }));
+    }
+
+    return { total, page: q.page, pageSize: q.pageSize, items, canViewIp: canIp, canViewLocation: canLocation, geoipEnabled: this.geoip.enabled, ipSummary, relatedAccounts };
   }
 
   private async openSessionStarts(uuids: string[]): Promise<Map<string, Date>> {

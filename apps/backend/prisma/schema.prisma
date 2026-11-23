@@ -34,6 +34,10 @@ model Player {
   clientVersion         String?   @map("client_version") @db.VarChar(32)
   clientBrand           String?   @map("client_brand") @db.VarChar(128)
   locale                String?   @db.VarChar(16)
+  /// Skin texture reported by the proxy (only textures.minecraft.net URLs are accepted).
+  skinTextureUrl        String?   @map("skin_texture_url") @db.VarChar(255)
+  /// "classic" or "slim" arm model.
+  skinModel             String?   @map("skin_model") @db.VarChar(8)
   createdAt             DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt             DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
 
@@ -106,6 +110,8 @@ model PlayerConnection {
   region         String?  @db.VarChar(128)
   city           String?  @db.VarChar(128)
   isp            String?  @db.VarChar(255)
+  /// Autonomous system number of the IP (approximate network operator).
+  asn            Int?
   virtualHost    String?  @map("virtual_host") @db.VarChar(255)
   clientProtocol Int?     @map("client_protocol")
   clientBrand    String?  @map("client_brand") @db.VarChar(128)

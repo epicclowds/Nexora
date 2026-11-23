@@ -23,6 +23,7 @@ export default function SettingsPage() {
       <div className="grid gap-6">
         <PreferencesCard />
         {can(PERMISSIONS.SETTINGS_MANAGE) && <NetworkCard />}
+        {can(PERMISSIONS.SETTINGS_MANAGE) && <PrivacyCard />}
         {can(PERMISSIONS.TRANSLATIONS_MANAGE) && <LanguagesCard />}
         {can(PERMISSIONS.SERVERS_MANAGE) && <MinecraftCard />}
       </div>
@@ -140,6 +141,50 @@ function NetworkCard() {
             </Button>
           </div>
         </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+const RETENTION_OPTIONS = [30, 90, 180, 365, 730] as const;
+
+function PrivacyCard() {
+  const t = useTranslations();
+  const toast = useToast();
+  const [days, setDays] = useState<number | null | undefined>(undefined);
+
+  useEffect(() => {
+    api<{ ipRetentionDays: number | null }>('/settings/privacy').then((p) => setDays(p.ipRetentionDays)).catch(() => undefined);
+  }, []);
+
+  async function save(next: number | null) {
+    setDays(next);
+    try {
+      await api('/settings/privacy', { method: 'PATCH', body: { ipRetentionDays: next } });
+      toast(t('settings.saved'));
+    } catch (err) {
+      toast(t(`errors.${errorKey(err)}`), 'error');
+    }
+  }
+
+  if (days === undefined) return null;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{t('privacy.title')}</CardTitle>
+        <CardDescription>{t('privacy.description')}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Field label={t('privacy.ipRetention')} hint={t('privacy.ipRetentionHint')} htmlFor="ip-retention">
+          <Select id="ip-retention" className="max-w-xs" value={days === null ? 'forever' : String(days)} onChange={(e) => void save(e.target.value === 'forever' ? null : Number(e.target.value))}>
+            {[...new Set([...RETENTION_OPTIONS, ...(days === null ? [] : [days])])].sort((a, b) => a - b).map((d) => (
+              <option key={d} value={d}>
+                {t('privacy.days', { count: d })}
+              </option>
+            ))}
+            <option value="forever">{t('privacy.keepForever')}</option>
+          </Select>
+        </Field>
       </CardContent>
     </Card>
   );

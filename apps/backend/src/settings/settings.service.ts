@@ -20,11 +20,18 @@ export const networkSettingsSchema = z.object({
 
 export type NetworkSettings = z.infer<typeof networkSettingsSchema>;
 
+/** Data minimisation. IP addresses older than the retention period are removed (null = keep). */
+export const privacySettingsSchema = z.object({
+  ipRetentionDays: z.number().int().min(7).max(3650).nullable().default(180),
+});
+export type PrivacySettings = z.infer<typeof privacySettingsSchema>;
+
 export const SETTING_KEYS = {
   NETWORK: 'network',
   SETUP_COMPLETED: 'setup.completed',
   SETUP_CODE_HASH: 'setup.codeHash',
   PLAYER_RECORD: 'stats.playerRecord',
+  PRIVACY: 'privacy',
 } as const;
 
 const DEFAULT_NETWORK: NetworkSettings = networkSettingsSchema.parse({ name: 'Minecraft Network' });
@@ -45,6 +52,11 @@ export class SettingsService {
       create: { key, value, updatedByUserId: userId },
       update: { value, updatedByUserId: userId },
     });
+  }
+
+  async getPrivacy(): Promise<PrivacySettings> {
+    const parsed = privacySettingsSchema.safeParse((await this.get<unknown>(SETTING_KEYS.PRIVACY)) ?? {});
+    return parsed.success ? parsed.data : privacySettingsSchema.parse({});
   }
 
   async getNetwork(): Promise<NetworkSettings> {

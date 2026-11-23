@@ -246,6 +246,50 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(after.body.sessions[0].servers[0].leftAt).not.toBeNull();
   });
 
+  // ── Phase 4: player profiles ───────────────────────────────────
+
+  it('stores skins, serves activity and connection history with alt-account detection', async () => {
+    const alt = { uuid: '9b8a7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d', username: 'SteveAlt' };
+    const altSession = '33333333-4444-4555-8666-777777777777';
+    const textures = Buffer.from(JSON.stringify({ textures: { SKIN: { url: 'http://textures.minecraft.net/texture/0123456789abcdef', metadata: { model: 'slim' } } } })).toString('base64');
+    const at = Date.now() - 30 * 60_000;
+    const res = await signed(proxy, 'POST', '/api/plugin/v1/events', {
+      events: [
+        { type: 'player.join', sessionKey: altSession, ...alt, at, ip: '203.0.113.7', textures },
+        { type: 'player.leave', sessionKey: altSession, uuid: alt.uuid, at: at + 10 * 60_000 },
+      ],
+    });
+    expect(res.body.applied).toBe(2);
+
+    const profile = await call('GET', `/api/players/${alt.uuid}`);
+    expect(profile.body.skinModel).toBe('slim');
+
+    const activity = await call('GET', `/api/players/${alt.uuid}/activity?days=7`);
+    expect(activity.status).toBe(200);
+    expect(activity.body.totalSeconds).toBe(600);
+    expect(activity.body.daily).toHaveLength(7);
+    expect(activity.body.heatmap).toHaveLength(7);
+
+    const connections = await call('GET', `/api/players/${alt.uuid}/connections`);
+    expect(connections.body.total).toBe(1);
+    expect(connections.body.items[0].ipAddress).toBe('203.0.113.7');
+    expect(connections.body.ipSummary[0]).toMatchObject({ ipAddress: '203.0.113.7', connections: 1 });
+    // Steve connected from the same address earlier.
+    expect(connections.body.relatedAccounts.map((a: { username: string }) => a.username)).toContain('Steve');
+    expect(connections.body.geoipEnabled).toBe(false);
+  });
+
+  it('anonymises IP addresses after the retention period', async () => {
+    const privacy = await call('PATCH', '/api/settings/privacy', { ipRetentionDays: 7 });
+    expect(privacy.status).toBe(200);
+    const { MaintenanceService } = await import('../src/maintenance/maintenance.service.js');
+    const result = await app.get(MaintenanceService).run(new Date(Date.now() + 8 * 86_400_000), true);
+    expect(result.connections).toBeGreaterThanOrEqual(2);
+    const connections = await call('GET', '/api/players/069a79f4-44e9-4726-a5be-fca90e38aaf5/connections');
+    expect(connections.body.items.every((c: { ipAddress: string | null }) => c.ipAddress === null)).toBe(true);
+    await call('PATCH', '/api/settings/privacy', { ipRetentionDays: 180 });
+  });
+
   it('reconciles state from a proxy sync and closes sessions on shutdown', async () => {
     const alex = { uuid: 'ec561538-f3fd-461d-aff5-086b22154bce', username: 'Alex' };
     const alexSession = '22222222-3333-4444-8555-666666666666';

@@ -192,6 +192,7 @@ export interface PlayerProfile extends PlayerListItem {
   clientProtocol: number | null;
   clientBrand: string | null;
   rank: string | null;
+  skinModel: string | null;
   activePlaytimeSeconds: number | null;
   afkSeconds: number | null;
   names: { username: string; firstSeenAt: string; lastSeenAt: string }[];

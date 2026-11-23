@@ -25,6 +25,8 @@ export const joinEventSchema = z.object({
   virtualHost: z.string().max(255).optional(),
   protocol: z.number().int().min(0).max(1_000_000).optional(),
   clientVersion: z.string().max(32).optional(),
+  /** Base64 'textures' game-profile property (skin). */
+  textures: z.string().max(8192).optional(),
 });
 
 export const switchEventSchema = z.object({

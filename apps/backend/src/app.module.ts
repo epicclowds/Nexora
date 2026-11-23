@@ -9,6 +9,7 @@ import { ConfigModule } from './config/config.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
 import { I18nModule } from './i18n/i18n.module';
+import { MaintenanceModule } from './maintenance/maintenance.module';
 import { PlayersModule } from './players/players.module';
 import { PluginApiModule } from './plugin-api/plugin-api.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -48,6 +49,7 @@ import { UsersModule } from './users/users.module';
     PlayersModule,
     PluginApiModule,
     PunishmentsModule,
+    MaintenanceModule,
   ],
   providers: [
     // Order matters: rate limiting → authentication/CSRF → authorization.

@@ -417,5 +417,58 @@
     "add": "Add note",
     "empty": "No notes yet.",
     "deleted": "Note deleted."
+  },
+  "profileTabs": {
+    "overview": "Overview",
+    "statistics": "Statistics",
+    "inventory": "Inventory",
+    "enderChest": "Ender Chest",
+    "moderation": "Moderation",
+    "connections": "Connections",
+    "activity": "Activity",
+    "notes": "Notes",
+    "planned": "{tab} will be available in a later release. Nothing is shown until real data is collected."
+  },
+  "skin": {
+    "preview": "3D skin preview",
+    "unavailable": "Skin not available",
+    "dragHint": "Drag to rotate"
+  },
+  "activity": {
+    "dailyPlaytime": "Daily playtime",
+    "heatmap": "Activity by weekday and hour",
+    "total": "Playtime in range",
+    "sessions": "Sessions",
+    "average": "Average session",
+    "range": "{days} days",
+    "timezone": "Times shown in {timezone}.",
+    "noData": "No sessions recorded in this period.",
+    "hours": "Hours"
+  },
+  "connections": {
+    "history": "Connection history",
+    "connected": "Connected",
+    "client": "Client",
+    "joinedVia": "Joined via",
+    "ipAddresses": "IP addresses",
+    "relatedAccounts": "Other accounts on these IP addresses",
+    "relatedHint": "Accounts that connected from at least one of this player's IP addresses. Shared networks (households, schools, VPNs) are common; treat this as a hint, not proof.",
+    "noRelated": "No other accounts found.",
+    "location": "Approximate location",
+    "approximate": "Approximate, derived from the IP address. Not an exact location.",
+    "geoipDisabled": "IP geolocation is not configured (see the installation guide).",
+    "network": "Network (ISP / ASN)",
+    "ipPermission": "IP addresses require the players.view.ip permission.",
+    "locationPermission": "Location data requires the players.view.location permission.",
+    "count": "{count, plural, one {# connection} other {# connections}}",
+    "anonymised": "removed (retention)"
+  },
+  "privacy": {
+    "title": "Privacy",
+    "description": "Data minimisation for personal data collected by the plugins.",
+    "ipRetention": "Keep IP addresses for",
+    "ipRetentionHint": "Older IP addresses are removed from connection records and the audit log every hour. Approximate country and network are kept. Blacklist entries are not affected.",
+    "keepForever": "Keep forever",
+    "days": "{count, plural, one {# day} other {# days}}"
   }
 }

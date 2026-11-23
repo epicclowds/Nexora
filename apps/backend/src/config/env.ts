@@ -22,6 +22,9 @@ export const envSchema = z.object({
   ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(900),
   REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(14),
   REGISTRATION_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(1440).default(30),
+  /** Optional MaxMind GeoLite2 databases for approximate IP geolocation. */
+  GEOIP_CITY_DB: z.string().optional().transform((v) => v || undefined),
+  GEOIP_ASN_DB: z.string().optional().transform((v) => v || undefined),
 });
 
 export type Env = z.infer<typeof envSchema>;

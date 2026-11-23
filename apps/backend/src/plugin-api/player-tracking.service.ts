@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { Prisma } from '../generated/prisma/client';
+import { GeoIpService } from '../players/geoip.service';
+import { parseTexturesProperty } from '../players/skins';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
 import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
@@ -20,6 +22,7 @@ export class PlayerTrackingService {
     private readonly prisma: PrismaService,
     private readonly realtime: RealtimeService,
     private readonly settings: SettingsService,
+    private readonly geoip: GeoIpService,
   ) {}
 
   /** Applies a batch of proxy events in order. Returns how many were applied vs. skipped as duplicates. */
@@ -54,6 +57,10 @@ export class PlayerTrackingService {
   private async join(tx: Tx, proxyId: string, e: JoinEvent): Promise<boolean> {
     if (await tx.playerSession.findUnique({ where: { sessionKey: e.sessionKey }, select: { id: true } })) return false;
 
+    const skin = parseTexturesProperty(e.textures);
+    const skinData = skin ? { skinTextureUrl: skin.url, skinModel: skin.model } : {};
+    const geo = this.geoip.lookup(e.ip);
+
     await tx.player.upsert({
       where: { uuid: e.uuid },
       create: {
@@ -65,6 +72,7 @@ export class PlayerTrackingService {
         connectionCount: 1,
         clientProtocol: e.protocol,
         clientVersion: e.clientVersion,
+        ...skinData,
       },
       update: {
         username: e.username,
@@ -73,6 +81,7 @@ export class PlayerTrackingService {
         connectionCount: { increment: 1 },
         clientProtocol: e.protocol,
         clientVersion: e.clientVersion,
+        ...skinData,
       },
     });
     await tx.playerName.upsert({
@@ -91,6 +100,12 @@ export class PlayerTrackingService {
         virtualHost: e.virtualHost ?? null,
         clientProtocol: e.protocol ?? null,
         connectedAt: e.at,
+        // Approximate, IP-derived location (only when a GeoIP database is configured).
+        countryCode: geo?.countryCode ?? null,
+        region: geo?.region ?? null,
+        city: geo?.city ?? null,
+        asn: geo?.asn ?? null,
+        isp: geo?.isp ?? null,
       },
     });
     return true;

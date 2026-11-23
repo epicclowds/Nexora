@@ -40,6 +40,11 @@ final class PlayerListener {
         player.getVirtualHost().ifPresent(host -> e.addProperty("virtualHost", host.getHostString()));
         e.addProperty("protocol", player.getProtocolVersion().getProtocol());
         e.addProperty("clientVersion", player.getProtocolVersion().getMostRecentSupportedVersion());
+        // Skin texture (base64 JSON from the game profile); the backend only accepts textures.minecraft.net URLs.
+        player.getGameProfileProperties().stream()
+                .filter(p -> "textures".equals(p.getName()) && p.getValue() != null && p.getValue().length() <= 8192)
+                .findFirst()
+                .ifPresent(p -> e.addProperty("textures", p.getValue()));
         connector.enqueue(e);
     }
 
