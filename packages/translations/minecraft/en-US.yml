@@ -65,3 +65,5 @@ type.blacklist: "Blacklist"
 state.active: "active"
 state.expired: "expired"
 state.revoked: "revoked"
+
+anticheat.result: "<gray>AntiCheat report for <white>{player}</white> (<white>{cheat}</white>): <white>{outcome}</white>"

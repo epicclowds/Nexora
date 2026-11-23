@@ -12,6 +12,14 @@ java {
 dependencies {
     compileOnly("io.papermc.paper:paper-api:${property("paperApiVersion")}")
     implementation(project(":plugin-common"))
+    testImplementation("io.papermc.paper:paper-api:${property("paperApiVersion")}")
+    testImplementation(platform("org.junit:junit-bom:${property("junitVersion")}"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.withType<JavaCompile>().configureEach {

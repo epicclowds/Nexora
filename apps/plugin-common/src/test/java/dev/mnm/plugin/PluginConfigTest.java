@@ -43,6 +43,8 @@ class PluginConfigTest {
         assertEquals(PluginConfig.STATISTIC_CATEGORIES, config.statisticsCategories());
         assertEquals(300, config.statisticsIntervalSeconds());
         assertEquals(300, config.afkTimeoutSeconds());
+        assertTrue(config.anticheatIntegrations().isEmpty(), "no integration is trusted by default");
+        assertEquals(java.util.Set.of("grim", "vulcan"), PluginConfig.names(" Grim, VULCAN ,,"));
     }
 
     @Test

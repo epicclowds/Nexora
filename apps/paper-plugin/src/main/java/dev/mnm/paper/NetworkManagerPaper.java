@@ -7,6 +7,9 @@ import dev.mnm.plugin.StatusLines;
 import dev.mnm.plugin.punish.PunishmentCache;
 import dev.mnm.plugin.punish.PunishmentFeed;
 import dev.mnm.plugin.punish.PunishmentTexts;
+import dev.mnm.paper.anticheat.AntiCheatBanCommand;
+import dev.mnm.paper.anticheat.AntiCheatBridge;
+import dev.mnm.paper.api.AntiCheatApi;
 import dev.mnm.paper.stats.ActivityTracker;
 import dev.mnm.paper.stats.StatisticsCollector;
 import io.papermc.paper.command.brigadier.BasicCommand;
@@ -15,6 +18,7 @@ import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import java.time.Duration;
 import java.util.List;
 import org.bukkit.command.CommandSender;
+import org.bukkit.plugin.ServicePriority;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /** Paper backend-server plugin: server heartbeats (TPS, MSPT, memory) and per-player game state. */
@@ -64,6 +68,12 @@ public final class NetworkManagerPaper extends JavaPlugin {
         PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, getDataFolder().toPath(), punishment -> {}, getSLF4JLogger());
         connector.every3Seconds(feed::poll);
         getServer().getPluginManager().registerEvents(new ChatMuteListener(cache, texts), this);
+
+        // AntiCheat: Java API (allow-listed integrations) and /anticheatban.
+        AntiCheatBridge anticheat = new AntiCheatBridge(this, connector.client(), config.anticheatIntegrations(), config.anticheatMaxReportsPerMinute(), texts, getSLF4JLogger());
+        getServer().getServicesManager().register(AntiCheatApi.class, anticheat, this, ServicePriority.Normal);
+        getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> event.registrar().register(
+                "anticheatban", "Requests an AntiCheat punishment according to the network rules", List.of(), new AntiCheatBanCommand(anticheat, messages)));
 
         if (config.statisticsEnabled()) {
             ActivityTracker activity = new ActivityTracker(this, config.afkTimeoutSeconds());

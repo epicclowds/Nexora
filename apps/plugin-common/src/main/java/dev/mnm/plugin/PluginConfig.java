@@ -25,6 +25,8 @@ public record PluginConfig(
         int statisticsIntervalSeconds,
         java.util.Set<String> statisticsCategories,
         int afkTimeoutSeconds,
+        java.util.Set<String> anticheatIntegrations,
+        int anticheatMaxReportsPerMinute,
         boolean debug) {
 
     public static final java.util.Set<String> STATISTIC_CATEGORIES = java.util.Set.of("movement", "combat", "blocks", "general");
@@ -59,6 +61,8 @@ public record PluginConfig(
                 clamp(integer(p, "statistics-interval-seconds", 300), 60, 3600),
                 categories(p.getProperty("statistics-categories", String.join(",", STATISTIC_CATEGORIES))),
                 clamp(integer(p, "afk-timeout-seconds", 300), 30, 3600),
+                names(p.getProperty("anticheat-integrations", "")),
+                clamp(integer(p, "anticheat-max-reports-per-minute", 120), 1, 10_000),
                 bool(p, "debug", false));
     }
 
@@ -75,6 +79,16 @@ public record PluginConfig(
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException("backend-url is not a valid URL: " + raw, e);
         }
+    }
+
+    /** Comma-separated plugin names, compared case-insensitively (stored lower-case). */
+    static java.util.Set<String> names(String raw) {
+        java.util.Set<String> out = new java.util.TreeSet<>();
+        for (String part : raw.split(",")) {
+            String name = part.trim().toLowerCase(Locale.ROOT);
+            if (!name.isEmpty()) out.add(name);
+        }
+        return java.util.Collections.unmodifiableSet(out);
     }
 
     static java.util.Set<String> categories(String raw) {

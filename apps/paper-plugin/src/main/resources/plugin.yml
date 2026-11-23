@@ -8,3 +8,6 @@ permissions:
   networkmanager.admin:
     description: Allows /networkmanager (connection status)
     default: op
+  networkmanager.anticheat.command:
+    description: Allows /anticheatban (meant for the console and AntiCheat plugins)
+    default: false
