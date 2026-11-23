@@ -140,11 +140,16 @@ export class AuthService {
     } catch {
       return null;
     }
+    return this.authenticateSession(payload.sid, payload.sub);
+  }
+
+  /** Loads a live session with the user's current role and permissions; null when revoked, expired or disabled. */
+  async authenticateSession(sessionId: string, userId: string): Promise<AuthenticatedUser | null> {
     const session = await this.prisma.dashboardSession.findUnique({
-      where: { id: payload.sid },
+      where: { id: sessionId },
       include: { user: { include: { role: { include: { permissions: true } } } } },
     });
-    if (!session || session.userId !== payload.sub || session.revokedAt || session.expiresAt < new Date() || session.user.disabled) {
+    if (!session || session.userId !== userId || session.revokedAt || session.expiresAt < new Date() || session.user.disabled) {
       return null;
     }
     const { user } = session;

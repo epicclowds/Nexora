@@ -5,8 +5,11 @@
  */
 import type { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { randomBytes } from 'node:crypto';
 import cookieParser from 'cookie-parser';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { sha256Hex } from '../src/common/crypto';
+import { canonicalRequest, sign } from '../src/plugin-api/plugin-signature';
 
 const enabled = Boolean(process.env.E2E_DATABASE_URL && process.env.E2E_REDIS_URL);
 const SETUP_CODE = 'E2E-SETUP-CODE-0123456789';
@@ -47,7 +50,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
       NODE_ENV: 'test',
     });
     const { AppModule } = await import('../src/app.module.js');
-    app = await NestFactory.create(AppModule, { logger: ['error', 'warn'] });
+    app = await NestFactory.create(AppModule, { logger: ['error', 'warn'], rawBody: true });
     app.use(cookieParser());
     app.setGlobalPrefix('api');
     await app.listen(0, '127.0.0.1');
@@ -125,6 +128,148 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     const servers = await call('GET', '/api/servers');
     expect(servers.body).toHaveLength(1);
     expect(servers.body[0].name).toBe('proxy-1');
+    proxy = { keyId: register.body.keyId, secret: register.body.secret };
+
+    const paperToken = await call('POST', '/api/servers/registration-tokens', { type: 'PAPER', name: 'lobby' });
+    const paperReg = await call('POST', '/api/plugin/v1/register', { token: paperToken.body.token, pluginVersion: '0.2.0' }, { 'x-mnm-csrf': '' });
+    expect(paperReg.status).toBe(201);
+    paper = { keyId: paperReg.body.keyId, secret: paperReg.body.secret };
+  });
+
+  // ── Phase 2: signed plugin API ─────────────────────────────────
+
+  let proxy: { keyId: string; secret: string };
+  let paper: { keyId: string; secret: string };
+  const steve = { uuid: '069a79f4-44e9-4726-a5be-fca90e38aaf5', username: 'Steve' };
+  const sessionKey = '11111111-2222-4333-8444-555555555555';
+
+  async function signed(creds: { keyId: string; secret: string }, method: string, path: string, body?: unknown, override: Record<string, string> = {}) {
+    const raw = body === undefined ? '' : JSON.stringify(body);
+    const timestamp = String(Date.now());
+    const nonce = randomBytes(16).toString('hex');
+    const signature = sign(sha256Hex(creds.secret), canonicalRequest(method, path, timestamp, nonce, raw));
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      'x-mnm-key-id': creds.keyId,
+      'x-mnm-timestamp': timestamp,
+      'x-mnm-nonce': nonce,
+      'x-mnm-signature': signature,
+      ...override,
+    };
+    const res = await fetch(`${base}${path}`, { method, headers, body: raw || undefined });
+    const text = await res.text();
+    return { status: res.status, body: text ? JSON.parse(text) : null, headers };
+  }
+
+  it('authenticates plugins by signature and rejects tampering and replays', async () => {
+    const ping = await signed(proxy, 'GET', '/api/plugin/v1/ping');
+    expect(ping.status).toBe(200);
+    expect(ping.body.serverName).toBe('proxy-1');
+
+    const forged = await signed(proxy, 'GET', '/api/plugin/v1/ping', undefined, { 'x-mnm-signature': '0'.repeat(64) });
+    expect(forged.status).toBe(401);
+
+    // Replaying the exact same signed request must fail.
+    const replay = await fetch(`${base}/api/plugin/v1/ping`, { headers: ping.headers });
+    expect(replay.status).toBe(401);
+    expect((await replay.json()).code).toBe('PLUGIN_AUTH_REPLAYED');
+  });
+
+  it('records heartbeats with server metrics', async () => {
+    const hb = await signed(paper, 'POST', '/api/plugin/v1/heartbeat', {
+      pluginVersion: '0.2.0',
+      minecraftVersion: '26.3',
+      onlinePlayers: 0,
+      maxPlayers: 100,
+      tps: 19.97,
+      mspt: 12.5,
+      memoryUsedBytes: 1_073_741_824,
+      memoryMaxBytes: 4_294_967_296,
+    });
+    expect(hb.status).toBe(200);
+    expect(hb.body.heartbeatIntervalSeconds).toBeGreaterThan(0);
+    const servers = await call('GET', '/api/servers');
+    const lobby = servers.body.find((s: { name: string }) => s.name === 'lobby');
+    expect(lobby.status).toBe('ONLINE');
+    expect(lobby.tps).toBeCloseTo(19.97);
+    expect(lobby.memoryMaxBytes).toBe('4294967296');
+  });
+
+  it('only accepts session events from proxies', async () => {
+    const res = await signed(paper, 'POST', '/api/plugin/v1/events', {
+      events: [{ type: 'player.join', sessionKey, uuid: steve.uuid, username: steve.username, at: Date.now() }],
+    });
+    expect(res.status).toBe(403);
+  });
+
+  it('tracks join, server switch and leave idempotently', async () => {
+    const joinedAt = Date.now() - 120_000;
+    const batch = {
+      events: [
+        { type: 'player.join', sessionKey, uuid: steve.uuid, username: steve.username, at: joinedAt, ip: '203.0.113.7', virtualHost: 'play.example.test', protocol: 775, clientVersion: '26.3' },
+        { type: 'player.switch', sessionKey, uuid: steve.uuid, server: 'lobby', at: joinedAt + 1000 },
+        { type: 'player.brand', sessionKey, uuid: steve.uuid, brand: 'vanilla' },
+      ],
+    };
+    const first = await signed(proxy, 'POST', '/api/plugin/v1/events', batch);
+    expect(first.body).toEqual({ applied: 3, skipped: 0 });
+    // Retried batch (e.g. after a timeout) must not duplicate anything.
+    const retry = await signed(proxy, 'POST', '/api/plugin/v1/events', batch);
+    expect(retry.body.skipped).toBe(3);
+
+    const online = await call('GET', '/api/players?online=true');
+    expect(online.body.total).toBe(1);
+    expect(online.body.items[0].currentServer.name).toBe('lobby');
+    expect(online.body.items[0].totalPlaytimeSeconds).toBeGreaterThanOrEqual(119);
+
+    const search = await call('GET', '/api/players?search=ste');
+    expect(search.body.items[0].uuid).toBe(steve.uuid);
+    const byUuid = await call('GET', `/api/players?search=${steve.uuid.replace(/-/g, '')}`);
+    expect(byUuid.body.total).toBe(1);
+
+    const profile = await call('GET', `/api/players/${steve.uuid}`);
+    expect(profile.body.clientBrand).toBe('vanilla');
+    expect(profile.body.sessions[0].servers[0].server.name).toBe('lobby');
+    expect(profile.body.sessions[0].connection.ipAddress).toBe('203.0.113.7'); // owner has players.view.ip
+
+    const summary = await call('GET', '/api/dashboard/summary');
+    expect(summary.body.onlinePlayers).toBe(1);
+    expect(summary.body.playerRecord.count).toBe(1);
+
+    const leave = await signed(proxy, 'POST', '/api/plugin/v1/events', { events: [{ type: 'player.leave', sessionKey, uuid: steve.uuid, at: joinedAt + 60_000 }] });
+    expect(leave.body.applied).toBe(1);
+    const after = await call('GET', `/api/players/${steve.uuid}`);
+    expect(after.body.online).toBe(false);
+    expect(after.body.currentServer).toBeNull();
+    expect(after.body.totalPlaytimeSeconds).toBe(60);
+    expect(after.body.sessions[0].durationSeconds).toBe(60);
+    expect(after.body.sessions[0].servers[0].leftAt).not.toBeNull();
+  });
+
+  it('reconciles state from a proxy sync and closes sessions on shutdown', async () => {
+    const alex = { uuid: 'ec561538-f3fd-461d-aff5-086b22154bce', username: 'Alex' };
+    const alexSession = '22222222-3333-4444-8555-666666666666';
+    const sync = await signed(proxy, 'POST', '/api/plugin/v1/sync', { sessions: [{ sessionKey: alexSession, ...alex, server: 'lobby' }] });
+    expect(sync.body).toEqual({ closed: 0, opened: 1, moved: 1 });
+    expect((await call('GET', '/api/players?online=true')).body.total).toBe(1);
+
+    const shutdown = await signed(proxy, 'POST', '/api/plugin/v1/shutdown');
+    expect(shutdown.body.closedSessions).toBe(1);
+    expect((await call('GET', '/api/players?online=true')).body.total).toBe(0);
+  });
+
+  it('rotates and revokes server credentials', async () => {
+    const servers = await call('GET', '/api/servers');
+    const proxyId = servers.body.find((s: { name: string }) => s.name === 'proxy-1').id;
+    const rotated = await call('POST', `/api/servers/${proxyId}/credentials/rotate`);
+    expect(rotated.status).toBe(201);
+    expect((await signed(proxy, 'GET', '/api/plugin/v1/ping')).status).toBe(401);
+    const next = { keyId: rotated.body.keyId, secret: rotated.body.secret };
+    expect((await signed(next, 'GET', '/api/plugin/v1/ping')).status).toBe(200);
+
+    const disabled = await call('PATCH', `/api/servers/${proxyId}`, { enabled: false });
+    expect(disabled.body.status).toBe('DISABLED');
+    expect((await signed(next, 'GET', '/api/plugin/v1/ping')).status).toBe(403);
   });
 
   it('enforces RBAC for lower roles', async () => {

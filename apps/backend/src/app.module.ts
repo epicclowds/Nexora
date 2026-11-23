@@ -9,8 +9,11 @@ import { ConfigModule } from './config/config.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthModule } from './health/health.module';
 import { I18nModule } from './i18n/i18n.module';
+import { PlayersModule } from './players/players.module';
+import { PluginApiModule } from './plugin-api/plugin-api.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RbacModule } from './rbac/rbac.module';
+import { RealtimeModule } from './realtime/realtime.module';
 import { RedisModule } from './redis/redis.module';
 import { RedisThrottlerStorage } from './redis/redis-throttler.storage';
 import { ServersModule } from './servers/servers.module';
@@ -31,6 +34,7 @@ import { UsersModule } from './users/users.module';
       }),
     }),
     AuditModule,
+    RealtimeModule,
     AuthModule,
     HealthModule,
     SettingsModule,
@@ -40,6 +44,8 @@ import { UsersModule } from './users/users.module';
     I18nModule,
     ServersModule,
     DashboardModule,
+    PlayersModule,
+    PluginApiModule,
   ],
   providers: [
     // Order matters: rate limiting → authentication/CSRF → authorization.

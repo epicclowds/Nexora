@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { PERMISSIONS } from '@mnm/shared-types';
@@ -15,6 +15,13 @@ const createTokenSchema = z.object({
   type: z.enum([ServerType.VELOCITY, ServerType.PAPER]),
   name: z.string().trim().min(2).max(64).regex(/^[A-Za-z0-9_.-]+$/, 'Only letters, digits, "_", "." and "-" are allowed'),
 });
+
+const updateServerSchema = z
+  .object({
+    name: z.string().trim().min(2).max(64).regex(/^[A-Za-z0-9_.-]+$/, 'Only letters, digits, "_", "." and "-" are allowed').optional(),
+    enabled: z.boolean().optional(),
+  })
+  .strict();
 
 const registerSchema = z.object({
   token: z.string().min(16).max(128),
@@ -52,6 +59,41 @@ export class ServersController {
   @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
   async revokeToken(@CurrentUser() actor: AuthenticatedUser, @Param('id') id: string, @Req() req: Request) {
     await this.servers.revokeToken(id, userActor(actor), clientIp(req));
+    return { ok: true };
+  }
+
+  @Get(':id')
+  @RequirePermissions(PERMISSIONS.SERVERS_VIEW)
+  detail(@Param('id') id: string) {
+    return this.servers.detail(id);
+  }
+
+  @Patch(':id')
+  @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
+  @ZodBody(updateServerSchema)
+  update(@CurrentUser() actor: AuthenticatedUser, @Param('id') id: string, @Body() body: z.infer<typeof updateServerSchema>, @Req() req: Request) {
+    return this.servers.update(id, body, userActor(actor), clientIp(req));
+  }
+
+  @Delete(':id')
+  @HttpCode(200)
+  @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
+  async remove(@CurrentUser() actor: AuthenticatedUser, @Param('id') id: string, @Req() req: Request) {
+    await this.servers.remove(id, userActor(actor), clientIp(req));
+    return { ok: true };
+  }
+
+  @Post(':id/credentials/rotate')
+  @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
+  rotate(@CurrentUser() actor: AuthenticatedUser, @Param('id') id: string, @Req() req: Request) {
+    return this.servers.rotateCredentials(id, userActor(actor), clientIp(req));
+  }
+
+  @Post(':id/credentials/revoke')
+  @HttpCode(200)
+  @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
+  async revoke(@CurrentUser() actor: AuthenticatedUser, @Param('id') id: string, @Req() req: Request) {
+    await this.servers.revokeCredentials(id, userActor(actor), clientIp(req));
     return { ok: true };
   }
 }

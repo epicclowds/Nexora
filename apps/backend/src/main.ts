@@ -19,6 +19,8 @@ const LOG_LEVELS: Record<string, LogLevel[]> = {
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     logger: LOG_LEVELS[process.env.LOG_LEVEL ?? 'log'] ?? LOG_LEVELS.log,
+    // Raw body is required to verify plugin request signatures.
+    rawBody: true,
   });
   const config = app.get(AppConfig);
 
