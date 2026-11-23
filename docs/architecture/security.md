@@ -41,6 +41,12 @@
 - Error responses never contain stack traces or SQL.
 - Translation catalogues are rendered as text and validated to contain no markup, `javascript:` URLs or event-handler attributes.
 
+## Personal data
+
+- IP addresses and approximate locations are only returned to users with `players.view.ip` / `players.view.location`; the other connection fields need `players.view`.
+- IP addresses are removed after the configurable retention period (default 180 days), see [Player profiles](player-profiles.md#privacy-and-retention).
+- Skins are fetched by the backend from an allow-listed host only, so dashboard users' browsers never contact third parties.
+
 ## Secrets
 
 - Never committed: `.env` is git-ignored; `.env.example` contains placeholders only.

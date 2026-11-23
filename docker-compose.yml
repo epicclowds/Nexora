@@ -65,6 +65,10 @@ services:
       API_DOCS_ENABLED: ${API_DOCS_ENABLED:-true}
       LOG_LEVEL: ${LOG_LEVEL:-log}
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
+      GEOIP_CITY_DB: ${GEOIP_CITY_DB:-}
+      GEOIP_ASN_DB: ${GEOIP_ASN_DB:-}
+    volumes:
+      - ./geoip:/geoip:ro
     depends_on:
       mysql:
         condition: service_healthy

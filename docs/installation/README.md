@@ -53,6 +53,10 @@ Node.js, MySQL and Redis do **not** need to be installed on the host.
 
 6. **Connect the Minecraft servers** – install the Velocity and Paper plugins: see [Minecraft plugins](minecraft-plugins.md).
 
+## Optional: IP geolocation
+
+To show approximate player locations, add the free MaxMind GeoLite2 databases as described in [Player profiles](../architecture/player-profiles.md#ip-geolocation-optional).
+
 ## Ports and exposure
 
 | Service | Exposed | Notes |

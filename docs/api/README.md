@@ -10,7 +10,7 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 - Errors: `{ "statusCode": 403, "code": "FORBIDDEN", "message": "...", "issues"?: [{ "path", "message" }] }`.
 - Rate limits answer `429`.
 
-## Endpoints (v0.3.0)
+## Endpoints (v0.4.0)
 
 | Method & path | Auth | Permission | Purpose |
 | --- | --- | --- | --- |
@@ -39,6 +39,10 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `POST /api/servers/:id/credentials/rotate` · `…/revoke` | session | `servers.manage` | Credential rotation (secret returned once) and revocation |
 | `GET /api/players` | session | `players.view` | Search (name, previous name, UUID), `online`, `sort`, pagination |
 | `GET /api/players/:uuid` | session | `players.view` (+ `players.view.ip` for IPs) | Profile, name history, recent sessions |
+| `GET /api/players/:uuid/skin` | session | `players.view` | Skin PNG (server-side cached; 404 when unknown) |
+| `GET /api/players/:uuid/activity?days=` | session | `players.view` | Daily playtime and weekday/hour heatmap |
+| `GET /api/players/:uuid/connections` | session | `players.view` (+ `players.view.ip`, `players.view.location`) | Connection history, IP summary, related accounts |
+| `GET/PATCH /api/settings/privacy` | session | `settings.manage` | IP retention period |
 | `GET /api/punishments` | session | `punishments.history` | Search/filter punishments (`type`, `status`, `search`) |
 | `POST /api/punishments` | session | per type (e.g. `punishments.ban`) | Issue a punishment |
 | `POST /api/punishments/:id/revoke` | session | `punishments.unban` / `unmute` / … | Revoke an active punishment |

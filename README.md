@@ -2,7 +2,7 @@
 
 A self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring and a multilingual web dashboard. Everything is deployed with Docker Compose.
 
-> **Status: v0.3.0 – Phase 3 (Punishment system).** The web platform, the Velocity and Paper plugins and network-wide moderation are implemented: bans, temporary bans, mutes, kicks, warnings and blacklists from in-game commands or the dashboard, enforced on every server. Statistics, AntiCheat and inventory modules are scheduled for the next phases – see [Roadmap](#roadmap). Modules that do not exist yet are shown as "Not available yet" in the dashboard and never display placeholder data.
+> **Status: v0.4.0 – Phase 4 (Player dashboard).** The web platform, the Velocity and Paper plugins, network-wide moderation and detailed player profiles (skins, activity, connection history) are implemented. Statistics, AntiCheat and inventory modules are scheduled for the next phases – see [Roadmap](#roadmap). Modules that do not exist yet are shown as "Not available yet" in the dashboard and never display placeholder data.
 
 ## Features in this release
 
@@ -15,7 +15,7 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 | Audit log | Every administrative action is recorded and searchable |
 | Internationalization | `en-US` default, `de-DE` bundled, per-user language with instant switching, ICU plurals, locale-aware numbers/dates, time-zone aware timestamps, catalogue validation (no HTML/script injection) |
 | Minecraft plugins | Velocity 4 and Paper 26 plugins (Java 25): token registration, HMAC-signed requests with replay protection, ordered event buffering during outages, periodic sync, heartbeats (TPS, MSPT, memory, CPU), `/networkmanager` status command |
-| Players | Network sessions, server switches, playtime, name history, client version/brand, connections (IP restricted to `players.view.ip`), search by name/previous name/UUID, online list, profile page |
+| Players | Search by name, previous name or UUID; live online list; profiles with tabs (Overview, Moderation, Connections, Activity, Notes); 3D skin preview and heads served without third-party requests from the browser; daily playtime chart and weekday/hour heatmap; connection history with IP summary and alternate-account hints (`players.view.ip`); optional approximate GeoLite2 location (`players.view.location`); configurable IP retention |
 | Servers | Registration tokens, live status, credential rotation/revocation, enable/disable, rename, delete; crashed proxies detected and their sessions closed |
 | Realtime | Server-Sent Events with Redis fan-out; permission-filtered |
 | Moderation | Bans, temp bans, IP blacklists, mutes, temp mutes, kicks, warnings; `/ban /tempban /unban /mute /tempmute /unmute /kick /warn /history /check`; login checks from a local, disk-persisted cache (no network on join, works during outages); mutes enforced on Paper; duplicate prevention and idempotency; dashboard moderation page, player history, revoke, internal notes; full audit trail |
@@ -56,7 +56,7 @@ docs/               Architecture, installation, API and development docs
 
 ## Documentation
 
-- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md)
+- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md) · [Player profiles](docs/architecture/player-profiles.md)
 - [Installation](docs/installation/README.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Backup & restore](docs/installation/backup-restore.md) · [HTTPS](docs/installation/https.md)
 - [API](docs/api/README.md) · [Development](docs/development/README.md)
 
@@ -67,7 +67,7 @@ docs/               Architecture, installation, API and development docs
 | v0.1.0 | Foundation: monorepo, Docker, backend, dashboard, auth, RBAC, i18n, setup wizard, CI | ✅ implemented |
 | v0.2.0 | Minecraft integration: Velocity & Paper plugins, signed plugin API, sessions, heartbeats, live updates | ✅ implemented |
 | v0.3.0 | Network-wide punishment system and moderation commands | ✅ implemented |
-| v0.4.0 | Player search & profiles | planned |
+| v0.4.0 | Player search & profiles | ✅ implemented |
 | v0.5.0 | Statistics collection and charts | planned |
 | v0.6.0 | AntiCheat integration and inventory management | planned |
 | v1.0.0 | Production readiness | planned |
