@@ -41,9 +41,9 @@ All options are documented in the generated `config.properties`.
 | Source | Data |
 | --- | --- |
 | Velocity | join/leave times, server switches, username history, client protocol/version, client brand, virtual host, IP address (disable with `collect-ip-addresses=false`), proxy player count, memory, CPU |
-| Paper | TPS, MSPT, player count, memory, CPU, players' game mode |
+| Paper | TPS, MSPT, player count, memory, CPU, players' game mode, player statistics (see [Statistics](../architecture/statistics.md); configurable or disable with `statistics-enabled=false`) |
 
-Statistics, AFK time and inventories arrive in later releases. Nothing is estimated: values that were not collected are shown as "not collected".
+Inventories arrive in a later release. Nothing is estimated: values that were not collected are shown as "not collected".
 
 ## Moderation
 

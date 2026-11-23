@@ -7,14 +7,14 @@ Players are identified by their Minecraft UUID. Search accepts the current name,
 | Tab | Content | Permission |
 | --- | --- | --- |
 | Overview | 3D skin, head, status, current server, playtime, connections, first join, client version/brand, game mode, name history, recent sessions | `players.view` |
-| Statistics | Planned (Phase 5) | – |
+| Statistics | Ranges, category values, daily charts, all-time breakdowns ([details](statistics.md)) | `players.view.statistics` |
 | Inventory / Ender Chest | Planned (Phase 7) | – |
 | Moderation | Active ban/mute, punish, history, revoke | `punishments.history` (+ issue/revoke permissions) |
 | Connections | Connection history; IP addresses, IP summary and other accounts on the same IPs; approximate location | `players.view`; IPs `players.view.ip`; location `players.view.location` |
 | Activity | Playtime in range, sessions, average session, daily playtime chart (7/30/90 days), weekday × hour heatmap | `players.view` |
 | Notes | Internal staff notes | `players.notes` |
 
-Values that were never collected (e.g. AFK time before Phase 5) are shown as "Not collected yet", never as zero.
+Values that were never collected (e.g. AFK time on networks without the Paper plugin) are shown as "Not collected yet", never as zero.
 
 ## Skins
 
