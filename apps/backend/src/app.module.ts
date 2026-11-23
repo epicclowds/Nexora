@@ -12,6 +12,7 @@ import { I18nModule } from './i18n/i18n.module';
 import { PlayersModule } from './players/players.module';
 import { PluginApiModule } from './plugin-api/plugin-api.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PunishmentsModule } from './punishments/punishments.module';
 import { RbacModule } from './rbac/rbac.module';
 import { RealtimeModule } from './realtime/realtime.module';
 import { RedisModule } from './redis/redis.module';
@@ -46,6 +47,7 @@ import { UsersModule } from './users/users.module';
     DashboardModule,
     PlayersModule,
     PluginApiModule,
+    PunishmentsModule,
   ],
   providers: [
     // Order matters: rate limiting → authentication/CSRF → authorization.

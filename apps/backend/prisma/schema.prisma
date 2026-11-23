@@ -301,18 +301,41 @@ model Punishment {
   revokedByUserId String?          @map("revoked_by_user_id") @db.VarChar(32)
   revokedByUuid   String?          @map("revoked_by_uuid") @db.Char(36)
   revokedByName   String?          @map("revoked_by_name") @db.VarChar(64)
+  /// BLACKLIST only: IP address blocked together with the account (personal data).
+  targetIp        String?          @map("target_ip") @db.VarChar(45)
 
   target          Player               @relation("PunishmentTarget", fields: [targetUuid], references: [uuid], onDelete: Cascade)
   issuerUser      DashboardUser?       @relation("PunishmentIssuer", fields: [issuerUserId], references: [id], onDelete: SetNull)
   revokedByUser   DashboardUser?       @relation("PunishmentRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
   server          Server?              @relation(fields: [serverId], references: [id], onDelete: SetNull)
   evidence        PunishmentEvidence[]
+  changes         PunishmentChange[]
   antiCheatEvents AntiCheatEvent[]
 
   @@index([targetUuid, type, status])
+  @@index([targetIp, type, status])
   @@index([status, type, expiresAt])
   @@index([createdAt])
   @@map("punishments")
+}
+
+enum PunishmentChangeKind {
+  CREATED
+  REVOKED
+}
+
+/// Append-only, ordered feed consumed by the plugins (cursor = id) to keep
+/// their local punishment caches current and to execute kicks and bans.
+model PunishmentChange {
+  id           BigInt               @id @default(autoincrement())
+  punishmentId String               @map("punishment_id") @db.VarChar(32)
+  kind         PunishmentChangeKind
+  createdAt    DateTime             @default(now()) @map("created_at") @db.DateTime(3)
+
+  punishment Punishment @relation(fields: [punishmentId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("punishment_changes")
 }
 
 model PunishmentEvidence {

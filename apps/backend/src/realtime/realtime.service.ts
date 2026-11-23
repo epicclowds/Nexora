@@ -9,7 +9,8 @@ export type RealtimeEvent =
   | { type: 'server.removed'; serverId: string }
   | { type: 'player.online'; uuid: string }
   | { type: 'player.offline'; uuid: string }
-  | { type: 'player.updated'; uuid: string };
+  | { type: 'player.updated'; uuid: string }
+  | { type: 'punishment.changed'; uuid: string };
 
 /** Permission needed to receive each event type. */
 export const EVENT_PERMISSION: Record<RealtimeEvent['type'], string> = {
@@ -18,6 +19,7 @@ export const EVENT_PERMISSION: Record<RealtimeEvent['type'], string> = {
   'player.online': PERMISSIONS.PLAYERS_VIEW,
   'player.offline': PERMISSIONS.PLAYERS_VIEW,
   'player.updated': PERMISSIONS.PLAYERS_VIEW,
+  'punishment.changed': PERMISSIONS.PUNISHMENTS_HISTORY,
 };
 
 const CHANNEL = 'mnm:realtime';

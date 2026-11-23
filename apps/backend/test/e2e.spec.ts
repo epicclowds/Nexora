@@ -272,6 +272,83 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect((await signed(next, 'GET', '/api/plugin/v1/ping')).status).toBe(403);
   });
 
+  // ── Phase 3: punishments ───────────────────────────────────────
+
+  it('bans via plugin command idempotently, feeds the change to plugins and prevents duplicates', async () => {
+    const snapshot = await signed(paper, 'GET', '/api/plugin/v1/punishments/active');
+    expect(snapshot.status).toBe(200);
+    expect(snapshot.body.punishments).toEqual([]);
+    const cursor = snapshot.body.cursor as string;
+
+    const ban = { type: 'TEMP_BAN', target: 'steve', reason: 'Griefing spawn', durationSeconds: 86_400, issuer: { uuid: '00000000-0000-4000-8000-000000000001', name: 'ModAnna' }, idempotencyKey: 'cmd-0001' };
+    const first = await signed(paper, 'POST', '/api/plugin/v1/punishments', ban);
+    expect(first.status).toBe(201);
+    expect(first.body.target.username).toBe('Steve');
+    expect(first.body.status).toBe('ACTIVE');
+    expect(first.body.issuer.name).toBe('ModAnna');
+
+    const retry = await signed(paper, 'POST', '/api/plugin/v1/punishments', ban);
+    expect(retry.body.id).toBe(first.body.id);
+
+    const duplicate = await signed(paper, 'POST', '/api/plugin/v1/punishments', { ...ban, type: 'BAN', durationSeconds: undefined, idempotencyKey: 'cmd-0002' });
+    expect(duplicate.status).toBe(409);
+    expect(duplicate.body.code).toBe('ALREADY_BANNED');
+
+    const feed = await signed(paper, 'GET', `/api/plugin/v1/punishments/changes?after=${cursor}`);
+    expect(feed.body.changes).toHaveLength(1);
+    expect(feed.body.changes[0].kind).toBe('CREATED');
+    expect(feed.body.changes[0].punishment).toMatchObject({ type: 'TEMP_BAN', targetName: 'Steve', reason: 'Griefing spawn' });
+    expect((await signed(paper, 'GET', `/api/plugin/v1/punishments/changes?after=${feed.body.cursor}`)).body.changes).toEqual([]);
+
+    const lookup = await signed(paper, 'GET', '/api/plugin/v1/players/lookup?target=Steve');
+    expect(lookup.body.active.ban.id).toBe(first.body.id);
+    expect(lookup.body.active.mute).toBeNull();
+  });
+
+  it('rejects invalid durations, kicks of offline players and unknown targets', async () => {
+    const base = { issuer: { name: 'console' }, reason: 'x' };
+    expect((await signed(paper, 'POST', '/api/plugin/v1/punishments', { ...base, type: 'TEMP_MUTE', target: 'Steve', idempotencyKey: 'cmd-0003' })).status).toBe(400);
+    const kick = await signed(paper, 'POST', '/api/plugin/v1/punishments', { ...base, type: 'KICK', target: 'Steve', idempotencyKey: 'cmd-0004' });
+    expect(kick.status).toBe(409);
+    expect(kick.body.code).toBe('PLAYER_OFFLINE');
+    const unknown = await signed(paper, 'POST', '/api/plugin/v1/punishments', { ...base, type: 'WARNING', target: 'Nobody', idempotencyKey: 'cmd-0005' });
+    expect(unknown.status).toBe(404);
+  });
+
+  it('manages punishments and notes from the dashboard with an audit trail', async () => {
+    const mute = await call('POST', '/api/punishments', { type: 'MUTE', target: 'ec561538-f3fd-461d-aff5-086b22154bce', reason: 'Spam' });
+    expect(mute.status).toBe(201);
+    expect(mute.body.issuer).toMatchObject({ type: 'USER', name: 'owner' });
+
+    const active = await call('GET', '/api/punishments?status=active');
+    expect(active.body.total).toBe(2);
+    const steveHistory = await call('GET', '/api/players/069a79f4-44e9-4726-a5be-fca90e38aaf5/punishments');
+    expect(steveHistory.body.active.ban.reason).toBe('Griefing spawn');
+
+    const unban = await call('POST', `/api/punishments/${steveHistory.body.active.ban.id}/revoke`, { reason: 'Appeal accepted' });
+    expect(unban.status).toBe(200);
+    expect(unban.body.status).toBe('REVOKED');
+    expect(unban.body.revokedBy).toBe('owner');
+    expect((await call('POST', `/api/punishments/${steveHistory.body.active.ban.id}/revoke`, {})).status).toBe(409);
+
+    // Revocation is visible to plugins via the feed.
+    const snapshot = await signed(paper, 'GET', '/api/plugin/v1/punishments/active');
+    expect(snapshot.body.punishments.map((p: { type: string }) => p.type)).toEqual(['MUTE']);
+
+    const unmute = await signed(paper, 'POST', '/api/plugin/v1/punishments/revoke', { kind: 'MUTE', target: 'Alex', revoker: { name: 'console' } });
+    expect(unmute.status).toBe(200);
+    expect(unmute.body.revokedBy).toBe('console@lobby');
+
+    const note = await call('POST', '/api/players/069a79f4-44e9-4726-a5be-fca90e38aaf5/notes', { content: 'Promised to rebuild the spawn.' });
+    expect(note.status).toBe(201);
+    expect((await call('GET', '/api/players/069a79f4-44e9-4726-a5be-fca90e38aaf5/notes')).body).toHaveLength(1);
+
+    const audit = await call('GET', '/api/audit-logs?action=punishments.');
+    expect(audit.body.items.map((e: { action: string }) => e.action)).toEqual(
+      expect.arrayContaining(['punishments.temp_ban', 'punishments.mute', 'punishments.revoked']),
+    );
+  });
+
   it('enforces RBAC for lower roles', async () => {
     const roles = await call('GET', '/api/roles');
     const viewer = roles.body.find((r: { key: string }) => r.key === 'viewer');
@@ -286,6 +363,9 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect((await call('GET', '/api/audit-logs')).status).toBe(403);
     expect((await call('GET', '/api/users')).status).toBe(403);
     expect((await call('GET', '/api/servers')).status).toBe(200);
+    // Viewers may not see or issue punishments (server-side check, not just hidden UI).
+    expect((await call('GET', '/api/punishments')).status).toBe(403);
+    expect((await call('POST', '/api/punishments', { type: 'WARNING', target: 'Steve', reason: 'x' })).status).toBe(403);
   });
 
   it('switches the language preference per user', async () => {
