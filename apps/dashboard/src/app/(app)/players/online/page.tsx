@@ -1,5 +1,5 @@
-import { PlannedModule } from '@/components/planned-module';
+import { PlayerList } from '@/components/player-list';
 
-export default function Page() {
-  return <PlannedModule module="onlinePlayers" />;
+export default function OnlinePlayersPage() {
+  return <PlayerList onlineOnly />;
 }

@@ -164,3 +164,50 @@ export interface RegistrationTokenResult {
   serverName: string;
   expiresAt: string;
 }
+
+export interface PlayerListItem {
+  uuid: string;
+  username: string;
+  online: boolean;
+  currentServer: { id: string; name: string } | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+  totalPlaytimeSeconds: number;
+  connectionCount: number;
+}
+
+export interface PlayerSessionInfo {
+  id: string;
+  proxy: { id: string; name: string } | null;
+  startedAt: string;
+  endedAt: string | null;
+  durationSeconds: number | null;
+  servers: { server: { id: string; name: string }; joinedAt: string; leftAt: string | null }[];
+  connection: { clientProtocol: number | null; clientBrand: string | null; ipAddress?: string | null; virtualHost?: string | null } | null;
+}
+
+export interface PlayerProfile extends PlayerListItem {
+  gamemode: string | null;
+  clientVersion: string | null;
+  clientProtocol: number | null;
+  clientBrand: string | null;
+  rank: string | null;
+  activePlaytimeSeconds: number | null;
+  afkSeconds: number | null;
+  names: { username: string; firstSeenAt: string; lastSeenAt: string }[];
+  canViewConnectionData: boolean;
+  sessions: PlayerSessionInfo[];
+}
+
+export interface ServerDetail extends ServerInfo {
+  connectedPlayers: number;
+  openProxySessions: number;
+  credentials: { id: string; keyId: string; createdAt: string; lastUsedAt: string | null; revokedAt: string | null }[];
+}
+
+export interface RotatedCredentials {
+  serverId: string;
+  serverName: string;
+  keyId: string;
+  secret: string;
+}

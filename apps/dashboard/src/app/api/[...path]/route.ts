@@ -7,7 +7,20 @@ import type { NextRequest } from 'next/server';
  */
 const BACKEND = (process.env.BACKEND_INTERNAL_URL ?? 'http://localhost:4000').replace(/\/$/, '');
 
-const FORWARD_REQUEST_HEADERS = ['accept', 'accept-language', 'content-type', 'cookie', 'user-agent', 'x-mnm-csrf', 'authorization'];
+const FORWARD_REQUEST_HEADERS = [
+  'accept',
+  'accept-language',
+  'content-type',
+  'cookie',
+  'user-agent',
+  'x-mnm-csrf',
+  'authorization',
+  // Plugin request signatures (see apps/backend/src/plugin-api/plugin-signature.ts)
+  'x-mnm-key-id',
+  'x-mnm-timestamp',
+  'x-mnm-nonce',
+  'x-mnm-signature',
+];
 const DROP_RESPONSE_HEADERS = new Set(['content-encoding', 'content-length', 'transfer-encoding', 'connection', 'set-cookie']);
 
 export const dynamic = 'force-dynamic';

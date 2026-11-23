@@ -2,8 +2,9 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
+import { useLiveRefresh } from '@/components/realtime-provider';
 import { ServerCard } from '@/components/server-card';
 import { Alert, buttonVariants, Skeleton } from '@/components/ui/primitives';
 import { api, errorKey, type ServerInfo } from '@/lib/api';
@@ -13,15 +14,23 @@ export default function ServersPage() {
   const [servers, setServers] = useState<ServerInfo[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    api<ServerInfo[]>('/servers')
-      .then(setServers)
-      .catch((err) => setError(t(`errors.${errorKey(err)}`)));
+  const load = useCallback(async () => {
+    try {
+      setServers(await api<ServerInfo[]>('/servers'));
+      setError(null);
+    } catch (err) {
+      setError(t(`errors.${errorKey(err)}`));
+    }
   }, [t]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+  useLiveRefresh(['server.updated', 'server.removed', 'player.online', 'player.offline'], load);
 
   return (
     <>
-      <PageHeader title={t('nav.servers')} subtitle={t('settings.minecraftDescription')} />
+      <PageHeader title={t('servers.title')} subtitle={t('servers.subtitle')} />
       {error && <Alert variant="destructive">{error}</Alert>}
       {!servers && !error && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -41,7 +50,7 @@ export default function ServersPage() {
       {servers && servers.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {servers.map((s) => (
-            <ServerCard key={s.id} server={s} />
+            <ServerCard key={s.id} server={s} href={`/servers/${s.id}`} />
           ))}
         </div>
       )}

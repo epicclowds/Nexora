@@ -5,11 +5,10 @@ import Link from 'next/link';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
+import { useLiveRefresh } from '@/components/realtime-provider';
 import { ServerCard } from '@/components/server-card';
 import { Alert, Button, buttonVariants, Card, CardContent, CardHeader, CardTitle, Skeleton } from '@/components/ui/primitives';
 import { api, type DashboardSummary, errorKey } from '@/lib/api';
-
-const REFRESH_MS = 15_000;
 
 function Stat({ label, value, icon: Icon, hint }: { label: string; value: string; icon: typeof Users; hint?: string }) {
   return (
@@ -42,10 +41,9 @@ export default function DashboardPage() {
 
   useEffect(() => {
     void load();
-    // Polling until the WebSocket gateway lands (Phase 2).
-    const id = setInterval(() => void load(), REFRESH_MS);
-    return () => clearInterval(id);
   }, [load]);
+  // Server-Sent Events push changes; a slow poll covers counters without events (e.g. punishments).
+  useLiveRefresh(['server.updated', 'server.removed', 'player.online', 'player.offline'], load, 60_000);
 
   const n = (v: number) => format.number(v);
 
@@ -103,7 +101,7 @@ export default function DashboardPage() {
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2">
                       {data.servers.map((s) => (
-                        <ServerCard key={s.id} server={s} />
+                        <ServerCard key={s.id} server={s} href={`/servers/${s.id}`} />
                       ))}
                     </div>
                   )}

@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useFormatter, useNow, useLocale, useTranslations } from 'next-intl';
 import type { ServerInfo } from '@/lib/api';
 import { formatBytes } from '@/lib/utils';
 import { Badge, Card, StatusDot } from './ui/primitives';
 
-export function ServerCard({ server }: { server: ServerInfo }) {
+export function ServerCard({ server, href }: { server: ServerInfo; href?: string }) {
   const t = useTranslations();
   const format = useFormatter();
   const now = useNow({ updateInterval: 30_000 });
@@ -27,13 +28,22 @@ export function ServerCard({ server }: { server: ServerInfo }) {
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <StatusDot state={state} />
-            <span className="truncate font-medium">{server.name}</span>
+            {href ? (
+              <Link href={href} className="truncate font-medium hover:underline">
+                {server.name}
+              </Link>
+            ) : (
+              <span className="truncate font-medium">{server.name}</span>
+            )}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             {[server.minecraftVersion, server.pluginVersion && t('dashboard.pluginVersion', { version: server.pluginVersion })].filter(Boolean).join(' · ') || t('common.unknown')}
           </div>
         </div>
-        <Badge variant={server.type === 'VELOCITY' ? 'info' : 'default'}>{server.type === 'VELOCITY' ? 'Velocity' : 'Paper'}</Badge>
+        <div className="flex flex-col items-end gap-1">
+          <Badge variant={server.type === 'VELOCITY' ? 'info' : 'default'}>{server.type === 'VELOCITY' ? 'Velocity' : 'Paper'}</Badge>
+          <span className="text-xs text-muted-foreground">{t(`servers.status.${server.status}`)}</span>
+        </div>
       </div>
       <div className="mt-3 text-sm">{server.onlinePlayers !== null ? t('dashboard.serverPlayers', { count: server.onlinePlayers }) : t('dashboard.notRecorded')}</div>
       {metrics.length > 0 && (
