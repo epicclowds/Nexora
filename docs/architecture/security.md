@@ -1,0 +1,51 @@
+# Security model
+
+## Dashboard authentication
+
+| Mechanism | Implementation |
+| --- | --- |
+| Password hashing | Argon2id (m=19 MiB, t=2, p=1); minimum length 12; constant-time path for unknown users |
+| Sessions | `dashboard_sessions` row per login. Access token: HS256 JWT (15 min, audience `mnm-dashboard`) in `mnm_access`. Refresh token: 48 random bytes, stored as SHA-256, rotated on every use, cookie `mnm_refresh` scoped to `/api/auth` |
+| Cookies | `HttpOnly`, `SameSite=Strict`, `Secure` when served over HTTPS (`COOKIE_SECURE=auto`) |
+| Revocation | Every request checks the session row, so logout, disabling a user, password or role changes take effect immediately |
+| CSRF | All state-changing requests must send `X-MNM-CSRF: 1` (cannot be set cross-site without a CORS preflight; CORS is not enabled) in addition to `SameSite=Strict` |
+| Brute force | Per-IP limits in Redis (login: 5/min, 5 min block) **and** per-account lockout after 10 failures for 15 minutes |
+| 2FA | Schema fields exist (`two_factor_*`); TOTP enrolment is planned |
+
+## Authorization
+
+- Global guards: every route requires a session unless marked `@Public()`.
+- Permissions are checked on the server (`@RequirePermissions`). Wildcards: `*` (Owner) and `namespace.*`.
+- Users can only manage users/roles with a **lower priority** than their own role and can only grant permissions they hold themselves. The Owner role cannot be edited, and the last active Owner cannot be demoted or disabled.
+
+## First-time setup
+
+- While uninitialised, the backend prints a random one-time **setup code** to its log (or uses `SETUP_TOKEN`). Only someone with access to the server logs/environment can create the Owner.
+- Completion inserts the `setup.completed` row (primary key), so concurrent or repeated initialisation fails with `409`.
+
+## Plugin registration
+
+- Registration tokens: 24 random bytes, stored hashed, single-use, expire after 30 minutes (configurable), consumed with a conditional update so they can never be redeemed twice.
+- Redemption returns a key id + secret; only the secret's SHA-256 is stored. Request signing with replay protection for the plugin API is part of Phase 2.
+
+## Transport & headers
+
+- Use the `https` Compose profile (Caddy with automatic certificates) or your own TLS-terminating proxy in production.
+- Helmet on the backend; `X-Frame-Options: DENY`, `nosniff`, strict referrer policy on the dashboard.
+- **Client IPs:** the dashboard forwards only the right-most `X-Forwarded-For` hop. When the dashboard is exposed directly (no reverse proxy) a client can choose that value, so IP-based rate limits are weaker; the per-account login lockout does not depend on IPs. Put Caddy (or another proxy that overwrites `X-Forwarded-For`) in front for accurate IPs.
+
+## Input & output handling
+
+- All bodies and queries are validated with Zod; unknown fields are rejected on update endpoints.
+- Prisma uses parameterised queries; the only raw SQL uses tagged templates.
+- Error responses never contain stack traces or SQL.
+- Translation catalogues are rendered as text and validated to contain no markup, `javascript:` URLs or event-handler attributes.
+
+## Secrets
+
+- Never committed: `.env` is git-ignored; `.env.example` contains placeholders only.
+- CI runs Gitleaks and `npm audit` on production dependencies.
+
+## Reporting vulnerabilities
+
+Please open a private security advisory on the GitHub repository instead of a public issue.

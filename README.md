@@ -1,0 +1,70 @@
+# Minecraft Network Manager
+
+A self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring and a multilingual web dashboard. Everything is deployed with Docker Compose.
+
+> **Status: v0.1.0 – Phase 1 (Foundation).** The web platform (backend, dashboard, database, setup wizard, authentication, RBAC, audit log, i18n) is implemented. The Velocity and Paper plugins and the player, moderation, statistics, AntiCheat and inventory modules are scheduled for the next phases – see [Roadmap](#roadmap). Modules that do not exist yet are shown as "Not available yet" in the dashboard and never display placeholder data.
+
+## Features in this release
+
+| Area | What works today |
+| --- | --- |
+| Deployment | Docker Compose stack (MySQL 8.4, Redis 7.4, backend, dashboard), healthchecks, automatic migrations, optional HTTPS via Caddy |
+| Setup wizard | Service checks, migration status, Owner creation protected by a one-time setup code, network configuration, Velocity registration token |
+| Authentication | Argon2id passwords, short-lived access tokens + rotating refresh tokens in `HttpOnly`/`SameSite=Strict` cookies, CSRF header check, per-IP rate limits (Redis) and per-account lockout |
+| Authorization | Role-based access control with six default roles, custom roles, wildcard permissions, privilege-escalation prevention, enforced server-side |
+| Audit log | Every administrative action is recorded and searchable |
+| Internationalization | `en-US` default, `de-DE` bundled, per-user language with instant switching, ICU plurals, locale-aware numbers/dates, time-zone aware timestamps, catalogue validation (no HTML/script injection) |
+| Servers | Single-use, expiring registration tokens; plugin registration endpoint that exchanges a token for a credential (plugins arrive in Phase 2) |
+| Dashboard | Overview from real data, servers, users & roles, audit log, settings (preferences, network, languages, Minecraft integration); dark/light theme; responsive |
+| API | REST with OpenAPI docs at `/api/docs` |
+
+## Quick start
+
+Requirements: Docker Engine 24+ with the Compose plugin. Nothing else needs to be installed on the host.
+
+```sh
+git clone <repository-url> minecraft-network-manager
+cd minecraft-network-manager
+sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
+docker compose up -d --build
+docker compose logs backend | grep "Setup code"   # one-time code for the wizard
+```
+
+Open `http://<host>:3000` and complete the setup wizard. Full guide: [docs/installation](docs/installation/README.md).
+
+## Repository layout
+
+```
+apps/
+  backend/          NestJS API, Prisma schema & migrations
+  dashboard/        Next.js dashboard (App Router, Tailwind, next-intl)
+packages/
+  shared-types/     Permissions, roles, locales and shared contracts
+  translations/     Dashboard catalogues (JSON) + plugin messages (YAML) + validator
+infrastructure/
+  docker/           Dockerfiles, entrypoint, Caddyfile
+  scripts/          Operational scripts
+docs/               Architecture, installation, API and development docs
+```
+
+## Documentation
+
+- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md)
+- [Installation](docs/installation/README.md) · [Updating](docs/installation/updating.md) · [Backup & restore](docs/installation/backup-restore.md) · [HTTPS](docs/installation/https.md)
+- [API](docs/api/README.md) · [Development](docs/development/README.md)
+
+## Roadmap
+
+| Version | Milestone | Status |
+| --- | --- | --- |
+| v0.1.0 | Foundation: monorepo, Docker, backend, dashboard, auth, RBAC, i18n, setup wizard, CI | ✅ implemented |
+| v0.2.0 | Minecraft integration: Velocity & Paper plugins, authenticated plugin API, sessions, heartbeats, WebSocket updates | planned |
+| v0.3.0 | Network-wide punishment system and moderation commands | planned |
+| v0.4.0 | Player search & profiles | planned |
+| v0.5.0 | Statistics collection and charts | planned |
+| v0.6.0 | AntiCheat integration and inventory management | planned |
+| v1.0.0 | Production readiness | planned |
+
+## License
+
+[MIT](LICENSE)
