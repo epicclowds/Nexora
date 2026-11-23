@@ -46,6 +46,11 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `GET /api/anticheat/events` · `…/summary` · `GET/PUT …/settings` · `GET /api/players/:uuid/anticheat` | session | `anticheat.view` / `anticheat.manage` | AntiCheat ([details](../architecture/anticheat.md)) |
 | `GET /api/players/:uuid/inventories` · `GET …/:server/inventory` · `GET …/:server/ender-chest` · `POST …/:server/refresh` | session | `players.view.inventory` | Inventory overview, snapshot and history, snapshot request ([details](../architecture/inventory.md)) |
 | `POST /api/players/:uuid/inventories/:server/:kind/revisions` · `POST …/revisions/:id/rollback` · `…/cancel` | session | `players.edit.inventory` | Edit, roll back, cancel |
+| `GET/PUT /api/settings/plugins` · `GET …/plugins/messages` | session | `settings.manage` | Centrally managed plugin settings and message overrides ([details](../architecture/configuration.md)) |
+| `GET /api/settings/moderation` · `PUT …` | session · `settings.manage` for PUT | – | Punishment templates |
+| `POST /api/i18n/languages` · `DELETE …/:locale` · `PUT/DELETE /api/i18n/catalogs/:locale` | session | `translations.manage` | Add/delete languages, import/reset catalogues |
+| `GET /api/i18n/messages/:locale` | public | – | Imported messages of an enabled language (used by the dashboard) |
+| `GET /api/servers/registration-tokens/:id` | session | `servers.manage` | Registration progress (pending, registered, expired) |
 | `GET/PATCH /api/settings/privacy` | session | `settings.manage` | IP retention period |
 | `GET /api/punishments` | session | `punishments.history` | Search/filter punishments (`type`, `status`, `search`) |
 | `POST /api/punishments` | session | per type (e.g. `punishments.ban`) | Issue a punishment |
@@ -57,6 +62,7 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `GET /api/plugin/v1/ping` · `POST …/heartbeat` · `…/events` · `…/sync` · `…/shutdown` | request signature | – | Plugin API ([protocol](../architecture/plugin-protocol.md)) |
 | `POST /api/plugin/v1/anticheat/reports` | request signature | – | AntiCheat report |
 | `POST /api/plugin/v1/inventories` · `GET …/inventories/pending` · `POST …/inventories/revisions/:id/result` | request signature (Paper) | – | Inventory snapshots and edits |
+| `GET /api/plugin/v1/config` | request signature | – | Managed plugin settings (heartbeat and ping responses carry `configRevision`) |
 | `POST /api/plugin/v1/statistics` | request signature (Paper) | – | Statistics upload |
 | `GET /api/plugin/v1/punishments/active` · `…/changes?after=` · `POST …/punishments` · `…/punishments/revoke` · `GET …/players/lookup` | request signature | – | Punishment feed and in-game moderation ([punishments](../architecture/punishments.md)) |
 

@@ -7,19 +7,21 @@
 
 Build them with `./gradlew build` (output in `apps/velocity-plugin/build/libs` and `apps/paper-plugin/build/libs`), or download the `minecraft-plugins` artifact from a CI run.
 
-## 1. Create registration tokens
+## 1. Generate the configuration (recommended)
 
-Dashboard → **Settings → Minecraft Integration**:
+Dashboard → **Settings → Minecraft integration** → *Add a server*:
 
-- one **Velocity** token per proxy (e.g. `proxy`),
-- one **Paper** token per backend server. **Use exactly the server name from `velocity.toml`** (e.g. `lobby`, `survival`), otherwise server switches cannot be linked to the server.
+1. Choose **Velocity** (one per proxy) or **Paper** (one per backend server) and enter the name. **Paper servers must use exactly the server name from `velocity.toml`** (e.g. `lobby`, `survival`), otherwise server switches cannot be linked to the server.
+2. Adjust the options (connection, moderation, statistics, inventories, AntiCheat allow-list). The preview shows the resulting `config.properties`.
+3. Click **Create token & configuration** and download the ZIP package (configuration + `INSTALL.md`) or `config.properties`.
+4. Put the jar into `plugins/`, copy the configuration to `plugins/networkmanager/config.properties` (Velocity) or `plugins/NetworkManager/config.properties` (Paper) and start the server.
 
-Tokens are single-use and expire after 30 minutes (`REGISTRATION_TOKEN_TTL_MINUTES`). Each token is shown only once.
+The dashboard page shows when the plugin has registered and when the first heartbeat arrived. Tokens are single-use and expire after 30 minutes (`REGISTRATION_TOKEN_TTL_MINUTES`). Details: [Configuration management](../architecture/configuration.md).
 
-## 2. Install and configure
+## 2. Manual configuration (alternative)
 
-1. Put the jar into `plugins/` and start the server once. The plugin creates `plugins/networkmanager/config.properties` (Velocity) or `plugins/NetworkManager/config.properties` (Paper).
-2. Edit `config.properties`:
+1. Put the jar into `plugins/` and start the server once. The plugin creates its `config.properties`.
+2. Create a registration token in the same dashboard section and edit `config.properties`:
 
    ```properties
    backend-url=https://admin.example.net   # dashboard address, no path
@@ -29,7 +31,13 @@ Tokens are single-use and expire after 30 minutes (`REGISTRATION_TOKEN_TTL_MINUT
 
 3. Restart. The log shows `Registered with the backend as "<name>"`. The token is exchanged for credentials stored in `credentials.properties` (keep this file secret; it is created with owner-only permissions where supported). The token can then be removed from the config.
 
-All options are documented in the generated `config.properties`.
+All options are documented in the generated `config.properties`. With `managed-settings=true` (default) the language, plugin messages, statistics and inventory options can be changed centrally under Settings → Plugin settings and apply without a restart; all other options require a restart.
+
+| Option | Default | Platform |
+| --- | --- | --- |
+| `punishments-enabled` | `true` | Both: enforce network bans (proxy) and mutes (Paper) |
+| `moderation-commands` | `true` | Velocity: register the in-game moderation commands |
+| `managed-settings` | `true` | Both: accept centrally managed plugin settings |
 
 ## 3. Verify
 

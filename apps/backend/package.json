@@ -1,6 +1,6 @@
 {
   "name": "@mnm/backend",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Central NestJS backend for Minecraft Network Manager.",
   "scripts": {
@@ -17,8 +17,8 @@
     "prisma:validate": "prisma validate"
   },
   "dependencies": {
-    "@mnm/shared-types": "0.7.0",
-    "@mnm/translations": "0.7.0",
+    "@mnm/shared-types": "0.8.0",
+    "@mnm/translations": "0.8.0",
     "@nestjs/common": "^12.6.0",
     "@nestjs/config": "^12.1.1",
     "@nestjs/core": "^12.6.0",

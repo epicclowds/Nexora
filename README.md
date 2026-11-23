@@ -2,7 +2,7 @@
 
 A self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring and a multilingual web dashboard. Everything is deployed with Docker Compose.
 
-> **Status: v0.7.0 – Phase 7 (Inventory management).** The web platform, the Velocity and Paper plugins, network-wide moderation, player profiles, statistics, the AntiCheat integration and inventory management are implemented. Production hardening is scheduled for the next phase – see [Roadmap](#roadmap). Modules that do not exist yet are shown as "Not available yet" in the dashboard and never display placeholder data.
+> **Status: v0.8.0 – Phase 8 (Configuration and setup).** The web platform, the Velocity and Paper plugins, network-wide moderation, player profiles, statistics, the AntiCheat integration, inventory management and central configuration are implemented. Production hardening is scheduled for the next phase – see [Roadmap](#roadmap). Modules that do not exist yet are shown as "Not available yet" in the dashboard and never display placeholder data.
 
 ## Features in this release
 
@@ -20,6 +20,7 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 | Statistics | Movement, combat, blocks (per type, ores) and general statistics from Minecraft's own counters plus active/AFK time, chat messages and XP; tick-spread collection; hourly history with 24 h / 7 d / 30 d / custom ranges (partial coverage flagged, resets handled); daily charts; network totals and leaderboards |
 | AntiCheat | Java API for allow-listed AntiCheat plugins and console-only `/anticheatban`; dashboard rule engine per check (action, duration, VL threshold, cooldown), safe defaults (log only), rate limits, idempotent reports, evidence on punishments, event history and daily counters |
 | Inventories | View and edit inventories and Ender Chests per server in a Minecraft-style editor (drag & drop, amount, name, lore, enchantments); per-slot compare-and-set applied atomically on the server thread (no duplication or loss), offline edits queued until the next join, revision history with rollback, full audit trail |
+| Configuration | Setup wizard; guided server registration with Velocity/Paper config generator (copy, download, ZIP package with instructions, live registration status); plugin settings and in-game messages managed centrally and applied live without restarts; punishment templates; language management with catalogue import/export and runtime-added languages |
 | Realtime | Server-Sent Events with Redis fan-out; permission-filtered |
 | Moderation | Bans, temp bans, IP blacklists, mutes, temp mutes, kicks, warnings; `/ban /tempban /unban /mute /tempmute /unmute /kick /warn /history /check`; login checks from a local, disk-persisted cache (no network on join, works during outages); mutes enforced on Paper; duplicate prevention and idempotency; dashboard moderation page, player history, revoke, internal notes; full audit trail |
 | Dashboard | Live overview, players, online players, player profiles, servers, users & roles, audit log, settings; dark/light theme; responsive |
@@ -59,8 +60,8 @@ docs/               Architecture, installation, API and development docs
 
 ## Documentation
 
-- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md) · [Player profiles](docs/architecture/player-profiles.md) · [Statistics](docs/architecture/statistics.md) · [AntiCheat](docs/architecture/anticheat.md) · [Inventories](docs/architecture/inventory.md)
-- [Installation](docs/installation/README.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Backup & restore](docs/installation/backup-restore.md) · [HTTPS](docs/installation/https.md)
+- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md) · [Player profiles](docs/architecture/player-profiles.md) · [Statistics](docs/architecture/statistics.md) · [AntiCheat](docs/architecture/anticheat.md) · [Inventories](docs/architecture/inventory.md) · [Configuration](docs/architecture/configuration.md)
+- [Installation](docs/installation/README.md) · [Production deployment](docs/installation/deployment.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Backup & restore](docs/installation/backup-restore.md) · [HTTPS](docs/installation/https.md)
 - [API](docs/api/README.md) · [Development](docs/development/README.md)
 
 ## Roadmap
@@ -74,6 +75,7 @@ docs/               Architecture, installation, API and development docs
 | v0.5.0 | Statistics collection and charts | ✅ implemented |
 | v0.6.0 | AntiCheat integration | ✅ implemented |
 | v0.7.0 | Inventory management | ✅ implemented |
+| v0.8.0 | Configuration and setup | ✅ implemented |
 | v1.0.0 | Production readiness | planned |
 
 ## License

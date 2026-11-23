@@ -74,4 +74,4 @@ API documentation (OpenAPI) is available at `http://<host>:3000/api/docs` unless
 - Backend `unhealthy`: check that MySQL is healthy and that `.env` passwords contain no special characters.
 - Dashboard shows "The backend could not be reached": the backend container is not healthy yet.
 
-More: [Updating](updating.md) · [Backup & restore](backup-restore.md) · [HTTPS](https.md)
+More: [Production deployment](deployment.md) · [Updating](updating.md) · [Backup & restore](backup-restore.md) · [HTTPS](https.md)
