@@ -69,6 +69,12 @@ fail() {
   fi
   echo "----- plugin log lines -----"; plugin_lines 40
   echo "----- last 80 lines of server.log ($work/server.log) -----"; tail -n 80 server.log || true
+  if [ -n "${GITHUB_ACTIONS:-}" ]; then
+    # Annotations are visible on the run page (and via the API) without opening the log.
+    local excerpt
+    excerpt=$( { grep -E "$PLUGIN_ERRORS|ERROR|Exception|Caused by" server.log | head -n 12; plugin_lines 8; } | cut -c1-240 | sed -e 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+    echo "::error title=Smoke test $platform $mc_version failed::$*%0A$excerpt"
+  fi
   exit 1
 }
 
