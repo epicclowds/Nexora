@@ -2,12 +2,14 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [1.0.1] – 2026-11-24
+## [1.0.2] – 2026-11-24
 
 Distribution release: Nexora can now be installed entirely from prebuilt artifacts.
 
+> Version 1.0.1 was tagged but never released: the release pipeline stopped at the verification of the published images (see *Fixed*), so no GitHub Release was created and `latest` was not moved. Its `1.0.1` images remain in the registry but are superseded; use 1.0.2.
+
 ### Added
-- GitHub Releases with `Nexora-Velocity-1.0.1.jar`, `Nexora-Paper-1.0.1.jar`, a plugin package with example configurations, a Docker deployment package (`nexora-deploy-1.0.1.tar.gz`, no source code needed) and `SHA256SUMS`.
+- GitHub Releases with `Nexora-Velocity-1.0.2.jar`, `Nexora-Paper-1.0.2.jar`, a plugin package with example configurations, a Docker deployment package (`nexora-deploy-1.0.2.tar.gz`, no source code needed) and `SHA256SUMS`.
 - Release pipeline: version consistency check, full CI, plugin smoke tests on real Velocity/Paper servers, multi-arch images (`linux/amd64`, `linux/arm64`) with provenance and SBOM, vulnerability scan, clean installation from the published images with real plugin servers, verified asset downloads, `latest` only after all checks.
 - *Build plugins* workflow: tests, jar inspection (descriptors, versions, bytecode level, no bundled server libraries), startup smoke tests on Velocity 4.3.1 and Paper 26.1.2, 26.2 and 26.3, downloadable artifacts for every build.
 - Dashboard warning for servers whose plugin belongs to another release (*Update recommended* / *Update required*).
@@ -15,6 +17,7 @@ Distribution release: Nexora can now be installed entirely from prebuilt artifac
 
 ### Fixed
 - Plugins could not register with a dashboard reached over plain `http://` (e.g. a private network address): Java's HTTP client tried an HTTP/2 (`h2c`) upgrade, which the dashboard server closes without a response. The plugins now use HTTP/1.1. Found by the new integration test with real Velocity/Paper servers.
+- Release pipeline: the plugin artifact is uploaded as a flat folder, so the verification and release jobs find the jars (this stopped the 1.0.1 release before the GitHub Release was created).
 
 ### Changed
 - **Breaking (deployment):** `docker-compose.yml` now pulls `ghcr.io/epicclowds/nexora/{backend,dashboard}:${NEXORA_VERSION}` instead of building locally. `.env` uses `NEXORA_VERSION`/`NEXORA_IMAGE_PREFIX` instead of `MNM_VERSION`/`MNM_IMAGE_PREFIX`.
@@ -23,7 +26,7 @@ Distribution release: Nexora can now be installed entirely from prebuilt artifac
 - GitHub Actions updated to current major versions (Node.js 24 runtime).
 
 ### Migration from 1.0.0
-Replace `docker-compose.yml` with the one from the release, add `NEXORA_VERSION=1.0.1` to `.env` and remove the `MNM_*` lines, then `docker compose pull && docker compose up -d`. Replace the plugin jars (delete the old `NetworkManager-*.jar`). Data and plugin configurations are kept. See [Updating](docs/installation/updating.md#upgrading-from-100).
+Replace `docker-compose.yml` with the one from the release, add `NEXORA_VERSION=1.0.2` to `.env` and remove the `MNM_*` lines, then `docker compose pull && docker compose up -d`. Replace the plugin jars (delete the old `NetworkManager-*.jar`). Data and plugin configurations are kept. See [Updating](docs/installation/updating.md#upgrading-from-100).
 
 ## [1.0.0] – 2026-11-24
 
@@ -73,5 +76,5 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
-[1.0.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.1
+[1.0.2]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.2
 [1.0.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.0

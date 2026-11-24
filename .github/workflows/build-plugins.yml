@@ -64,13 +64,18 @@ jobs:
         run: ./gradlew clean build --no-daemon --warning-mode=fail
       - name: Inspect the jars (descriptors, versions, classes, bundled libraries)
         run: node infrastructure/scripts/verify-plugin-jars.mjs "${{ steps.version.outputs.version }}"
+      # One flat folder: the artifact then contains just the two jars, so every
+      # consumer finds them at <download-dir>/Nexora-*-<version>.jar.
+      - name: Collect the jars
+        run: |
+          mkdir -p build/plugins
+          cp "apps/velocity-plugin/build/libs/Nexora-Velocity-${{ steps.version.outputs.version }}.jar" "apps/paper-plugin/build/libs/Nexora-Paper-${{ steps.version.outputs.version }}.jar" build/plugins/
+          ls -l build/plugins
       - name: Upload plugin jars
         uses: actions/upload-artifact@v7
         with:
           name: nexora-plugins-${{ steps.version.outputs.version }}
-          path: |
-            apps/velocity-plugin/build/libs/Nexora-Velocity-${{ steps.version.outputs.version }}.jar
-            apps/paper-plugin/build/libs/Nexora-Paper-${{ steps.version.outputs.version }}.jar
+          path: build/plugins/*.jar
           if-no-files-found: error
 
   smoke:

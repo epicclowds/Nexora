@@ -186,6 +186,12 @@ jobs:
         with:
           name: nexora-plugins-${{ needs.prepare.outputs.version }}
           path: jars
+      - name: Plugin jars are present
+        run: |
+          ls -lR jars
+          for f in "jars/Nexora-Velocity-$VERSION.jar" "jars/Nexora-Paper-$VERSION.jar"; do
+            test -s "$f" || { echo "::error::$f is missing in the plugin artifact"; exit 1; }
+          done
       - name: Images are public, built from this commit and run as non-root
         run: |
           for c in backend dashboard; do
@@ -265,6 +271,12 @@ jobs:
           pattern: digest-*
           merge-multiple: true
           path: digests
+      - name: Plugin jars and image digests are present
+        run: |
+          ls -lR jars digests
+          for f in "jars/Nexora-Velocity-$VERSION.jar" "jars/Nexora-Paper-$VERSION.jar" digests/backend digests/dashboard; do
+            test -s "$f" || { echo "::error::$f is missing"; exit 1; }
+          done
       - name: Assemble assets and checksums
         run: bash infrastructure/scripts/package-release.sh "$VERSION" "jars/Nexora-Velocity-$VERSION.jar" "jars/Nexora-Paper-$VERSION.jar" dist
       - name: Release notes

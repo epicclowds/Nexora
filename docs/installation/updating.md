@@ -1,6 +1,6 @@
 # Updating
 
-Nexora is released as one version for all components: backend image, dashboard image and both Minecraft plugins carry the same number (e.g. `1.0.1`). Always update them together. Release notes (new features, breaking changes, migration notes) are on the [Releases page](https://github.com/epicclowds/Nexora/releases).
+Nexora is released as one version for all components: backend image, dashboard image and both Minecraft plugins carry the same number (e.g. `1.0.2`). Always update them together. Release notes (new features, breaking changes, migration notes) are on the [Releases page](https://github.com/epicclowds/Nexora/releases).
 
 ## 1. Back up
 
@@ -15,7 +15,7 @@ Database migrations are forward-only and cannot be undone automatically ([Backup
 Your installation is **pinned** to the version in `.env` – it never switches to a new release by itself:
 
 ```dotenv
-NEXORA_VERSION=1.0.1
+NEXORA_VERSION=1.0.2
 ```
 
 To update:
@@ -47,7 +47,7 @@ Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` of the
 
 ## Upgrading from 1.0.0
 
-1.0.1 changes how the images are referenced: `.env` uses `NEXORA_VERSION` (and optionally `NEXORA_IMAGE_PREFIX`) instead of `MNM_VERSION`/`MNM_IMAGE_PREFIX`, and `docker-compose.yml` pulls the published images instead of building them locally. Replace `docker-compose.yml` with the one from the 1.0.1 release, add `NEXORA_VERSION=1.0.1` to your `.env` and remove the `MNM_*` lines. The Compose project name and volumes are unchanged, so your data is kept. The plugin files are now called `Nexora-*.jar`: delete the old `NetworkManager-*.jar` files when installing the new ones (configuration folders stay the same).
+1.0.2 changes how the images are referenced: `.env` uses `NEXORA_VERSION` (and optionally `NEXORA_IMAGE_PREFIX`) instead of `MNM_VERSION`/`MNM_IMAGE_PREFIX`, and `docker-compose.yml` pulls the published images instead of building them locally. Replace `docker-compose.yml` with the one from the 1.0.2 release, add `NEXORA_VERSION=1.0.2` to your `.env` and remove the `MNM_*` lines. The Compose project name and volumes are unchanged, so your data is kept. The plugin files are now called `Nexora-*.jar`: delete the old `NetworkManager-*.jar` files when installing the new ones (configuration folders stay the same).
 
 ## Using images from another registry
 

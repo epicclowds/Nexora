@@ -31,19 +31,19 @@ docker compose version              # must print "Docker Compose version v2…"
 
 Pick **one** of the two ways. Both give you a folder with `docker-compose.yml`, `.env.example` and the helper scripts; neither contains anything you have to build.
 
-**A) Release package (recommended)** – replace `1.0.1` with the [newest release](https://github.com/epicclowds/Nexora/releases/latest):
+**A) Release package (recommended)** – replace `1.0.2` with the [newest release](https://github.com/epicclowds/Nexora/releases/latest):
 
 ```sh
 mkdir -p /opt && cd /opt
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.1/nexora-deploy-1.0.1.tar.gz
-tar -xzf nexora-deploy-1.0.1.tar.gz
+curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.2/nexora-deploy-1.0.2.tar.gz
+tar -xzf nexora-deploy-1.0.2.tar.gz
 cd nexora
 ```
 
 **B) Git checkout of a release**
 
 ```sh
-git clone --branch v1.0.1 --depth 1 https://github.com/epicclowds/Nexora.git /opt/nexora
+git clone --branch v1.0.2 --depth 1 https://github.com/epicclowds/Nexora.git /opt/nexora
 cd /opt/nexora
 ```
 
