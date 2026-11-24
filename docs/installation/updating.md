@@ -1,12 +1,13 @@
 # Updating
 
-**Always take a backup first** ([Backup & restore](backup-restore.md)). Database migrations are forward-only and cannot be rolled back automatically.
+**Always take a backup first:** `sh infrastructure/scripts/backup.sh` ([Backup & restore](backup-restore.md)). Database migrations are forward-only and cannot be rolled back automatically.
 
 ## Using locally built images (default)
 
 ```sh
-git pull
-docker compose up -d --build
+git fetch --tags
+git checkout v<version>          # or: git pull for the latest main
+docker compose up -d --build --wait
 ```
 
 ## Using published images
@@ -15,7 +16,7 @@ Once release images are published to GHCR (workflow `release.yml`, triggered by 
 
 ```dotenv
 MNM_IMAGE_PREFIX=ghcr.io/<owner>/<repository>
-MNM_VERSION=0.2.0   # or "latest"
+MNM_VERSION=1.0.0   # or "latest"
 ```
 
 Then:

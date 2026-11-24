@@ -10,7 +10,9 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 - Errors: `{ "statusCode": 403, "code": "FORBIDDEN", "message": "...", "issues"?: [{ "path", "message" }] }`.
 - Rate limits answer `429`.
 
-## Endpoints (v0.6.0)
+## Endpoints
+
+The complete list of routes with their required permissions is generated into the [permission matrix](../architecture/permission-matrix.md).
 
 | Method & path | Auth | Permission | Purpose |
 | --- | --- | --- | --- |
@@ -46,6 +48,8 @@ The backend exposes a REST API under `/api`. Interactive OpenAPI documentation i
 | `GET /api/anticheat/events` · `…/summary` · `GET/PUT …/settings` · `GET /api/players/:uuid/anticheat` | session | `anticheat.view` / `anticheat.manage` | AntiCheat ([details](../architecture/anticheat.md)) |
 | `GET /api/players/:uuid/inventories` · `GET …/:server/inventory` · `GET …/:server/ender-chest` · `POST …/:server/refresh` | session | `players.view.inventory` | Inventory overview, snapshot and history, snapshot request ([details](../architecture/inventory.md)) |
 | `POST /api/players/:uuid/inventories/:server/:kind/revisions` · `POST …/revisions/:id/rollback` · `…/cancel` | session | `players.edit.inventory` | Edit, roll back, cancel |
+| `POST /api/auth/login/2fa` | public (challenge) | – | Second login step (TOTP or recovery code) |
+| `GET /api/auth/me/2fa` · `POST …/setup` · `…/enable` · `…/disable` · `…/recovery-codes` | session | – | Own two-factor authentication |
 | `GET/PUT /api/settings/plugins` · `GET …/plugins/messages` | session | `settings.manage` | Centrally managed plugin settings and message overrides ([details](../architecture/configuration.md)) |
 | `GET /api/settings/moderation` · `PUT …` | session · `settings.manage` for PUT | – | Punishment templates |
 | `POST /api/i18n/languages` · `DELETE …/:locale` · `PUT/DELETE /api/i18n/catalogs/:locale` | session | `translations.manage` | Add/delete languages, import/reset catalogues |

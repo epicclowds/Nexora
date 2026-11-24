@@ -8,7 +8,7 @@ Players are identified by their Minecraft UUID. Search accepts the current name,
 | --- | --- | --- |
 | Overview | 3D skin, head, status, current server, playtime, connections, first join, client version/brand, game mode, name history, recent sessions | `players.view` |
 | Statistics | Ranges, category values, daily charts, all-time breakdowns ([details](statistics.md)) | `players.view.statistics` |
-| Inventory / Ender Chest | Planned (Phase 7) | – |
+| Inventory / Ender Chest | Per-server editor with history and rollback ([details](inventory.md)) | `players.view.inventory`; editing `players.edit.inventory` |
 | Moderation | Active ban/mute, punish, history, revoke | `punishments.history` (+ issue/revoke permissions) |
 | Connections | Connection history; IP addresses, IP summary and other accounts on the same IPs; approximate location | `players.view`; IPs `players.view.ip`; location `players.view.location` |
 | Activity | Playtime in range, sessions, average session, daily playtime chart (7/30/90 days), weekday × hour heatmap | `players.view` |

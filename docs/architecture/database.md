@@ -43,4 +43,4 @@ Tables for later phases are created now so the schema evolves additively; they s
 
 ## Privacy & retention
 
-IP addresses (`player_connections.ip_address`, `dashboard_sessions.ip_address`, `audit_logs.ip_address`) are personal data. Access to player IPs will require `players.view.ip`; geolocation fields are approximate and labelled as such. Configurable retention and anonymisation jobs are planned together with connection tracking (Phase 2/4).
+IP addresses (`player_connections.ip_address`, `dashboard_sessions.ip_address`, `audit_logs.ip_address`) are personal data. Access to player IPs requires `players.view.ip`; geolocation fields are approximate and labelled as such. IP addresses are removed after the retention period configured under Settings → Privacy (default 180 days).

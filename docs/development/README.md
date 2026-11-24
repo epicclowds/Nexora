@@ -42,6 +42,22 @@ BACKEND_INTERNAL_URL=http://localhost:4000 npm run dev -w @mnm/dashboard   # htt
 
 CI (`.github/workflows/ci.yml`) runs all of the above plus migration drift detection, Docker image builds, Compose validation, Gitleaks and `npm audit`.
 
+## Test layers
+
+| Layer | Where | Covers |
+| --- | --- | --- |
+| Unit | `apps/*/test`, `apps/dashboard/src/lib/*.test.ts`, JUnit in `apps/*/src/test` | Business rules (punishments, statistics, AntiCheat rules, inventory compare-and-set, TOTP, config generator, plugin caches, signing) |
+| Permission audit | `apps/backend/test/route-permissions.spec.ts` | Every route is public, plugin-signed or session-protected on purpose; regenerates [permission-matrix.md](../architecture/permission-matrix.md) with `UPDATE_PERMISSION_MATRIX=1` |
+| Integration (e2e) | `apps/backend/test/e2e.spec.ts` | Whole backend against MySQL 8.4 + Redis: setup, auth, 2FA, RBAC, plugin API, punishments, statistics, AntiCheat, inventories, configuration |
+| Deployment | CI job *Deployment* + `infrastructure/scripts/verify-deployment.mjs` | Real Docker Compose stack: setup through the dashboard proxy, server registration, signed plugin traffic, 2000 seeded players, load test with latency thresholds, restart, backup, data loss, restore |
+
+Run the deployment verification against a local stack (never against production – it creates an owner account and test data):
+
+```sh
+SETUP_TOKEN=<value from .env> node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 setup
+node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 load
+```
+
 ## Database changes
 
 1. Edit `apps/backend/prisma/schema.prisma`.

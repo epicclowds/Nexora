@@ -10,9 +10,12 @@
 | Revocation | Every request checks the session row, so logout, disabling a user, password or role changes take effect immediately |
 | CSRF | All state-changing requests must send `X-MNM-CSRF: 1` (cannot be set cross-site without a CORS preflight; CORS is not enabled) in addition to `SameSite=Strict` |
 | Brute force | Per-IP limits in Redis (login: 5/min, 5 min block) **and** per-account lockout after 10 failures for 15 minutes |
-| 2FA | Schema fields exist (`two_factor_*`); TOTP enrolment is planned |
+| 2FA | Optional TOTP (RFC 6238, authenticator apps) per account: enrolment with password + first code, secret sealed with AES-256-GCM (key derived from `JWT_SECRET`), replay protection per time step, 10 single-use recovery codes (stored hashed). Login returns a 5-minute challenge instead of a session until a valid code is entered; failures count towards the account lockout. Enabling 2FA ends all other sessions; administrators can reset 2FA for lower-priority users. |
 
 ## Authorization
+
+The generated [permission matrix](permission-matrix.md) lists what every route requires; a test fails when a route is added without a deliberate protection.
+
 
 - Global guards: every route requires a session unless marked `@Public()`.
 - Permissions are checked on the server (`@RequirePermissions`). Wildcards: `*` (Owner) and `namespace.*`.
@@ -26,12 +29,13 @@
 ## Plugin registration
 
 - Registration tokens: 24 random bytes, stored hashed, single-use, expire after 30 minutes (configurable), consumed with a conditional update so they can never be redeemed twice.
-- Redemption returns a key id + secret; only the secret's SHA-256 is stored. Request signing with replay protection for the plugin API is part of Phase 2.
+- Redemption returns a key id + secret; only the secret's SHA-256 is stored. Every plugin request is HMAC-signed with a timestamp and a single-use nonce ([protocol](plugin-protocol.md)).
 
 ## Transport & headers
 
 - Use the `https` Compose profile (Caddy with automatic certificates) or your own TLS-terminating proxy in production.
-- Helmet on the backend; `X-Frame-Options: DENY`, `nosniff`, strict referrer policy on the dashboard.
+- Helmet on the backend. The dashboard sends a same-origin **Content-Security-Policy** (no third-party origins, `frame-ancestors 'none'`, `object-src 'none'`), `Cross-Origin-Opener-Policy`, `X-Frame-Options: DENY`, `nosniff` and a strict referrer policy. Caddy adds HSTS.
+- Containers run as the unprivileged `node` user; backend and dashboard drop all Linux capabilities and set `no-new-privileges`.
 - **Client IPs:** the dashboard forwards only the right-most `X-Forwarded-For` hop. When the dashboard is exposed directly (no reverse proxy) a client can choose that value, so IP-based rate limits are weaker; the per-account login lockout does not depend on IPs. Put Caddy (or another proxy that overwrites `X-Forwarded-For`) in front for accurate IPs.
 
 ## Input & output handling
@@ -50,8 +54,10 @@
 ## Secrets
 
 - Never committed: `.env` is git-ignored; `.env.example` contains placeholders only.
-- CI runs Gitleaks and `npm audit` on production dependencies.
+- CI runs Gitleaks over the full history and `npm audit` on production dependencies (fails on high or critical findings).
+
+The 1.0 security review is documented in [Security review](security-review.md).
 
 ## Reporting vulnerabilities
 
-Please open a private security advisory on the GitHub repository instead of a public issue.
+See [SECURITY.md](../../SECURITY.md).

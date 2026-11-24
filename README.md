@@ -2,15 +2,15 @@
 
 A self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring and a multilingual web dashboard. Everything is deployed with Docker Compose.
 
-> **Status: v0.8.0 – Phase 8 (Configuration and setup).** The web platform, the Velocity and Paper plugins, network-wide moderation, player profiles, statistics, the AntiCheat integration, inventory management and central configuration are implemented. Production hardening is scheduled for the next phase – see [Roadmap](#roadmap). Modules that do not exist yet are shown as "Not available yet" in the dashboard and never display placeholder data.
+> **Status: v1.0.0 – first stable release.** All nine development phases are complete: web platform, Velocity and Paper plugins, network-wide moderation, player profiles, statistics, AntiCheat integration, inventory management, central configuration and production hardening (security review, two-factor authentication, permission audit, verified deployment, load and backup/restore tests). See the [changelog](CHANGELOG.md).
 
-## Features in this release
+## Features
 
 | Area | What works today |
 | --- | --- |
 | Deployment | Docker Compose stack (MySQL 8.4, Redis 7.4, backend, dashboard), healthchecks, automatic migrations, optional HTTPS via Caddy |
 | Setup wizard | Service checks, migration status, Owner creation protected by a one-time setup code, network configuration, Velocity registration token |
-| Authentication | Argon2id passwords, short-lived access tokens + rotating refresh tokens in `HttpOnly`/`SameSite=Strict` cookies, CSRF header check, per-IP rate limits (Redis) and per-account lockout |
+| Authentication | Argon2id passwords, optional TOTP two-factor authentication with recovery codes, short-lived access tokens + rotating refresh tokens in `HttpOnly`/`SameSite=Strict` cookies, CSRF header check, per-IP rate limits (Redis) and per-account lockout |
 | Authorization | Role-based access control with six default roles, custom roles, wildcard permissions, privilege-escalation prevention, enforced server-side |
 | Audit log | Every administrative action is recorded and searchable |
 | Internationalization | `en-US` default, `de-DE` bundled, per-user language with instant switching, ICU plurals, locale-aware numbers/dates, time-zone aware timestamps, catalogue validation (no HTML/script injection) |
@@ -24,7 +24,8 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 | Realtime | Server-Sent Events with Redis fan-out; permission-filtered |
 | Moderation | Bans, temp bans, IP blacklists, mutes, temp mutes, kicks, warnings; `/ban /tempban /unban /mute /tempmute /unmute /kick /warn /history /check`; login checks from a local, disk-persisted cache (no network on join, works during outages); mutes enforced on Paper; duplicate prevention and idempotency; dashboard moderation page, player history, revoke, internal notes; full audit trail |
 | Dashboard | Live overview, players, online players, player profiles, servers, users & roles, audit log, settings; dark/light theme; responsive |
-| API | REST with OpenAPI docs at `/api/docs` |
+| API | REST with OpenAPI docs at `/api/docs`; [permission matrix](docs/architecture/permission-matrix.md) generated from the code |
+| Operations | Verified backup/restore scripts, deployment verification and load test (run in CI against the real Compose stack), hardened containers, Content-Security-Policy |
 
 ## Quick start
 
@@ -60,7 +61,7 @@ docs/               Architecture, installation, API and development docs
 
 ## Documentation
 
-- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md) · [Player profiles](docs/architecture/player-profiles.md) · [Statistics](docs/architecture/statistics.md) · [AntiCheat](docs/architecture/anticheat.md) · [Inventories](docs/architecture/inventory.md) · [Configuration](docs/architecture/configuration.md)
+- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md) · [Player profiles](docs/architecture/player-profiles.md) · [Statistics](docs/architecture/statistics.md) · [AntiCheat](docs/architecture/anticheat.md) · [Inventories](docs/architecture/inventory.md) · [Configuration](docs/architecture/configuration.md) · [Security review](docs/architecture/security-review.md) · [Permission matrix](docs/architecture/permission-matrix.md)
 - [Installation](docs/installation/README.md) · [Production deployment](docs/installation/deployment.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Backup & restore](docs/installation/backup-restore.md) · [HTTPS](docs/installation/https.md)
 - [API](docs/api/README.md) · [Development](docs/development/README.md)
 
@@ -76,7 +77,7 @@ docs/               Architecture, installation, API and development docs
 | v0.6.0 | AntiCheat integration | ✅ implemented |
 | v0.7.0 | Inventory management | ✅ implemented |
 | v0.8.0 | Configuration and setup | ✅ implemented |
-| v1.0.0 | Production readiness | planned |
+| v1.0.0 | Production readiness: security review, 2FA, permission audit, deployment/load/backup verification | ✅ released |
 
 ## License
 
