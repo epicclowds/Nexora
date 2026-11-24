@@ -25,6 +25,9 @@ Open `http://<your-server>:3000`, enter the setup code and follow the wizard.
 | `docker-compose.yml` | The stack: MySQL, Redis, backend, dashboard (+ optional HTTPS via Caddy) |
 | `.env.example` | All settings; `generate-secrets.sh` copies it to `.env` with secrets filled in |
 | `infrastructure/scripts/backup.sh`, `restore.sh` | Database backup and restore |
+| `infrastructure/scripts/repair-db-credentials.sh` | Fixes "P1000 Authentication failed" without data loss (passwords in `.env` differ from the existing database volume) |
+
+**Updating or moving an existing installation?** Copy your existing `.env` into this folder instead of running `generate-secrets.sh` – the database volume only accepts the passwords it was created with.
 | `infrastructure/docker/Caddyfile` | HTTPS reverse proxy (`docker compose --profile https up -d`) |
 
 Full documentation: https://github.com/epicclowds/Nexora/tree/v{{VERSION}}/docs/installation

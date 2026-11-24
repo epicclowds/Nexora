@@ -45,6 +45,14 @@ Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` of the
 3. Startup synchronisation adds new permissions and languages without overwriting customised roles.
 4. Plugins keep working during the update: they buffer events and keep enforcing punishments from their local cache until the backend is back.
 
+## Never generate a new `.env` for an existing installation
+
+Whether you update in place or extract a newer release package into a new folder: **keep your existing `.env`** (copy it into the new folder). Do not run `generate-secrets.sh` again – MySQL keeps the passwords of its first start in the data volume, and new passwords make the backend fail with `P1000 Authentication failed` (since 1.0.3 the script refuses when it finds an existing database volume). If it already happened, follow [Database password mismatch](README.md#database-password-mismatch-p1000) – no data is lost.
+
+## Upgrading from 1.0.2 to 1.0.3
+
+`docker-compose.yml` passes the database and Redis credentials as separate variables, so passwords with special characters work. Take `docker-compose.yml` and `infrastructure/scripts/` from the 1.0.3 release package (keep your `.env`), set `NEXORA_VERSION=1.0.3`, then `docker compose pull && docker compose up -d`. The 1.0.3 backend image still accepts the `DATABASE_URL`/`REDIS_URL` settings of the 1.0.2 `docker-compose.yml`, so the order of these steps does not matter.
+
 ## Upgrading from 1.0.0
 
 1.0.2 changes how the images are referenced: `.env` uses `NEXORA_VERSION` (and optionally `NEXORA_IMAGE_PREFIX`) instead of `MNM_VERSION`/`MNM_IMAGE_PREFIX`, and `docker-compose.yml` pulls the published images instead of building them locally. Replace `docker-compose.yml` with the one from the 1.0.2 release, add `NEXORA_VERSION=1.0.2` to your `.env` and remove the `MNM_*` lines. The Compose project name and volumes are unchanged, so your data is kept. The plugin files are now called `Nexora-*.jar`: delete the old `NetworkManager-*.jar` files when installing the new ones (configuration folders stay the same).

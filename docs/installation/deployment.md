@@ -16,8 +16,8 @@ This guide takes a fresh Linux host to a production installation. The short vers
 Download the deployment package of the release you want to run (no source code, images are pulled from GHCR) – see [Installation, step 3](README.md#3-download-nexora):
 
 ```sh
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.2/nexora-deploy-1.0.2.tar.gz
-tar -xzf nexora-deploy-1.0.2.tar.gz && cd nexora
+curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.3/nexora-deploy-1.0.3.tar.gz
+tar -xzf nexora-deploy-1.0.3.tar.gz && cd nexora
 sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
 ```
 
@@ -26,8 +26,8 @@ sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secre
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `MYSQL_DATABASE`, `MYSQL_USER` | `mnm` | Database and user |
-| `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | – (required) | Database passwords, letters and digits only |
-| `REDIS_PASSWORD` | – (required) | Redis password, letters and digits only |
+| `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | – (required) | Database passwords. MySQL applies them only when its volume is created – changing them later requires `repair-db-credentials.sh` ([details](README.md#database-password-mismatch-p1000)). Special characters are allowed (wrap the value in single quotes; avoid `$` and `'`) |
+| `REDIS_PASSWORD` | – (required) | Redis password (special characters allowed, as above) |
 | `JWT_SECRET` | – (required) | Signs session tokens, ≥ 32 random characters |
 | `SETUP_TOKEN` | empty | Fixed setup code (≥ 16 chars); empty = random code in the backend log |
 | `DASHBOARD_BIND`, `DASHBOARD_PORT` | `0.0.0.0`, `3000` | Published address of the dashboard. Use `127.0.0.1` behind a reverse proxy on the same host. |

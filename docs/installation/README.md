@@ -31,19 +31,19 @@ docker compose version              # must print "Docker Compose version v2…"
 
 Pick **one** of the two ways. Both give you a folder with `docker-compose.yml`, `.env.example` and the helper scripts; neither contains anything you have to build.
 
-**A) Release package (recommended)** – replace `1.0.2` with the [newest release](https://github.com/epicclowds/Nexora/releases/latest):
+**A) Release package (recommended)** – replace `1.0.3` with the [newest release](https://github.com/epicclowds/Nexora/releases/latest):
 
 ```sh
 mkdir -p /opt && cd /opt
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.2/nexora-deploy-1.0.2.tar.gz
-tar -xzf nexora-deploy-1.0.2.tar.gz
+curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.3/nexora-deploy-1.0.3.tar.gz
+tar -xzf nexora-deploy-1.0.3.tar.gz
 cd nexora
 ```
 
 **B) Git checkout of a release**
 
 ```sh
-git clone --branch v1.0.2 --depth 1 https://github.com/epicclowds/Nexora.git /opt/nexora
+git clone --branch v1.0.3 --depth 1 https://github.com/epicclowds/Nexora.git /opt/nexora
 cd /opt/nexora
 ```
 
@@ -58,6 +58,10 @@ sh infrastructure/scripts/generate-secrets.sh
 ```
 
 This copies `.env.example` to `.env` and fills in `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `REDIS_PASSWORD` and `JWT_SECRET`. Keep `.env` private and back it up – it contains the keys to your data.
+
+> **Only once per installation.** MySQL stores `MYSQL_PASSWORD` and `MYSQL_ROOT_PASSWORD` inside its data volume when it starts for the first time. A new `.env` with new passwords does **not** change them, and `JWT_SECRET` also encrypts the two-factor secrets. When you move or re-download Nexora, copy your existing `.env` instead of generating a new one. `generate-secrets.sh` refuses to run when it finds an existing Nexora database volume.
+
+Passwords may contain special characters; wrap values with `#`, spaces or `"` in single quotes (`MYSQL_PASSWORD='p@ss#word'`) and avoid `$` and `'`.
 
 Settings you may want to change (open `.env` with any editor, e.g. `nano .env`):
 
@@ -135,11 +139,56 @@ Never use `docker compose down -v`: `-v` deletes the database.
 | --- | --- |
 | `docker compose pull` fails with "manifest unknown" | `NEXORA_VERSION` names a version that does not exist. Use a version from the [releases page](https://github.com/epicclowds/Nexora/releases). |
 | `docker compose pull` fails with "denied" | Run `docker logout ghcr.io` – the images are public and need no login. |
-| A service stays `unhealthy` | `docker compose logs <service>`. For the backend, check that MySQL is healthy and that `.env` passwords contain only letters and digits. |
+| Backend log shows `P1000` / "Authentication failed against database server" | The passwords in `.env` do not match the database volume – see [Database password mismatch](#database-password-mismatch-p1000). |
+| A service stays `unhealthy` | `docker compose logs <service>`. For the backend, check that MySQL and Redis are healthy. |
 | "Setup code" not found in the logs | The installation is already initialised, or the backend is not running yet (`docker compose ps`). |
 | Dashboard says "The backend could not be reached" | The backend is still starting or unhealthy: `docker compose logs backend`. |
 | Port 3000 already in use | Change `DASHBOARD_PORT` in `.env`, then `docker compose up -d`. |
 | A Minecraft server does not appear in the dashboard | See [plugin troubleshooting](minecraft-plugins.md#troubleshooting). |
+
+### Database password mismatch (P1000)
+
+**Symptom:** the backend stops (or restarts again and again) and its log shows
+
+```
+Error: P1000: Authentication failed against database server, the provided database credentials for `mnm` are not valid.
+```
+
+while `docker compose ps` shows MySQL as *healthy*. (The MySQL healthcheck only checks that the server answers, so it stays healthy even with wrong passwords.)
+
+**Cause:** MySQL created its accounts with the passwords from the **first** start and keeps them in the data volume. Afterwards `MYSQL_PASSWORD` / `MYSQL_ROOT_PASSWORD` in `.env` are only what Nexora *uses*, not what MySQL *expects*. This happens when `.env` was replaced or regenerated while the volume was kept – typically when a release package was extracted into a new folder and `generate-secrets.sh` was run there: the new folder uses the same Compose project name and therefore the same existing database volume.
+
+**Your data is not affected.** Do **not** run `docker compose down -v`, do not delete volumes, and do not run the setup wizard again.
+
+Check which volume is used: `docker volume ls | grep mysql-data` (normally `minecraft-network-manager_mysql-data`).
+
+**Repair, option A – restore the previous passwords (preferred if you still have the old `.env`):**
+
+```sh
+cd /opt/nexora                      # your current Nexora folder
+cp .env .env.generated              # keep the new file for reference
+# copy these lines from the OLD .env into .env (replace the generated values):
+grep -E '^(MYSQL_DATABASE|MYSQL_USER|MYSQL_PASSWORD|MYSQL_ROOT_PASSWORD|REDIS_PASSWORD|JWT_SECRET)=' /path/to/old/.env
+nano .env
+docker compose up -d
+docker compose ps                   # backend becomes healthy within about a minute
+```
+
+Taking the old `JWT_SECRET` as well keeps everybody signed in and two-factor authentication working.
+
+**Repair, option B – make MySQL accept the passwords in `.env` (old `.env` lost):**
+
+```sh
+cd /opt/nexora
+sh infrastructure/scripts/repair-db-credentials.sh
+```
+
+The script never deletes data. It first checks whether anything is wrong at all, then:
+
+- if the root password in `.env` is still accepted, it sets the application user's password to the `.env` value while MySQL keeps running;
+- otherwise it asks for confirmation, stops backend, dashboard and MySQL for about a minute, writes a complete backup to `backups/mnm-before-credential-repair-<date>.sql.gz`, starts MySQL once in maintenance mode, sets the root and application passwords to the `.env` values and starts everything again.
+
+Passwords are never printed. If `JWT_SECRET` also changed (and the old value is lost), everybody has to sign in again, and authenticator codes no longer work because the two-factor secrets are encrypted with it. Affected users sign in with one of their **recovery codes**, turn two-factor authentication off and set it up again (an administrator can also reset it under User Management).
 
 ## Optional: IP geolocation
 
