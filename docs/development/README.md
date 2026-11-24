@@ -5,6 +5,7 @@
 - Node.js 22 LTS and npm 12 (`npm install -g npm@12`)
 - MySQL 8.4 and Redis 7 for running the backend (e.g. `docker compose up -d mysql redis` with temporary published ports, or local installations)
 - JDK 25 for the plugins (Gradle is provided by the wrapper: `./gradlew build`)
+- Docker with Compose v2 only if you want to run the whole stack from source (see below)
 
 npm 12 only runs install scripts for packages approved in `package.json → allowScripts` (argon2, prisma, @swc/core, …). Approve new ones with `npm install-scripts approve <pkg>`.
 
@@ -87,3 +88,27 @@ Docker Compose stack on a standard GitHub-hosted runner, 2000 seeded players, 60
 | Dashboard summary | 60 | 0 | 22 ms | 43 ms | 64 ms |
 
 These numbers show headroom, not a capacity limit; the current results of every CI run are in the job summary of the *Deployment* job.
+
+## Building from source with Docker
+
+The default `docker-compose.yml` pulls the published release images. To run the stack from your working copy, add the development override (images are tagged `nexora-local/*`):
+
+```sh
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+Plugins: `./gradlew build` → `apps/velocity-plugin/build/libs/Nexora-Velocity-<version>.jar` and `apps/paper-plugin/build/libs/Nexora-Paper-<version>.jar`. Check them with `node infrastructure/scripts/verify-plugin-jars.mjs <version>`. Every push to `main` and every pull request touching plugin code also builds them (workflow *Build plugins*, artifacts `nexora-plugins-<version>`).
+
+## Releasing
+
+All components share one version. To release `X.Y.Z`:
+
+1. Set the version everywhere and add the changelog entry: the five `package.json` files (and their `@mnm/*` dependency ranges), `gradle.properties` (`pluginVersion`), the default tag in `docker-compose.yml`, `NEXORA_VERSION` in `.env.example`, a `## [X.Y.Z]` section at the top of `CHANGELOG.md`, and the versions in the README quick start. `node infrastructure/scripts/check-versions.mjs X.Y.Z` must pass; run `npm install --package-lock-only` afterwards.
+2. Update `infrastructure/compatibility.json` if the tested server versions change (it drives the smoke tests and the release notes).
+3. Merge to `main`, wait for CI, then tag the merge commit and push the tag:
+
+   ```sh
+   git tag -a vX.Y.Z -m "Release X.Y.Z" && git push origin vX.Y.Z
+   ```
+
+The *Release* workflow then validates everything again, builds and smoke-tests the plugins, publishes multi-arch images with the version tags, scans them, performs a clean install from the published images with real Velocity/Paper servers, creates the GitHub Release with jars, packages, checksums and notes, verifies the downloads and finally moves `latest`. It refuses to overwrite a published release or images built from another commit; a failed run leaves at most a draft release and version tags of images built from the same commit, so it can be re-run for that commit; changes to the code need a new patch version.

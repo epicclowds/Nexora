@@ -1,27 +1,71 @@
 # Installing the Minecraft plugins
 
-| Plugin | Jar | Platform | Java |
-| --- | --- | --- | --- |
-| Velocity | `NetworkManager-Velocity-<version>.jar` | Velocity 4.3+ | 25 |
-| Paper | `NetworkManager-Paper-<version>.jar` | Paper 26.1+ | 25 |
+Nexora has two plugins. Both are ready-made `.jar` files – you never need to compile them.
 
-Build them with `./gradlew build` (output in `apps/velocity-plugin/build/libs` and `apps/paper-plugin/build/libs`), or download the `minecraft-plugins` artifact from a CI run.
+| Plugin | File | Install on |
+| --- | --- | --- |
+| Velocity | `Nexora-Velocity-<version>.jar` | Your Velocity proxy (once) |
+| Paper | `Nexora-Paper-<version>.jar` | Every Paper server behind the proxy |
 
-## 1. Generate the configuration (recommended)
+## Compatibility
 
-Dashboard → **Settings → Minecraft integration** → *Add a server*:
+Every release is tested in CI by starting real servers with the plugins ([`infrastructure/compatibility.json`](../../infrastructure/compatibility.json)). Only these versions are tested:
 
-1. Choose **Velocity** (one per proxy) or **Paper** (one per backend server) and enter the name. **Paper servers must use exactly the server name from `velocity.toml`** (e.g. `lobby`, `survival`), otherwise server switches cannot be linked to the server.
-2. Adjust the options (connection, moderation, statistics, inventories, AntiCheat allow-list). The preview shows the resulting `config.properties`.
-3. Click **Create token & configuration** and download the ZIP package (configuration + `INSTALL.md`) or `config.properties`.
-4. Put the jar into `plugins/`, copy the configuration to `plugins/networkmanager/config.properties` (Velocity) or `plugins/NetworkManager/config.properties` (Paper) and start the server.
+| Component | Tested versions |
+| --- | --- |
+| Velocity | 4.3.1 |
+| Paper (= Minecraft version) | 26.1.2, 26.2, 26.3 |
+| Java on the Minecraft servers | 25 or newer |
+| Nexora backend/dashboard | the **same release version** as the plugins |
 
-The dashboard page shows when the plugin has registered and when the first heartbeat arrived. Tokens are single-use and expire after 30 minutes (`REGISTRATION_TOKEN_TTL_MINUTES`). Details: [Configuration management](../architecture/configuration.md).
+Older Velocity 3.x or Paper 1.x servers are not supported (the plugins need the Velocity 4 / Paper 26 APIs and Java 25). Other versions may work but are not tested.
 
-## 2. Manual configuration (alternative)
+## 1. Download
 
-1. Put the jar into `plugins/` and start the server once. The plugin creates its `config.properties`.
-2. Create a registration token in the same dashboard section and edit `config.properties`:
+1. Open the [Releases page](https://github.com/epicclowds/Nexora/releases) and pick the release that matches your Nexora installation (`NEXORA_VERSION` in `.env`, also shown at the bottom left of the dashboard).
+2. Under **Assets**, download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` (or `nexora-plugins-<version>.zip`, which contains both plus example configurations).
+3. Optional: check the files against `SHA256SUMS` from the same release: `sha256sum -c SHA256SUMS --ignore-missing`.
+
+## 2. Velocity proxy
+
+1. Stop the proxy and copy `Nexora-Velocity-<version>.jar` into its `plugins/` folder.
+2. In the Nexora dashboard open **Settings → Minecraft integration → Add a server**, choose **Velocity (proxy)** and enter a name (e.g. `proxy`).
+3. Check the options – the **Dashboard URL** must be reachable from the proxy (use `https://…` if the proxy is on another machine). Click **Create token & configuration**.
+4. Click **Download config.properties** and save it as `plugins/networkmanager/config.properties` on the proxy (create the folder if it does not exist).
+5. Start the proxy. The dashboard page shows *Registered* and then *Connected* within a few seconds; the proxy log shows `Registered with the backend as "proxy"`.
+
+## 3. Paper servers
+
+Repeat for **each** Paper server:
+
+1. Stop the server and copy `Nexora-Paper-<version>.jar` into its `plugins/` folder.
+2. In the dashboard: **Add a server** → **Paper (game server)**. Use **exactly the server name from your `velocity.toml`** (e.g. `lobby`, `survival`) – otherwise player server switches cannot be linked.
+3. Adjust statistics, inventory and AntiCheat options if you like, then **Create token & configuration**.
+4. Save the downloaded file as `plugins/NetworkManager/config.properties` on that server.
+5. Start the server and wait for *Connected* in the dashboard.
+
+Tokens are single-use and expire after 30 minutes. If one expired, simply add the server again.
+
+## 4. Verify
+
+- **Servers** page: every server shows *Online*, its Minecraft and plugin version, and a recent heartbeat (every 15 s).
+- Join the network: the player appears under **Online players**; after the statistics interval (5 minutes by default) the player's **Statistics** tab fills.
+- In the console or in game (permission `networkmanager.admin`): `/networkmanager` (alias `/nm`) shows the connection status.
+
+## 5. Updating the plugins
+
+1. Update the Nexora installation first ([Updating](updating.md)).
+2. Download both jars of the **same** release, stop each server, delete the old `Nexora-*.jar` (or `NetworkManager-*.jar` from 1.0.0) and copy the new one into `plugins/`.
+3. Start the servers. Configuration and credentials are kept (`plugins/networkmanager/` and `plugins/NetworkManager/`).
+
+The dashboard marks servers whose plugin belongs to a different release with **Update recommended** (same major.minor) or **Update required** (different major.minor).
+
+## Manual configuration (alternative)
+
+Instead of downloading the generated file you can let the plugin create its default configuration:
+
+1. Start the server once with the jar installed. The plugin creates `config.properties` and logs `Not registered with the backend`.
+2. Create a registration token in the dashboard and edit the file:
 
    ```properties
    backend-url=https://admin.example.net   # dashboard address, no path
@@ -29,7 +73,7 @@ The dashboard page shows when the plugin has registered and when the first heart
    language=en-US
    ```
 
-3. Restart. The log shows `Registered with the backend as "<name>"`. The token is exchanged for credentials stored in `credentials.properties` (keep this file secret; it is created with owner-only permissions where supported). The token can then be removed from the config.
+3. Restart. The token is exchanged for credentials stored in `credentials.properties` (keep this file secret). The token can then be removed from the config.
 
 All options are documented in the generated `config.properties`. With `managed-settings=true` (default) the language, plugin messages, statistics and inventory options can be changed centrally under Settings → Plugin settings and apply without a restart; all other options require a restart.
 
@@ -38,11 +82,6 @@ All options are documented in the generated `config.properties`. With `managed-s
 | `punishments-enabled` | `true` | Both: enforce network bans (proxy) and mutes (Paper) |
 | `moderation-commands` | `true` | Velocity: register the in-game moderation commands |
 | `managed-settings` | `true` | Both: accept centrally managed plugin settings |
-
-## 3. Verify
-
-- Dashboard → **Servers**: the server appears and switches to *Online* after the first heartbeat (every 15 s by default).
-- In game or console: `/networkmanager` (alias `/nm`, permission `networkmanager.admin`) shows the connection status and the number of buffered events.
 
 ## What is collected
 
@@ -89,3 +128,4 @@ On a server's detail page in the dashboard:
 | `The backend rejected this server's credentials` | Credentials were rotated or revoked – see above |
 | `PLUGIN_AUTH_CLOCK_SKEW` (backend log) | Server clock differs by more than 5 minutes – enable NTP |
 | Server switches show no server | Paper server name in the dashboard differs from `velocity.toml` – rename it on the server's detail page |
+| Server shows *Update required* | Install the plugin jar from the release that matches `NEXORA_VERSION` |

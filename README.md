@@ -2,7 +2,7 @@
 
 A self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring and a multilingual web dashboard. Everything is deployed with Docker Compose.
 
-> **Status: v1.0.0 – first stable release.** All nine development phases are complete: web platform, Velocity and Paper plugins, network-wide moderation, player profiles, statistics, AntiCheat integration, inventory management, central configuration and production hardening (security review, two-factor authentication, permission audit, verified deployment, load and backup/restore tests). See the [changelog](CHANGELOG.md).
+> **Status: v1.0.1 – stable, installable from prebuilt release artifacts.** All nine development phases are complete: web platform, Velocity and Paper plugins, network-wide moderation, player profiles, statistics, AntiCheat integration, inventory management, central configuration and production hardening (security review, two-factor authentication, permission audit, verified deployment, load and backup/restore tests). See the [changelog](CHANGELOG.md).
 
 ## Features
 
@@ -29,17 +29,28 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 
 ## Quick start
 
-Requirements: Docker Engine 24+ with the Compose plugin. Nothing else needs to be installed on the host.
+Requirements: a Linux server (amd64 or arm64) with Docker Engine 24+ and the Compose plugin. Nothing is compiled: the backend and dashboard are prebuilt images on GitHub Container Registry, the plugins are prebuilt jars on the [Releases page](https://github.com/epicclowds/Nexora/releases).
 
 ```sh
-git clone <repository-url> minecraft-network-manager
-cd minecraft-network-manager
-sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
-docker compose up -d --build
-docker compose logs backend | grep "Setup code"   # one-time code for the wizard
+curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.1/nexora-deploy-1.0.1.tar.gz
+tar -xzf nexora-deploy-1.0.1.tar.gz && cd nexora
+sh infrastructure/scripts/generate-secrets.sh      # creates .env with random secrets
+docker compose pull                                # ghcr.io/epicclowds/nexora/{backend,dashboard}:1.0.1, MySQL, Redis
+docker compose up -d
+docker compose logs backend | grep "Setup code"    # one-time code for the setup wizard
 ```
 
-Open `http://<host>:3000` and complete the setup wizard. Full guide: [docs/installation](docs/installation/README.md).
+Open `http://<server>:3000`, complete the setup wizard, then install `Nexora-Velocity-1.0.1.jar` and `Nexora-Paper-1.0.1.jar` from the [release](https://github.com/epicclowds/Nexora/releases/tag/v1.0.1) and connect them under **Settings → Minecraft integration**.
+
+Step-by-step guides: [Installation](docs/installation/README.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md)
+
+| Release artifact | Where |
+| --- | --- |
+| Backend image | `ghcr.io/epicclowds/nexora/backend:<version>` (`linux/amd64`, `linux/arm64`) |
+| Dashboard image | `ghcr.io/epicclowds/nexora/dashboard:<version>` (`linux/amd64`, `linux/arm64`) |
+| Velocity plugin | `Nexora-Velocity-<version>.jar` (Velocity 4.3.1, Java 25) |
+| Paper plugin | `Nexora-Paper-<version>.jar` (Paper 26.1.2–26.3, Java 25) |
+| Deployment files | `nexora-deploy-<version>.tar.gz` |
 
 ## Repository layout
 
@@ -78,6 +89,7 @@ docs/               Architecture, installation, API and development docs
 | v0.7.0 | Inventory management | ✅ implemented |
 | v0.8.0 | Configuration and setup | ✅ implemented |
 | v1.0.0 | Production readiness: security review, 2FA, permission audit, deployment/load/backup verification | ✅ released |
+| v1.0.1 | Distribution: GitHub Releases with plugin jars, prebuilt GHCR images by default, release pipeline | ✅ released |
 
 ## License
 

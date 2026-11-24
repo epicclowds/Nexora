@@ -13,9 +13,11 @@ This guide takes a fresh Linux host to a production installation. The short vers
 
 ## 2. Configure the environment
 
+Download the deployment package of the release you want to run (no source code, images are pulled from GHCR) – see [Installation, step 3](README.md#3-download-nexora):
+
 ```sh
-git clone <repository-url> minecraft-network-manager
-cd minecraft-network-manager
+curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.1/nexora-deploy-1.0.1.tar.gz
+tar -xzf nexora-deploy-1.0.1.tar.gz && cd nexora
 sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
 ```
 
@@ -35,14 +37,16 @@ sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secre
 | `API_DOCS_ENABLED` | `true` | OpenAPI docs at `/api/docs` |
 | `LOG_LEVEL` | `log` | `error`, `warn`, `log`, `debug`, `verbose` |
 | `DASHBOARD_DOMAIN`, `ACME_EMAIL` | – | Caddy HTTPS profile |
-| `MNM_IMAGE_PREFIX`, `MNM_VERSION` | `mnm`, `latest` | Prebuilt images from a registry instead of local builds |
+| `NEXORA_VERSION` | the downloaded release | Release of the backend and dashboard images; pinned, change it to update |
+| `NEXORA_IMAGE_PREFIX` | `ghcr.io/epicclowds/nexora` | Registry/namespace of the images (for mirrors) |
 
 `.env` contains secrets: keep it out of version control and readable only by the operator (`chmod 600 .env`).
 
 ## 3. Start and secure
 
 ```sh
-docker compose up -d --build                 # or: docker compose --profile https up -d --build
+docker compose pull
+docker compose up -d                         # or: docker compose --profile https up -d
 docker compose ps                            # all services healthy
 docker compose logs backend | grep "Setup code"
 ```
