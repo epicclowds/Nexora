@@ -157,6 +157,8 @@ jobs:
       - name: Verify a fresh installation (setup, registration, plugin traffic, 2000 players)
         run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 setup
       - name: Real Velocity and Paper servers register with the stack
+        # Each server phase has its own timeout in the script; this is the outer limit.
+        timeout-minutes: 12
         run: |
           version=$(sed -n 's/^pluginVersion=//p' gradle.properties)
           ./gradlew :velocity-plugin:jar :paper-plugin:jar --no-daemon

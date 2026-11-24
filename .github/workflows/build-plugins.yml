@@ -77,7 +77,7 @@ jobs:
     name: Start ${{ matrix.platform }} ${{ matrix.version }}
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     strategy:
       fail-fast: false
       matrix:
@@ -93,6 +93,7 @@ jobs:
           name: nexora-plugins-${{ needs.build.outputs.version }}
           path: jars
       - name: Start the server with the plugin
+        timeout-minutes: 8
         env:
           SMOKE_WORKDIR: ${{ runner.temp }}/smoke
           PLATFORM: ${{ matrix.platform }}

@@ -1,36 +1,45 @@
 #!/usr/bin/env bash
 # Starts a real Velocity or Paper server with the Nexora plugin and checks that
-# the plugin loads (and optionally registers with a running backend).
+# the plugin loads – and, with a backend, registers and connects.
 #
 #   plugin-smoke-test.sh <velocity|paper> <server-version> <plugin.jar> [backend-url] [registration-token]
 #
-# The server jar is downloaded from the official PaperMC download API and its
-# SHA-256 checksum is verified. For Paper, the Minecraft EULA is accepted for
-# this throwaway test server only (eula.txt) – required to start it at all.
-# Exit code 0 = plugin enabled without errors (and, with a backend, registered
-# and connected). Logs are kept in the work directory for diagnosis.
+# The server jar comes from the official PaperMC download API (SHA-256
+# verified). For Paper, the Minecraft EULA is accepted for this throwaway test
+# server only (eula.txt) – required to start it at all.
+#
+# Fails fast: the server process is watched continuously, so a crash or an
+# early exit fails immediately with its exit code and log. Every phase has its
+# own timeout (seconds, overridable): SMOKE_START_TIMEOUT (180),
+# SMOKE_REGISTER_TIMEOUT (60), SMOKE_STOP_TIMEOUT (60).
 set -euo pipefail
 
-platform="$1"; mc_version="$2"; jar="$(realpath "$3")"; backend="${4:-}"; token="${5:-}"
+platform="${1:?platform}"; mc_version="${2:?server version}"; jar="$(realpath "${3:?plugin jar}")"; backend="${4:-}"; token="${5:-}"
 work="${SMOKE_WORKDIR:-$(mktemp -d)}/$platform-$mc_version"
-timeout_seconds="${SMOKE_TIMEOUT:-300}"
+start_timeout="${SMOKE_START_TIMEOUT:-180}"
+register_timeout="${SMOKE_REGISTER_TIMEOUT:-60}"
+stop_timeout="${SMOKE_STOP_TIMEOUT:-60}"
+log() { echo "[smoke $platform $mc_version] $*"; }
+rm -rf "$work"
 mkdir -p "$work/plugins"
 cd "$work"
 
+# Velocity rejects unknown options (e.g. Paper's --nogui) and exits immediately.
 case "$platform" in
-  velocity) data_dir="plugins/networkmanager"; stop_cmd="shutdown" ;;
-  paper) data_dir="plugins/NetworkManager"; stop_cmd="stop" ;;
-  *) echo "Unknown platform $platform" >&2; exit 2 ;;
+  velocity) data_dir="plugins/networkmanager"; stop_cmd="shutdown"; server_args=() ;;
+  paper) data_dir="plugins/NetworkManager"; stop_cmd="stop"; server_args=(--nogui) ;;
+  *) echo "Unknown platform '$platform' (velocity|paper)" >&2; exit 2 ;;
 esac
+[ -s "$jar" ] || { echo "Plugin jar '$jar' is missing or empty" >&2; exit 2; }
 
-echo "[smoke] Downloading $platform $mc_version"
-build=$(curl -fsSL -H 'User-Agent: nexora-ci' "https://fill.papermc.io/v3/projects/$platform/versions/$mc_version/builds/latest")
-url=$(node -e 'const b=JSON.parse(process.argv[1]);console.log(b.downloads["server:default"].url)' "$build")
-sha=$(node -e 'const b=JSON.parse(process.argv[1]);console.log(b.downloads["server:default"].checksums.sha256)' "$build")
+log "Downloading the server"
+build=$(curl -fsSL --retry 3 --max-time 60 -H 'User-Agent: nexora-ci' "https://fill.papermc.io/v3/projects/$platform/versions/$mc_version/builds/latest")
+url=$(node -e 'console.log(JSON.parse(process.argv[1]).downloads["server:default"].url)' "$build")
+sha=$(node -e 'console.log(JSON.parse(process.argv[1]).downloads["server:default"].checksums.sha256)' "$build")
 build_id=$(node -e 'console.log(JSON.parse(process.argv[1]).id)' "$build")
-curl -fsSL -H 'User-Agent: nexora-ci' -o server.jar "$url"
-echo "$sha  server.jar" | sha256sum -c -
-echo "[smoke] $platform $mc_version build $build_id"
+curl -fsSL --retry 3 --max-time 300 -H 'User-Agent: nexora-ci' -o server.jar "$url"
+echo "$sha  server.jar" | sha256sum -c --quiet -
+log "Server build $build_id downloaded and verified"
 
 cp "$jar" plugins/
 if [ -n "$backend" ]; then
@@ -42,51 +51,70 @@ if [ "$platform" = "paper" ]; then
   printf 'online-mode=false\nserver-port=25566\nlevel-type=minecraft\\:flat\ngenerate-structures=false\nview-distance=2\nsimulation-distance=2\nspawn-protection=0\n' > server.properties
 fi
 
+# Console: a FIFO held open read-write on fd 3, so writing a command never
+# blocks – not even after the server has exited.
 mkfifo console
-# Keep the console pipe open for the server's lifetime.
-sleep infinity > console &
-keeper=$!
-java -Xms512M -Xmx1536M -jar server.jar --nogui < console > server.log 2>&1 &
+exec 3<>console
+java -Xms512M -Xmx1536M -jar server.jar "${server_args[@]}" < console > server.log 2>&1 &
 server=$!
+trap 'kill -9 "$server" 2>/dev/null || true; exec 3>&-' EXIT
 
-cleanup() {
-  kill "$keeper" 2>/dev/null || true
-  kill "$server" 2>/dev/null || true
+plugin_lines() { grep -iE 'networkmanager|network manager|dev\.mnm' server.log | tail -n "${1:-40}" || true; }
+fail() {
+  log "FAILED: $*"
+  if kill -0 "$server" 2>/dev/null; then
+    printf '%s\n' "$stop_cmd" >&3 || true
+    sleep 5
+    kill -9 "$server" 2>/dev/null || true
+  fi
+  echo "----- plugin log lines -----"; plugin_lines 40
+  echo "----- last 80 lines of server.log ($work/server.log) -----"; tail -n 80 server.log || true
+  exit 1
 }
-trap cleanup EXIT
 
+# Patterns that mean the plugin is broken – checked while waiting, not only at the end.
+PLUGIN_ERRORS='Error occurred while enabling NetworkManager|Could not load .*Nexora|(NoClassDefFoundError|ClassNotFoundException):? (dev[./]mnm|com[./]google[./]gson|org[./]yaml|net[./]kyori|org[./]slf4j)|at dev\.mnm\.|dev\.mnm\.[A-Za-z.]+(Exception|Error)'
+
+# wait_for <description> <regex> <timeout-seconds>
 wait_for() {
-  local pattern="$1" deadline=$((SECONDS + timeout_seconds))
-  until grep -Eq "$pattern" server.log; do
-    if ! kill -0 "$server" 2>/dev/null; then echo "[smoke] Server exited early" >&2; return 1; fi
-    if [ "$SECONDS" -ge "$deadline" ]; then echo "[smoke] Timeout waiting for: $pattern" >&2; return 1; fi
-    sleep 2
+  local what="$1" pattern="$2" limit="$3" started=$SECONDS
+  log "Waiting for $what (max ${limit}s)"
+  while ! grep -Eq "$pattern" server.log; do
+    if ! kill -0 "$server" 2>/dev/null; then
+      local code=0
+      wait "$server" || code=$?
+      fail "the server exited unexpectedly (exit code $code) while waiting for $what"
+    fi
+    if grep -Eq "$PLUGIN_ERRORS" server.log; then fail "the plugin reported an error while waiting for $what"; fi
+    local elapsed=$((SECONDS - started))
+    if [ "$elapsed" -ge "$limit" ]; then fail "timeout after ${limit}s waiting for $what"; fi
+    if [ $((elapsed % 15)) -eq 0 ] && [ "$elapsed" -gt 0 ]; then log "  … ${elapsed}s, last line: $(tail -n 1 server.log | cut -c1-160)"; fi
+    sleep 1
   done
+  log "OK: $what ($((SECONDS - started))s)"
 }
-
-status=0
-wait_for 'Done \(' || status=1
-if [ "$status" -eq 0 ] && [ -n "$backend" ]; then
-  wait_for 'Registered with the backend as' || status=1
-  [ "$status" -eq 0 ] && { wait_for 'Connected to the backend' || status=1; }
-fi
-
-# Graceful stop also exercises the plugin's shutdown path.
-echo "$stop_cmd" > console
-for _ in $(seq 1 60); do kill -0 "$server" 2>/dev/null || break; sleep 1; done
-
-echo "[smoke] ----- server.log (plugin lines) -----"
-grep -iE 'networkmanager|network manager|dev\.mnm|exception|error' server.log | head -80 || true
 
 if [ "$platform" = "paper" ]; then
-  grep -q 'Enabling NetworkManager' server.log || { echo "[smoke] Plugin was not enabled" >&2; status=1; }
+  wait_for "the plugin to be enabled" 'Enabling NetworkManager' "$start_timeout"
 else
-  grep -Eqi 'loaded plugin networkmanager|networkmanager.*loaded' server.log || { echo "[smoke] Plugin was not loaded" >&2; status=1; }
+  wait_for "the plugin to be loaded" 'Loaded plugin networkmanager' "$start_timeout"
 fi
-# Any stack trace mentioning our packages, or a failed load/enable, fails the test.
-if grep -Eq 'dev\.mnm\.[A-Za-z.]+(Exception|Error)|at dev\.mnm\.|Error occurred while enabling NetworkManager|Could not load .*Nexora|NoClassDefFoundError|ClassNotFoundException: (dev\.mnm|com\.google|org\.yaml|net\.kyori)' server.log; then
-  echo "[smoke] Plugin errors found in the log" >&2
-  status=1
+wait_for "the server to finish starting" 'Done \(' "$start_timeout"
+if [ -n "$backend" ]; then
+  wait_for "registration with the backend" 'Registered with the backend as' "$register_timeout"
+  wait_for "the first successful heartbeat" 'Connected to the backend' "$register_timeout"
 fi
-[ "$status" -eq 0 ] && echo "[smoke] ✅ $platform $mc_version: plugin OK" || { echo "[smoke] ❌ $platform $mc_version failed – full log: $work/server.log" >&2; tail -60 server.log >&2; }
-exit "$status"
+
+# Graceful stop also exercises the plugin's shutdown path (pending events, offline notice).
+log "Stopping the server"
+printf '%s\n' "$stop_cmd" >&3
+stopped=false
+for _ in $(seq 1 "$stop_timeout"); do
+  if ! kill -0 "$server" 2>/dev/null; then stopped=true; break; fi
+  sleep 1
+done
+$stopped || fail "the server did not stop within ${stop_timeout}s"
+if grep -Eq "$PLUGIN_ERRORS" server.log; then fail "the plugin reported an error during shutdown"; fi
+
+echo "----- plugin log lines -----"; plugin_lines 20
+log "✅ plugin started$([ -n "$backend" ] && echo ', registered and connected'), server stopped cleanly"

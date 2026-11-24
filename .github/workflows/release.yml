@@ -225,6 +225,7 @@ jobs:
           VERIFY_PLAYERS: '200'
         run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 setup
       - name: Released plugin jars register with the released images
+        timeout-minutes: 12
         run: |
           node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugin-tokens
           velocity=$(node -p 'require("./infrastructure/compatibility.json").integration.velocity')
