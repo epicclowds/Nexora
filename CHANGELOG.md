@@ -2,6 +2,22 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.0.3] – 2026-11-24
+
+Fixes database authentication failures (`Prisma P1000`) in Docker deployments.
+
+### Fixed
+- Backend could not connect when the passwords in `.env` differed from the ones MySQL stored in its data volume at first start (e.g. after extracting a release package into a new folder and running `generate-secrets.sh` there). The backend now stops immediately with an explanation and recovery steps instead of retrying silently ten times.
+- Database and Redis passwords with special characters (`@ : / # % ? &` …) broke the connection URLs. Compose now passes the credentials separately and the backend builds percent-encoded URLs; nothing secret is logged.
+
+### Added
+- `infrastructure/scripts/repair-db-credentials.sh`: makes the MySQL accounts match `.env` without data loss – online via the root account, or (if the root password changed too) after a full backup in a short maintenance mode.
+- `generate-secrets.sh` refuses to create new passwords when a Nexora database volume already exists.
+- CI and the release pipeline test special-character passwords, both password-drift cases with diagnosis and repair (also on the published images), and that no password appears in the container logs.
+
+### Migration from 1.0.2
+Keep your `.env`. Take `docker-compose.yml` and `infrastructure/scripts/` from the 1.0.3 deployment package, set `NEXORA_VERSION=1.0.3`, then `docker compose pull && docker compose up -d`. If the backend reports P1000, see [Database password mismatch](docs/installation/README.md#database-password-mismatch-p1000).
+
 ## [1.0.2] – 2026-11-24
 
 Distribution release: Nexora can now be installed entirely from prebuilt artifacts.
@@ -76,5 +92,6 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.0.3]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.3
 [1.0.2]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.2
 [1.0.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.0
