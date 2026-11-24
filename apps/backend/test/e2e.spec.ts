@@ -655,6 +655,26 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect((await call('GET', '/api/punishments')).status).toBe(403);
     expect((await call('POST', '/api/punishments', { type: 'WARNING', target: 'Steve', reason: 'x' })).status).toBe(403);
     expect((await call('GET', '/api/anticheat/events')).status).toBe(403);
+
+    // Write paths added in later phases are server-side protected as well.
+    const forbidden: [string, string, unknown?][] = [
+      ['PUT', '/api/anticheat/settings', {}],
+      ['GET', '/api/settings/plugins'],
+      ['PUT', '/api/settings/plugins', { baseRevision: 0, settings: {} }],
+      ['PUT', '/api/settings/moderation', { presets: [] }],
+      ['PATCH', '/api/settings/network', { name: 'Hijacked' }],
+      ['POST', '/api/i18n/languages', { locale: 'it-IT', name: 'Italian' }],
+      ['PUT', '/api/i18n/catalogs/en-US', { messages: {} }],
+      ['POST', '/api/servers/registration-tokens', { type: 'PAPER', name: 'rogue' }],
+      ['POST', '/api/roles', { name: 'Root', permissions: ['*'] }],
+      ['POST', `/api/players/${steve.uuid}/inventories/lobby/inventory/revisions`, { baseRevision: 1, changes: [] }],
+    ];
+    for (const [method, path, body] of forbidden) {
+      expect((await call(method, path, body)).status, `${method} ${path}`).toBe(403);
+    }
+    expect((await call('GET', '/api/settings/moderation')).status).toBe(200);
+    // Plugin endpoints never accept dashboard sessions.
+    expect((await call('GET', '/api/plugin/v1/config')).status).toBe(401);
   });
 
   it('switches the language preference per user', async () => {
