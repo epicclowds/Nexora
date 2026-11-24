@@ -592,7 +592,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     const edited = await call('PATCH', `/api/punishments/${id}`, { version: 1, reason: 'Repeated cheating', expiresAt: thirtyDays, note: 'Video confirms repeated violations.' });
     expect(edited.status).toBe(200);
     expect(edited.body.changes).toEqual(['REASON_CHANGED', 'DURATION_EXTENDED']);
-    expect(edited.body.previous).toMatchObject({ reason: 'Cheating', expiresAt: new Date(createdAt + 7 * day * 1000).toISOString() });
+    expect(edited.body.previous).toMatchObject({ reason: 'Cheating', expiresAt: ban.body.expiresAt });
     expect(edited.body.punishment).toMatchObject({ id, reason: 'Repeated cheating', expiresAt: thirtyDays, version: 2, type: 'TEMP_BAN' });
     // A stale page cannot overwrite newer changes.
     expect((await call('PATCH', `/api/punishments/${id}`, { version: 1, reason: 'Stale' })).body.code).toBe('STALE_PUNISHMENT');
