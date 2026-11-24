@@ -8,6 +8,7 @@ import { useFormatter, useLocale, useNow, useTranslations } from 'next-intl';
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { PluginVersionBadge } from '@/components/plugin-version';
 import { useLiveRefresh } from '@/components/realtime-provider';
 import { useToast } from '@/components/toaster';
 import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Skeleton, StatusDot } from '@/components/ui/primitives';
@@ -108,7 +109,12 @@ export default function ServerDetailPage() {
               </Fact>
               <Fact label="CPU">{server.cpuLoad === null ? '–' : format.number(server.cpuLoad, { style: 'percent', maximumFractionDigits: 0 })}</Fact>
               <Fact label={t('servers.version')}>{server.minecraftVersion ?? '–'}</Fact>
-              <Fact label={t('servers.plugin')}>{server.pluginVersion ?? '–'}</Fact>
+              <Fact label={t('servers.plugin')}>
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  {server.pluginVersion ?? '–'}
+                  <PluginVersionBadge pluginVersion={server.pluginVersion} />
+                </span>
+              </Fact>
             </dl>
             {server.platformVersion && <p className="mt-3 text-xs text-muted-foreground">{t('servers.platform')}: {server.platformVersion}</p>}
           </CardContent>

@@ -865,5 +865,13 @@
     "codesInfo": "Bewahre diese Wiederherstellungscodes sicher auf. Jeder Code funktioniert einmal, falls du keinen Zugriff auf deine Authenticator-App hast. Sie werden nur jetzt angezeigt.",
     "downloadCodes": "Codes herunterladen",
     "savedCodes": "Ich habe die Codes gespeichert"
+  },
+  "pluginVersion": {
+    "recommended": "Update empfohlen",
+    "required": "Update erforderlich",
+    "recommendedHint": "Plugin {plugin} weicht von Nexora {platform} ab. Patch-Versionen sind kompatibel, installiere aber das Plugin aus demselben Release.",
+    "requiredHint": "Plugin {plugin} gehört zu einem anderen Release als Nexora {platform}. Installiere die Plugin-Version {platform}.",
+    "alertTitle": "{count, plural, one {# Server verwendet} other {# Server verwenden}} ein Plugin aus einem anderen Release als Nexora {version}",
+    "alertHint": "lade die Plugins {version} aus dem GitHub-Release herunter, ersetze die Jars und starte die Server neu."
   }
 }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useFormatter, useNow, useLocale, useTranslations } from 'next-intl';
 import type { ServerInfo } from '@/lib/api';
 import { formatBytes } from '@/lib/utils';
+import { PluginVersionBadge } from './plugin-version';
 import { Badge, Card, StatusDot } from './ui/primitives';
 
 export function ServerCard({ server, href }: { server: ServerInfo; href?: string }) {
@@ -43,6 +44,7 @@ export function ServerCard({ server, href }: { server: ServerInfo; href?: string
         <div className="flex flex-col items-end gap-1">
           <Badge variant={server.type === 'VELOCITY' ? 'info' : 'default'}>{server.type === 'VELOCITY' ? 'Velocity' : 'Paper'}</Badge>
           <span className="text-xs text-muted-foreground">{t(`servers.status.${server.status}`)}</span>
+          <PluginVersionBadge pluginVersion={server.pluginVersion} />
         </div>
       </div>
       <div className="mt-3 text-sm">{server.onlinePlayers !== null ? t('dashboard.serverPlayers', { count: server.onlinePlayers }) : t('dashboard.notRecorded')}</div>

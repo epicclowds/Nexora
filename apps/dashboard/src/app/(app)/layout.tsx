@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { AuthProvider } from '@/components/auth-provider';
 import { Logo } from '@/components/logo';
+import { PlatformVersionProvider } from '@/components/plugin-version';
 import { RealtimeProvider } from '@/components/realtime-provider';
 import { Skeleton } from '@/components/ui/primitives';
 import pkg from '../../../package.json';
@@ -21,7 +22,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
   return (
     <AuthProvider fallback={<ShellSkeleton />}>
       <RealtimeProvider>
-        <AppShell version={pkg.version}>{children}</AppShell>
+        <PlatformVersionProvider version={pkg.version}>
+          <AppShell version={pkg.version}>{children}</AppShell>
+        </PlatformVersionProvider>
       </RealtimeProvider>
     </AuthProvider>
   );

@@ -61,7 +61,7 @@ describe('plugin config generator', () => {
   it('writes installation instructions with the right paths', () => {
     const guide = installGuide({ ...defaultOptions('VELOCITY', 'https://x.test'), registrationToken: 't' }, 'proxy-1', '0.8.0', '2026-12-01T00:00:00Z');
     expect(guide).toContain(configPath('VELOCITY'));
-    expect(guide).toContain('NetworkManager-Velocity-0.8.0.jar');
+    expect(guide).toContain('Nexora-Velocity-0.8.0.jar');
     expect(guide).toContain('single-use');
   });
 });

@@ -189,7 +189,7 @@ export function configPath(kind: PluginKind): string {
 }
 
 export function jarName(kind: PluginKind, version: string): string {
-  return `NetworkManager-${kind === 'VELOCITY' ? 'Velocity' : 'Paper'}-${version}.jar`;
+  return `Nexora-${kind === 'VELOCITY' ? 'Velocity' : 'Paper'}-${version}.jar`;
 }
 
 /** Installation instructions shipped in the ZIP package (English, like all generated files). */
@@ -201,7 +201,7 @@ export function installGuide(o: PluginConfigOptions, serverName: string, version
     '## Installation',
     '',
     `1. Stop the ${platform}.`,
-    `2. Copy \`${jarName(o.kind, version)}\` into the \`plugins/\` folder (build it with \`./gradlew build\` or download it from your release).`,
+    `2. Copy \`${jarName(o.kind, version)}\` into the \`plugins/\` folder (download it from https://github.com/epicclowds/Nexora/releases/tag/v${version}).`,
     `3. Copy \`config.properties\` from this package to \`${configPath(o.kind)}\`.`,
     `4. Start the ${platform}. The plugin registers itself and stores its credentials in \`credentials.properties\`.`,
     '5. Check the connection with `/networkmanager` in the console or in the dashboard under Servers.',

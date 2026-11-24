@@ -865,5 +865,13 @@
     "codesInfo": "Store these recovery codes in a safe place. Each code works once if you lose access to your authenticator app. They are shown only now.",
     "downloadCodes": "Download codes",
     "savedCodes": "I have saved the codes"
+  },
+  "pluginVersion": {
+    "recommended": "Update recommended",
+    "required": "Update required",
+    "recommendedHint": "Plugin {plugin} differs from Nexora {platform}. Patch releases are compatible, but install the plugin from the same release.",
+    "requiredHint": "Plugin {plugin} belongs to a different release than Nexora {platform}. Install the plugin version {platform}.",
+    "alertTitle": "{count, plural, one {# server runs} other {# servers run}} a plugin from another release than Nexora {version}",
+    "alertHint": "download the {version} plugins from the GitHub release, replace the jars and restart the servers."
   }
 }
