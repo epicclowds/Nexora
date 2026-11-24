@@ -319,32 +319,8 @@ jobs:
     name: Promote images to latest
     needs: [prepare, release]
     if: ${{ needs.prepare.outputs.latest == 'true' }}
-    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: '22'
-      - uses: docker/setup-buildx-action@v4
-      - uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-      - uses: actions/download-artifact@v8
-        with:
-          pattern: digest-*
-          merge-multiple: true
-          path: digests
-      - name: Point latest at the verified digests
-        run: |
-          for c in backend dashboard; do
-            digest=$(cat "digests/$c")
-            docker buildx imagetools create -t "$IMAGE_PREFIX/$c:latest" "$IMAGE_PREFIX/$c@$digest"
-            published=$(node -p "JSON.parse(process.argv[1]).digest" "$(node infrastructure/scripts/image-info.mjs "$IMAGE_PREFIX/$c" latest)")
-            [ "$published" = "$digest" ] || { echo "::error::latest for $c is $published, expected $digest"; exit 1; }
-            echo "$IMAGE_PREFIX/$c:latest → $digest" >> "$GITHUB_STEP_SUMMARY"
-          done
+    # Shared with manual/reconciling runs; verifies with retries.
+    uses: ./.github/workflows/promote-latest.yml

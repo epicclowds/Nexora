@@ -1,0 +1,107 @@
+name: Promote latest
+
+# Points the "latest" image tags at the images of the newest *published, stable*
+# GitHub Release – and only if those images were built from that release's tag
+# commit. Idempotent: running it again changes nothing.
+#
+# Runs from release.yml after a release was published, manually, and once
+# whenever this file changes on main (reconciles a partially promoted state).
+on:
+  workflow_call:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/promote-latest.yml']
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: promote-latest
+  cancel-in-progress: false
+
+env:
+  IMAGE_PREFIX: ghcr.io/epicclowds/nexora
+
+jobs:
+  promote:
+    name: Promote images to latest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - id: target
+        name: Newest published stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # /releases/latest only returns published, non-prerelease, non-draft releases.
+          tag=$(gh api "repos/$GITHUB_REPOSITORY/releases/latest" --jq .tag_name)
+          version="${tag#v}"
+          commit=$(git rev-list -n 1 "$tag")
+          echo "Target: $tag ($commit)"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+      - name: Release images exist and belong to the release commit
+        id: digests
+        env:
+          VERSION: ${{ steps.target.outputs.version }}
+          COMMIT: ${{ steps.target.outputs.commit }}
+        run: |
+          for c in backend dashboard; do
+            info=$(node infrastructure/scripts/image-info.mjs "$IMAGE_PREFIX/$c" "$VERSION")
+            echo "$c:$VERSION → $info"
+            node -e '
+              const i = JSON.parse(process.argv[1]);
+              if (!i.exists) { console.error("image not found"); process.exit(1); }
+              if (i.revision !== process.argv[2]) { console.error(`built from ${i.revision}, release commit is ${process.argv[2]}`); process.exit(1); }
+            ' "$info" "$COMMIT"
+            echo "$c=$(node -p 'JSON.parse(process.argv[1]).digest' "$info")" >> "$GITHUB_OUTPUT"
+          done
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Point latest at the release digests
+        env:
+          BACKEND: ${{ steps.digests.outputs.backend }}
+          DASHBOARD: ${{ steps.digests.outputs.dashboard }}
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          for c in backend dashboard; do
+            digest=$([ "$c" = backend ] && echo "$BACKEND" || echo "$DASHBOARD")
+            echo "$IMAGE_PREFIX/$c:latest → $digest ($TAG)"
+            docker buildx imagetools create -t "$IMAGE_PREFIX/$c:latest" "$IMAGE_PREFIX/$c@$digest"
+          done
+      - name: Verify latest anonymously (the registry may answer stale for a short time)
+        env:
+          BACKEND: ${{ steps.digests.outputs.backend }}
+          DASHBOARD: ${{ steps.digests.outputs.dashboard }}
+          TAG: ${{ steps.target.outputs.tag }}
+        run: |
+          failed=0
+          for c in backend dashboard; do
+            expected=$([ "$c" = backend ] && echo "$BACKEND" || echo "$DASHBOARD")
+            ok=false
+            for attempt in $(seq 1 12); do
+              published=$(node -p "JSON.parse(process.argv[1]).digest" "$(node infrastructure/scripts/image-info.mjs "$IMAGE_PREFIX/$c" latest)")
+              if [ "$published" = "$expected" ]; then ok=true; break; fi
+              echo "  $c:latest still answers $published (attempt $attempt/12), waiting 15 s"
+              sleep 15
+            done
+            if $ok; then
+              echo "✔ $IMAGE_PREFIX/$c:latest = $expected ($TAG)" | tee -a "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error::$IMAGE_PREFIX/$c:latest is $published, expected $expected"
+              failed=1
+            fi
+          done
+          exit $failed
