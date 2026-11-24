@@ -239,6 +239,9 @@ jobs:
           SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh velocity "$velocity" "jars/Nexora-Velocity-$VERSION.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").velocity')"
           SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh paper "$paper" "jars/Nexora-Paper-$VERSION.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").paper')"
           node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugins-registered "$VERSION"
+      - name: Password drift on the published images is diagnosed and repaired without data loss
+        timeout-minutes: 20
+        run: bash .github/scripts/test-database-credentials.sh http://127.0.0.1:3000
       - name: Container logs
         if: ${{ failure() }}
         run: docker compose logs --no-color --tail 300
@@ -246,6 +249,7 @@ jobs:
         if: ${{ always() }}
         run: |
           docker compose down -v || true
+          sudo rm -rf backups
           rm -f .env .verify-state.json .smoke-tokens.json
 
   release:

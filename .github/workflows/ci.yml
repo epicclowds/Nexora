@@ -205,6 +205,47 @@ jobs:
           docker compose down -v || true
           rm -f .verify-state.json .smoke-tokens.json .env
 
+  credentials:
+    name: Database credentials (special characters, drift, repair)
+    runs-on: ubuntu-latest
+    needs: [quality]
+    timeout-minutes: 40
+    env:
+      COMPOSE_FILE: docker-compose.yml:docker-compose.dev.yml
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Environment with special-character passwords
+        run: |
+          sh infrastructure/scripts/generate-secrets.sh
+          token="ci-setup-$(openssl rand -hex 16)"
+          node .github/scripts/env-file.mjs set \
+            'MYSQL_PASSWORD=Db@p:ss/w#rd%?&"1x' \
+            'MYSQL_ROOT_PASSWORD=Ro#t:p@ss/w%rd&?"2y' \
+            'REDIS_PASSWORD=R3d@s:p/ss#%?&"3z' \
+            "SETUP_TOKEN=$token" 'DASHBOARD_BIND=127.0.0.1'
+          echo "SETUP_TOKEN=$token" >> "$GITHUB_ENV"
+      - name: Start the stack
+        run: docker compose up -d --build --wait --wait-timeout 300
+      - name: Fresh installation works with these passwords
+        env:
+          VERIFY_PLAYERS: '50'
+        run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 setup
+      - name: Password drift is diagnosed and repaired without data loss
+        timeout-minutes: 20
+        run: bash .github/scripts/test-database-credentials.sh http://127.0.0.1:3000
+      - name: Container logs
+        if: ${{ failure() }}
+        run: docker compose logs --no-color --tail 200
+      - name: Remove test data
+        if: ${{ always() }}
+        run: |
+          docker compose down -v || true
+          sudo rm -rf backups
+          rm -f .verify-state.json .env
+
   compose:
     name: Docker Compose configuration
     runs-on: ubuntu-latest
