@@ -1,16 +1,21 @@
 name: CI
 
+# Source validation for every push and pull request. release.yml runs this
+# workflow as its validation gate before anything is published. The Minecraft
+# plugins are built and smoke-tested by build-plugins.yml.
 on:
   push:
     branches: [main, develop]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ github.event_name }}
+  # Superseded pull-request runs are cancelled; branch and release runs always finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NODE_VERSION: '22'
@@ -21,13 +26,15 @@ jobs:
     name: Lint, typecheck & unit tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
       - run: npm install -g npm@12
       - run: npm ci
+      - name: Versions are consistent across all components
+        run: node infrastructure/scripts/check-versions.mjs
       - name: Build shared packages
         run: npm run build:packages
       - name: Validate translations
@@ -67,8 +74,8 @@ jobs:
       E2E_DATABASE_URL: mysql://mnm:ci-password@127.0.0.1:3306/mnm
       E2E_REDIS_URL: redis://127.0.0.1:6379
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -92,8 +99,8 @@ jobs:
     name: Dashboard production build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -101,27 +108,6 @@ jobs:
       - run: npm ci
       - run: npm run build:packages
       - run: npm run build -w @mnm/dashboard
-
-  plugins:
-    name: Minecraft plugins (Java 25, Gradle)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '25'
-      - uses: gradle/actions/setup-gradle@v4
-      - name: Compile, test and package
-        run: ./gradlew build --no-daemon
-      - name: Upload plugin jars
-        uses: actions/upload-artifact@v4
-        with:
-          name: minecraft-plugins
-          path: |
-            apps/velocity-plugin/build/libs/*.jar
-            apps/paper-plugin/build/libs/*.jar
-          if-no-files-found: error
 
   docker:
     name: Docker images
@@ -131,27 +117,35 @@ jobs:
       matrix:
         component: [backend, dashboard]
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infrastructure/docker/${{ matrix.component }}.Dockerfile
           push: false
-          tags: mnm/${{ matrix.component }}:ci
+          tags: nexora-local/${{ matrix.component }}:ci
           cache-from: type=gha,scope=${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}
 
   deployment:
-    name: Deployment, load test & backup/restore (Docker Compose)
+    name: Deployment, plugins, load test & backup/restore (Docker Compose)
     runs-on: ubuntu-latest
     needs: [quality]
-    timeout-minutes: 40
+    timeout-minutes: 50
+    env:
+      # Build the images from this commit (development override).
+      COMPOSE_FILE: docker-compose.yml:docker-compose.dev.yml
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v6
       - name: Create environment with generated secrets
         run: |
           sh infrastructure/scripts/generate-secrets.sh
@@ -162,6 +156,16 @@ jobs:
         run: docker compose up -d --build --wait --wait-timeout 300
       - name: Verify a fresh installation (setup, registration, plugin traffic, 2000 players)
         run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 setup
+      - name: Real Velocity and Paper servers register with the stack
+        run: |
+          version=$(sed -n 's/^pluginVersion=//p' gradle.properties)
+          ./gradlew :velocity-plugin:jar :paper-plugin:jar --no-daemon
+          node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugin-tokens
+          velocity=$(node -p 'require("./infrastructure/compatibility.json").integration.velocity')
+          paper=$(node -p 'require("./infrastructure/compatibility.json").integration.paper')
+          SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh velocity "$velocity" "apps/velocity-plugin/build/libs/Nexora-Velocity-$version.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").velocity')"
+          SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh paper "$paper" "apps/paper-plugin/build/libs/Nexora-Paper-$version.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").paper')"
+          node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugins-registered "$version"
       - name: Load test (latency thresholds)
         run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 load
         env:
@@ -187,22 +191,33 @@ jobs:
       - name: Container logs
         if: ${{ failure() }}
         run: docker compose logs --no-color --tail 300
+      - name: Minecraft server logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: integration-server-logs
+          path: ${{ runner.temp }}/smoke/**/server.log
       - name: Remove test data
         if: ${{ always() }}
         run: |
           docker compose down -v || true
-          rm -f .verify-state.json .env
+          rm -f .verify-state.json .smoke-tokens.json .env
 
   compose:
     name: Docker Compose configuration
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Validate compose file with example environment
+      - uses: actions/checkout@v7
+      - name: Validate compose files with the example environment
         run: |
           sed 's/CHANGE_ME/ci-placeholder-value-0123456789abcdef/' .env.example > .env
           docker compose config --quiet
           docker compose --profile https config --quiet
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml config --quiet
+          # Production must pull published images and never build locally.
+          if docker compose config | grep -q '^ *build:'; then echo "docker-compose.yml must not build images" >&2; exit 1; fi
+          docker compose config | grep -q 'image: ghcr.io/epicclowds/nexora/backend:'
+          docker compose config | grep -q 'image: ghcr.io/epicclowds/nexora/dashboard:'
 
   security:
     name: Secret & dependency scanning
@@ -210,10 +225,10 @@ jobs:
     env:
       GITLEAKS_VERSION: 8.28.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
       - run: npm install -g npm@12

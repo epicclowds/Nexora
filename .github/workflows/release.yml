@@ -1,38 +1,130 @@
-name: Release images
+name: Release
 
-# Publishes container images to GHCR for validated version tags (vX.Y.Z).
+# Complete release pipeline for a semantic version tag (vX.Y.Z):
+#   prepare  → version consistency, tag on main, no published release or
+#              foreign images for this version yet
+#   ci       → full source validation (lint, types, unit, e2e, Compose
+#              deployment built from source with real plugin servers)
+#   plugins  → compile, test, inspect and smoke-test both jars
+#   images   → multi-arch images pushed with version tags only (never latest)
+#   scan     → container vulnerability scan (critical, fixable = failure)
+#   verify   → anonymous pull, digest/revision/non-root checks, arm64 start,
+#              clean install with docker compose pull + real plugin servers
+#   release  → assets + checksums + notes in a draft, verify, then publish
+#   latest   → promote the verified images to "latest" (newest stable only)
+# Any failure stops the pipeline before the release is published or "latest" moves.
 on:
   push:
     tags: ['v*.*.*']
 
 permissions:
   contents: read
-  packages: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_PREFIX: ghcr.io/epicclowds/nexora
 
 jobs:
-  images:
+  prepare:
+    name: Prepare ${{ github.ref_name }}
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      latest: ${{ steps.latest.outputs.latest }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - id: version
+        name: Parse the tag
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          if ! echo "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$'; then
+            echo "::error::Tag $GITHUB_REF_NAME is not a semantic version"; exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$(case "$version" in *-*) echo true ;; *) echo false ;; esac)" >> "$GITHUB_OUTPUT"
+      - name: All components carry version ${{ steps.version.outputs.version }}
+        run: node infrastructure/scripts/check-versions.mjs "${{ steps.version.outputs.version }}"
+      - name: The tag points to a commit on main
+        run: |
+          git fetch -q origin main
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || { echo "::error::Release tags must point to a commit on main"; exit 1; }
+      - name: No published release exists for this tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if draft=$(gh release view "$GITHUB_REF_NAME" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$draft" = "false" ]; then echo "::error::Release $GITHUB_REF_NAME is already published; published assets are never overwritten. Use a new version."; exit 1; fi
+            echo "A draft release exists from an earlier attempt; it will be updated."
+          fi
+      - name: Image tags are free or belong to this commit
+        run: |
+          for c in backend dashboard; do
+            info=$(node infrastructure/scripts/image-info.mjs "$IMAGE_PREFIX/$c" "${{ steps.version.outputs.version }}")
+            revision=$(node -p "JSON.parse(process.argv[1]).revision ?? ''" "$info")
+            if [ "$(node -p "JSON.parse(process.argv[1]).exists" "$info")" = "true" ] && [ "$revision" != "$GITHUB_SHA" ]; then
+              echo "::error::$IMAGE_PREFIX/$c:${{ steps.version.outputs.version }} already exists for commit $revision; refusing to overwrite it"; exit 1
+            fi
+          done
+      - id: latest
+        name: Is this the newest stable release?
+        run: |
+          newest=$(git tag -l 'v*.*.*' | grep -Ev -- '-' | sort -V | tail -n 1)
+          if [ "${{ steps.version.outputs.prerelease }}" = "false" ] && [ "$newest" = "$GITHUB_REF_NAME" ]; then echo "latest=true" >> "$GITHUB_OUTPUT"; else echo "latest=false" >> "$GITHUB_OUTPUT"; fi
+
+  ci:
+    name: Validate source
+    needs: prepare
+    uses: ./.github/workflows/ci.yml
+
+  plugins:
+    name: Plugins
+    needs: prepare
+    uses: ./.github/workflows/build-plugins.yml
+
+  images:
+    name: Publish ${{ matrix.component }} image
+    needs: [prepare, ci, plugins]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     strategy:
       matrix:
         component: [backend, dashboard]
     steps:
-      - uses: actions/checkout@v4
-      - uses: docker/setup-qemu-action@v3
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+      - uses: actions/checkout@v7
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ github.token }}
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
-          images: ghcr.io/${{ github.repository }}/${{ matrix.component }}
+          images: ${{ env.IMAGE_PREFIX }}/${{ matrix.component }}
+          flavor: latest=false
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
-      - uses: docker/build-push-action@v6
+            type=raw,value=${{ needs.prepare.outputs.version }}
+            type=raw,value=v${{ needs.prepare.outputs.version }}
+            type=semver,pattern={{major}}.{{minor}},enable=${{ needs.prepare.outputs.prerelease == 'false' }}
+          labels: |
+            org.opencontainers.image.title=Nexora ${{ matrix.component }}
+            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
+      - name: Source date (reproducible timestamps)
+        run: echo "SOURCE_DATE_EPOCH=$(git log -1 --format=%ct)" >> "$GITHUB_ENV"
+      - id: build
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: infrastructure/docker/${{ matrix.component }}.Dockerfile
@@ -40,3 +132,206 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=release-${{ matrix.component }}
+          cache-to: type=gha,mode=max,scope=release-${{ matrix.component }}
+      - name: Record digest
+        run: |
+          mkdir -p digests
+          echo "${{ steps.build.outputs.digest }}" > "digests/${{ matrix.component }}"
+          echo "### ${{ matrix.component }}: \`${{ steps.build.outputs.digest }}\`" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: digest-${{ matrix.component }}
+          path: digests/${{ matrix.component }}
+
+  scan:
+    name: Scan ${{ matrix.component }} image
+    needs: [prepare, images]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        component: [backend, dashboard]
+    steps:
+      - name: Vulnerability report (high and critical)
+        run: docker run --rm aquasec/trivy:0.76.2 image --no-progress --severity HIGH,CRITICAL "$IMAGE_PREFIX/${{ matrix.component }}:${{ needs.prepare.outputs.version }}" | tee report.txt
+      - name: Fail on critical vulnerabilities with an available fix
+        run: docker run --rm aquasec/trivy:0.76.2 image --no-progress --severity CRITICAL --ignore-unfixed --exit-code 1 "$IMAGE_PREFIX/${{ matrix.component }}:${{ needs.prepare.outputs.version }}"
+
+  verify:
+    name: Verify published images (clean install)
+    needs: [prepare, images, plugins]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: docker/setup-qemu-action@v4
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - uses: actions/download-artifact@v8
+        with:
+          name: nexora-plugins-${{ needs.prepare.outputs.version }}
+          path: jars
+      - name: Images are public, built from this commit and run as non-root
+        run: |
+          for c in backend dashboard; do
+            info=$(node infrastructure/scripts/image-info.mjs "$IMAGE_PREFIX/$c" "$VERSION")
+            echo "$c: $info"
+            node -e '
+              const [info, sha, digest] = process.argv.slice(1); const i = JSON.parse(info);
+              const errors = [];
+              if (!i.exists) errors.push("not found anonymously");
+              if (i.digest !== digest) errors.push(`digest ${i.digest} != pushed ${digest}`);
+              if (i.revision !== sha) errors.push(`revision ${i.revision} != ${sha}`);
+              for (const p of ["linux/amd64", "linux/arm64"]) if (!i.platforms.includes(p)) errors.push(`missing ${p}`);
+              if (!i.user || i.user === "root" || i.user === "0") errors.push(`runs as "${i.user}"`);
+              if (errors.length) { console.error(errors.join("; ")); process.exit(1); }
+            ' "$info" "$GITHUB_SHA" "$(cat "digests/$c")"
+          done
+      - name: Anonymous docker pull (amd64 and arm64)
+        run: |
+          docker logout ghcr.io || true
+          for c in backend dashboard; do
+            docker pull "$IMAGE_PREFIX/$c:$VERSION"
+            docker run --rm --pull always --platform linux/arm64 --entrypoint node "$IMAGE_PREFIX/$c:$VERSION" -e 'if (process.arch !== "arm64") process.exit(1); console.log("arm64 OK")'
+            # The arm64 run re-pointed the local tag; drop it so the install below uses the native image.
+            docker image rm "$IMAGE_PREFIX/$c:$VERSION"
+          done
+      - name: Clean installation exactly as documented (docker compose pull)
+        run: |
+          sh infrastructure/scripts/generate-secrets.sh
+          token="ci-setup-$(openssl rand -hex 16)"
+          sed -i "s/^SETUP_TOKEN=.*/SETUP_TOKEN=$token/; s/^DASHBOARD_BIND=.*/DASHBOARD_BIND=127.0.0.1/; s/^NEXORA_VERSION=.*/NEXORA_VERSION=$VERSION/" .env
+          echo "SETUP_TOKEN=$token" >> "$GITHUB_ENV"
+          docker compose pull
+          docker compose up -d --wait --wait-timeout 300
+          docker compose images
+      - name: Setup wizard, migrations and API work
+        env:
+          VERIFY_PLAYERS: '200'
+        run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 setup
+      - name: Released plugin jars register with the released images
+        run: |
+          node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugin-tokens
+          velocity=$(node -p 'require("./infrastructure/compatibility.json").integration.velocity')
+          paper=$(node -p 'require("./infrastructure/compatibility.json").integration.paper')
+          SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh velocity "$velocity" "jars/Nexora-Velocity-$VERSION.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").velocity')"
+          SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh paper "$paper" "jars/Nexora-Paper-$VERSION.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").paper')"
+          node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugins-registered "$VERSION"
+      - name: Container logs
+        if: ${{ failure() }}
+        run: docker compose logs --no-color --tail 300
+      - name: Clean up
+        if: ${{ always() }}
+        run: |
+          docker compose down -v || true
+          rm -f .env .verify-state.json .smoke-tokens.json
+
+  release:
+    name: Publish GitHub Release
+    needs: [prepare, plugins, scan, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: actions/download-artifact@v8
+        with:
+          name: nexora-plugins-${{ needs.prepare.outputs.version }}
+          path: jars
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - name: Assemble assets and checksums
+        run: bash infrastructure/scripts/package-release.sh "$VERSION" "jars/Nexora-Velocity-$VERSION.jar" "jars/Nexora-Paper-$VERSION.jar" dist
+      - name: Release notes
+        run: |
+          BACKEND_DIGEST=$(cat digests/backend) DASHBOARD_DIGEST=$(cat digests/dashboard) \
+            node infrastructure/scripts/release-notes.mjs "$VERSION" dist/SHA256SUMS > notes.md
+          cat notes.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Create or update the draft release
+        run: |
+          prerelease=$([ "${{ needs.prepare.outputs.prerelease }}" = "true" ] && echo --prerelease || true)
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            # Only drafts reach this point (prepare rejects published releases).
+            gh release edit "$GITHUB_REF_NAME" --title "Nexora $VERSION" --notes-file notes.md
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+          else
+            gh release create "$GITHUB_REF_NAME" --draft --verify-tag $prerelease --title "Nexora $VERSION" --notes-file notes.md dist/*
+          fi
+      - name: Verify the uploaded assets
+        run: |
+          mkdir -p check
+          gh release download "$GITHUB_REF_NAME" --dir check
+          (cd check && sha256sum -c ../dist/SHA256SUMS)
+      - name: Publish
+        run: |
+          latest=$([ "${{ needs.prepare.outputs.latest }}" = "true" ] && echo --latest || echo --latest=false)
+          gh release edit "$GITHUB_REF_NAME" --draft=false $latest
+      - name: Assets are publicly downloadable
+        run: |
+          mkdir -p public && cd public
+          for f in $(awk '{print $2}' ../dist/SHA256SUMS) SHA256SUMS; do
+            for attempt in 1 2 3 4 5; do
+              curl -fsSL -o "$f" "https://github.com/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$f" && break
+              sleep 10
+            done
+          done
+          sha256sum -c SHA256SUMS
+          echo "Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$GITHUB_REF_NAME" >> "$GITHUB_STEP_SUMMARY"
+
+  latest:
+    name: Promote images to latest
+    needs: [prepare, release]
+    if: ${{ needs.prepare.outputs.latest == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - name: Point latest at the verified digests
+        run: |
+          for c in backend dashboard; do
+            digest=$(cat "digests/$c")
+            docker buildx imagetools create -t "$IMAGE_PREFIX/$c:latest" "$IMAGE_PREFIX/$c@$digest"
+            published=$(node -p "JSON.parse(process.argv[1]).digest" "$(node infrastructure/scripts/image-info.mjs "$IMAGE_PREFIX/$c" latest)")
+            [ "$published" = "$digest" ] || { echo "::error::latest for $c is $published, expected $digest"; exit 1; }
+            echo "$IMAGE_PREFIX/$c:latest → $digest" >> "$GITHUB_STEP_SUMMARY"
+          done

@@ -13,6 +13,8 @@
 //              traffic and dashboard reads with latency thresholds.
 //   check    – read-only check after an update or restore: login works and
 //              the data written by "setup" is still there.
+//   plugin-tokens       – create registration tokens for real plugin smoke tests.
+//   plugins-registered  – [version] check that the smoke-test plugins registered.
 //
 // Options (environment): SETUP_TOKEN, VERIFY_STATE (default .verify-state.json),
 // VERIFY_PLAYERS (default 2000), LOAD_SECONDS (default 60),
@@ -300,8 +302,38 @@ async function load() {
   }
 }
 
-const modes = { setup, load, check: checkData };
-if (!modes[mode]) fatal(`unknown mode "${mode}" (setup | load | check)`);
+/** Creates registration tokens for real plugin smoke tests (written to SMOKE_TOKENS, default .smoke-tokens.json). */
+async function pluginTokens() {
+  const state = loadState();
+  await signIn(state);
+  step('Registration tokens for plugin smoke tests');
+  const tokens = {};
+  for (const [type, name] of [['VELOCITY', 'smoke-proxy'], ['PAPER', 'smoke-paper']]) {
+    const created = await call('POST', '/api/servers/registration-tokens', { type, name });
+    if (check(created.status === 201, `token for ${name}`, created.body)) tokens[type.toLowerCase()] = created.body.token;
+  }
+  writeFileSync(process.env.SMOKE_TOKENS ?? '.smoke-tokens.json', JSON.stringify(tokens));
+}
+
+/** Confirms from the dashboard side that the smoke-test plugins registered and sent heartbeats. */
+async function pluginsRegistered() {
+  const state = loadState();
+  const expected = process.argv[4];
+  await signIn(state);
+  step('Real plugins registered through the dashboard');
+  const servers = (await call('GET', '/api/servers')).body ?? [];
+  for (const name of ['smoke-proxy', 'smoke-paper']) {
+    const server = servers.find((s) => s.name === name);
+    check(Boolean(server), `${name} is registered`);
+    if (!server) continue;
+    check(Boolean(server.lastHeartbeatAt), `${name} sent heartbeats (last ${server.lastHeartbeatAt})`);
+    check(!expected || server.pluginVersion === expected, `${name} reports plugin version ${server.pluginVersion}${expected ? ` (expected ${expected})` : ''}`);
+    if (name === 'smoke-paper') check(Boolean(server.minecraftVersion), `${name} reports Minecraft ${server.minecraftVersion}`);
+  }
+}
+
+const modes = { setup, load, check: checkData, 'plugin-tokens': pluginTokens, 'plugins-registered': pluginsRegistered };
+if (!modes[mode]) fatal(`unknown mode "${mode}" (setup | load | check | plugin-tokens | plugins-registered)`);
 await modes[mode]();
 console.log(failures === 0 ? '\n✅ Deployment verified.' : `\n❌ ${failures} check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);

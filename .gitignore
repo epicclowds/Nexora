@@ -48,3 +48,6 @@ geoip/*.mmdb
 
 # Test credentials written by infrastructure/scripts/verify-deployment.mjs
 .verify-state.json
+
+# Plugin smoke-test registration tokens
+.smoke-tokens.json
