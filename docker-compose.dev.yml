@@ -1,0 +1,21 @@
+# Development override: build the backend and dashboard images from this
+# source tree instead of pulling the published release images.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+#
+# Locally built images are tagged nexora-local/* so they can never be mistaken
+# for (or overwrite) a published release image.
+services:
+  backend:
+    image: nexora-local/backend:dev
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: infrastructure/docker/backend.Dockerfile
+
+  dashboard:
+    image: nexora-local/dashboard:dev
+    pull_policy: build
+    build:
+      context: .
+      dockerfile: infrastructure/docker/dashboard.Dockerfile

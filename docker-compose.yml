@@ -1,7 +1,10 @@
-# Minecraft Network Manager – production stack.
-#   cp .env.example .env   # then fill in the secrets (see docs/installation/README.md)
+# Nexora – production stack using the published images from GitHub Container Registry.
+#   sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
+#   docker compose pull
 #   docker compose up -d
+# Nothing is compiled locally. To build from source instead, see docker-compose.dev.yml.
 # MySQL and Redis are only reachable on the internal network.
+# The project name is kept from earlier releases so existing volumes (data) are reused.
 
 name: minecraft-network-manager
 
@@ -49,10 +52,8 @@ services:
 
   backend:
     <<: *restart
-    image: ${MNM_IMAGE_PREFIX:-mnm}/backend:${MNM_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: infrastructure/docker/backend.Dockerfile
+    # Pinned release; change NEXORA_VERSION in .env to update (docs/installation/updating.md).
+    image: ${NEXORA_IMAGE_PREFIX:-ghcr.io/epicclowds/nexora}/backend:${NEXORA_VERSION:-1.0.1}
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -82,10 +83,7 @@ services:
 
   dashboard:
     <<: *restart
-    image: ${MNM_IMAGE_PREFIX:-mnm}/dashboard:${MNM_VERSION:-latest}
-    build:
-      context: .
-      dockerfile: infrastructure/docker/dashboard.Dockerfile
+    image: ${NEXORA_IMAGE_PREFIX:-ghcr.io/epicclowds/nexora}/dashboard:${NEXORA_VERSION:-1.0.1}
     environment:
       BACKEND_INTERNAL_URL: http://backend:4000
     depends_on:
