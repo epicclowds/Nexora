@@ -121,6 +121,12 @@ public final class ManagedSettings {
         return Collections.unmodifiableMap(out);
     }
 
+    /** Appeal link for ban screens (managed value, else config.properties appeal-url). */
+    public String appealUrl() {
+        String value = string("appealUrl");
+        return value != null ? PluginConfig.appealUrl(value) : local.appealUrl();
+    }
+
     public boolean statisticsEnabled() {
         return bool("statisticsEnabled", local.statisticsEnabled());
     }

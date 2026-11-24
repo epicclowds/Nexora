@@ -54,6 +54,27 @@ final class Enforcer implements PunishmentFeed.Listener {
         apply(p);
     }
 
+    /** Edited punishment (cache already updated): inform affected online players. */
+    @Override
+    public void updated(CachedPunishment p) {
+        Optional<Player> target = proxy.getPlayer(p.targetUuid());
+        if (p.isMute()) target.ifPresent(player -> player.sendMessage(texts.muteUpdatedNotice(p)));
+        else if (p.isBan() && p.isActive(System.currentTimeMillis())) target.ifPresent(player -> player.disconnect(texts.banScreen(p)));
+        logger.info("Punishment {} of {} was edited: {} (expires {})", p.id(), p.targetName(), p.reason(), p.expiresAt());
+    }
+
+    /** Command path: the edit is confirmed by the backend, update the local cache right away. */
+    void refresh(CachedPunishment p) {
+        cache.put(p);
+    }
+
+    /** A reactivated punishment is applied again even if it was handled before. */
+    @Override
+    public void reactivated(CachedPunishment p) {
+        handled.remove(p.id());
+        apply(p);
+    }
+
     /** Applies a punishment to online players once and notifies staff. */
     void apply(CachedPunishment p) {
         if (!handled.add(p.id())) return;

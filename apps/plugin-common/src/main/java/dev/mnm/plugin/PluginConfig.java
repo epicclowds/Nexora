@@ -32,6 +32,7 @@ public record PluginConfig(
         int inventorySyncIntervalSeconds,
         boolean punishmentsEnabled,
         boolean moderationCommands,
+        String appealUrl,
         boolean managedSettings,
         boolean debug) {
 
@@ -74,6 +75,7 @@ public record PluginConfig(
                 clamp(integer(p, "inventory-sync-interval-seconds", 300), 30, 3600),
                 bool(p, "punishments-enabled", true),
                 bool(p, "moderation-commands", true),
+                appealUrl(p.getProperty("appeal-url", "").trim()),
                 bool(p, "managed-settings", true),
                 bool(p, "debug", false));
     }
@@ -91,6 +93,11 @@ public record PluginConfig(
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException("backend-url is not a valid URL: " + raw, e);
         }
+    }
+
+    /** Only https:// links are shown to banned players. */
+    static String appealUrl(String raw) {
+        return raw.startsWith("https://") && !raw.contains(" ") ? raw : null;
     }
 
     /** Comma-separated plugin names, compared case-insensitively (stored lower-case). */

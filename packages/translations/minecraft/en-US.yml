@@ -10,7 +10,7 @@ error.backend-unavailable: "<red>The network backend is currently unavailable. P
 error.usage: "<red>Usage: {usage}"
 
 punishment.ban.screen: "<red><bold>You are banned from this network.</bold></red>\n\n<gray>Reason: <white>{reason}</white>\n<gray>Punishment ID: <white>{id}</white>"
-punishment.tempban.screen: "<red><bold>You are temporarily banned from this network.</bold></red>\n\n<gray>Reason: <white>{reason}</white>\n<gray>Expires: <white>{expires}</white>\n<gray>Punishment ID: <white>{id}</white>"
+punishment.tempban.screen: "<red><bold>You are temporarily banned from this network.</bold></red>\n\n<gray>Reason: <white>{reason}</white>\n<gray>Expires: <white>{expires}</white> <dark_gray>({remaining} remaining)</dark_gray>\n<gray>Punishment ID: <white>{id}</white>"
 punishment.kick.screen: "<red>You were kicked from the network.</red>\n\n<gray>Reason: <white>{reason}</white>"
 punishment.mute.notice: "<red>You are muted. Reason: {reason}"
 punishment.tempmute.notice: "<red>You are muted until {expires}. Reason: {reason}"
@@ -67,3 +67,16 @@ state.expired: "expired"
 state.revoked: "revoked"
 
 anticheat.result: "<gray>AntiCheat report for <white>{player}</white> (<white>{cheat}</white>): <white>{outcome}</white>"
+
+# Punishment editing (/editban, /editmute) and ban screen extras
+punishment.appeal: "\n\n<gray>Appeal: <white>{url}</white>"
+punishment.mute.updated: "<yellow>Your mute was changed. Reason: {reason} – until {expires}"
+command.edit.success: "<green>{type} {id} of {player} updated."
+command.edit.duration: "<gray>Expires: <white>{old}</white> → <white>{new}</white>"
+command.edit.reason: "<gray>Reason: <white>{old}</white> → <white>{new}</white>"
+error.no-changes: "<yellow>Nothing to change: the punishment already has these values."
+error.duration-elapsed: "<red>This duration has already elapsed since the punishment was created. Use /unban or /unmute instead."
+error.not-active: "<red>This punishment is no longer active. Reactivation is only possible in the dashboard."
+error.punishment-not-found: "<red>No punishment with ID {input} exists."
+error.permanent-permission: "<red>You do not have permission to make punishments permanent or temporary."
+error.wrong-punishment-type: "<red>Punishment {input} is not of this kind. Use /editban for bans and /editmute for mutes."

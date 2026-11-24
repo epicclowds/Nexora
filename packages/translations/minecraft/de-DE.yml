@@ -8,7 +8,7 @@ error.backend-unavailable: "<red>Das Netzwerk-Backend ist derzeit nicht erreichb
 error.usage: "<red>Verwendung: {usage}"
 
 punishment.ban.screen: "<red><bold>Du bist von diesem Netzwerk gebannt.</bold></red>\n\n<gray>Grund: <white>{reason}</white>\n<gray>Strafen-ID: <white>{id}</white>"
-punishment.tempban.screen: "<red><bold>Du bist vorübergehend von diesem Netzwerk gebannt.</bold></red>\n\n<gray>Grund: <white>{reason}</white>\n<gray>Läuft ab: <white>{expires}</white>\n<gray>Strafen-ID: <white>{id}</white>"
+punishment.tempban.screen: "<red><bold>Du bist vorübergehend von diesem Netzwerk gebannt.</bold></red>\n\n<gray>Grund: <white>{reason}</white>\n<gray>Läuft ab: <white>{expires}</white> <dark_gray>(noch {remaining})</dark_gray>\n<gray>Strafen-ID: <white>{id}</white>"
 punishment.kick.screen: "<red>Du wurdest vom Netzwerk gekickt.</red>\n\n<gray>Grund: <white>{reason}</white>"
 punishment.mute.notice: "<red>Du bist stummgeschaltet. Grund: {reason}"
 punishment.tempmute.notice: "<red>Du bist bis {expires} stummgeschaltet. Grund: {reason}"
@@ -65,3 +65,16 @@ state.expired: "abgelaufen"
 state.revoked: "aufgehoben"
 
 anticheat.result: "<gray>AntiCheat-Meldung für <white>{player}</white> (<white>{cheat}</white>): <white>{outcome}</white>"
+
+# Punishment editing (/editban, /editmute) and ban screen extras
+punishment.appeal: "\n\n<gray>Einspruch: <white>{url}</white>"
+punishment.mute.updated: "<yellow>Deine Stummschaltung wurde geändert. Grund: {reason} – bis {expires}"
+command.edit.success: "<green>{type} {id} von {player} aktualisiert."
+command.edit.duration: "<gray>Läuft ab: <white>{old}</white> → <white>{new}</white>"
+command.edit.reason: "<gray>Grund: <white>{old}</white> → <white>{new}</white>"
+error.no-changes: "<yellow>Nichts zu ändern: Die Strafe hat bereits diese Werte."
+error.duration-elapsed: "<red>Diese Dauer ist seit der Erstellung der Strafe bereits abgelaufen. Verwende stattdessen /unban oder /unmute."
+error.not-active: "<red>Diese Strafe ist nicht mehr aktiv. Reaktivieren ist nur im Dashboard möglich."
+error.punishment-not-found: "<red>Es gibt keine Strafe mit der ID {input}."
+error.permanent-permission: "<red>Du darfst Strafen nicht in permanente oder befristete umwandeln."
+error.wrong-punishment-type: "<red>Strafe {input} ist nicht von dieser Art. Verwende /editban für Banns und /editmute für Stummschaltungen."

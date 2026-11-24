@@ -64,7 +64,7 @@ public final class NetworkManagerVelocity {
         // Punishments: local cache (login checks), change feed (actions), commands.
         if (config.punishmentsEnabled()) {
             PunishmentCache cache = new PunishmentCache();
-            PunishmentTexts texts = new PunishmentTexts(messages);
+            PunishmentTexts texts = new PunishmentTexts(messages, managed::appealUrl);
             Enforcer enforcer = new Enforcer(proxy, cache, texts, logger);
             PunishmentFeed feed = new PunishmentFeed(connector.client(), cache, dataDirectory, enforcer, logger);
             connector.every3Seconds(feed::poll);

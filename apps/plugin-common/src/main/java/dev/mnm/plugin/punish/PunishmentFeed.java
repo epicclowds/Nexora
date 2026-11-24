@@ -25,6 +25,14 @@ public final class PunishmentFeed {
         void created(CachedPunishment punishment);
 
         default void revoked(CachedPunishment punishment) {}
+
+        /** Reason, expiry or type of an active punishment changed (already updated in the cache). */
+        default void updated(CachedPunishment punishment) {}
+
+        /** An expired or revoked punishment was made active again. */
+        default void reactivated(CachedPunishment punishment) {
+            created(punishment);
+        }
     }
 
     private final BackendClient client;
@@ -76,12 +84,30 @@ public final class PunishmentFeed {
                 JsonObject change = e.getAsJsonObject();
                 CachedPunishment p = CachedPunishment.fromJson(change.getAsJsonObject("punishment"));
                 boolean recent = now - change.get("at").getAsLong() <= ACTION_WINDOW_MS;
-                if ("REVOKED".equals(change.get("kind").getAsString())) {
-                    cache.remove(p.id());
-                    if (recent) safely(() -> listener.revoked(p));
-                } else {
-                    cache.put(p);
-                    if (recent) safely(() -> listener.created(p));
+                JsonElement status = change.getAsJsonObject("punishment").get("status");
+                // Defence in depth: never cache a punishment the backend reports as inactive.
+                String kind = status != null && !status.isJsonNull() && !"ACTIVE".equals(status.getAsString()) && !"REVOKED".equals(change.get("kind").getAsString())
+                        ? "INACTIVE"
+                        : change.get("kind").getAsString();
+                switch (kind) {
+                    case "INACTIVE" -> cache.remove(p.id());
+                    case "REVOKED" -> {
+                        cache.remove(p.id());
+                        if (recent) safely(() -> listener.revoked(p));
+                    }
+                    case "UPDATED" -> {
+                        // Edited punishment: replace the cached entry (reason/expiry/type).
+                        cache.put(p);
+                        if (recent) safely(() -> listener.updated(p));
+                    }
+                    case "REACTIVATED" -> {
+                        cache.put(p);
+                        if (recent) safely(() -> listener.reactivated(p));
+                    }
+                    default -> {
+                        cache.put(p);
+                        if (recent) safely(() -> listener.created(p));
+                    }
                 }
             }
             cache.setCursor(body.get("cursor").getAsString());

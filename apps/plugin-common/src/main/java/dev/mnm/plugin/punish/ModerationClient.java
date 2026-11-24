@@ -54,6 +54,40 @@ public final class ModerationClient {
         return client.post("/api/plugin/v1/punishments/revoke", body);
     }
 
+    /** What /editban and /editmute change; a null field keeps the current value. */
+    public record Edit(String kind, String target, String id, EditDuration duration, String reason) {}
+
+    /** New total duration counted from the creation time, or permanent. */
+    public record EditDuration(Long seconds) {
+        public static EditDuration permanent() {
+            return new EditDuration(null);
+        }
+
+        public boolean isPermanent() {
+            return seconds == null;
+        }
+    }
+
+    /**
+     * Edits the active ban/mute of a player (or a punishment by id) in place.
+     * {@code allowPermanentChange}: the editor holds the permission for
+     * temporary ↔ permanent conversions (checked against the planned change).
+     */
+    public CompletableFuture<JsonObject> edit(Edit edit, boolean allowPermanentChange, Actor editor) {
+        JsonObject body = new JsonObject();
+        body.addProperty("kind", edit.kind());
+        if (edit.id() != null) body.addProperty("id", edit.id());
+        else body.addProperty("target", edit.target());
+        if (edit.duration() != null) {
+            if (edit.duration().isPermanent()) body.add("durationSeconds", com.google.gson.JsonNull.INSTANCE);
+            else body.addProperty("durationSeconds", edit.duration().seconds());
+        }
+        if (edit.reason() != null && !edit.reason().isBlank()) body.addProperty("reason", edit.reason());
+        body.add("editor", editor.toJson());
+        body.addProperty("allowPermanentChange", allowPermanentChange);
+        return client.post("/api/plugin/v1/punishments/edit", body);
+    }
+
     public CompletableFuture<JsonObject> lookup(String target, int limit) {
         return client.get("/api/plugin/v1/players/lookup?target=" + URLEncoder.encode(target, StandardCharsets.UTF_8) + "&limit=" + limit);
     }
