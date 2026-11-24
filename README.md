@@ -22,7 +22,7 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 | Inventories | View and edit inventories and Ender Chests per server in a Minecraft-style editor (drag & drop, amount, name, lore, enchantments); per-slot compare-and-set applied atomically on the server thread (no duplication or loss), offline edits queued until the next join, revision history with rollback, full audit trail |
 | Configuration | Setup wizard; guided server registration with Velocity/Paper config generator (copy, download, ZIP package with instructions, live registration status); plugin settings and in-game messages managed centrally and applied live without restarts; punishment templates; language management with catalogue import/export and runtime-added languages |
 | Realtime | Server-Sent Events with Redis fan-out; permission-filtered |
-| Moderation | Bans, temp bans, IP blacklists, mutes, temp mutes, kicks, warnings; `/ban /tempban /unban /mute /tempmute /unmute /kick /warn /history /check`; login checks from a local, disk-persisted cache (no network on join, works during outages); mutes enforced on Paper; duplicate prevention and idempotency; dashboard moderation page, player history, revoke, internal notes; full audit trail |
+| Moderation | Bans, temp bans, IP blacklists, mutes, temp mutes, kicks, warnings; `/ban /tempban /unban /mute /tempmute /unmute /kick /warn /history /check /editban /editmute`; editing of reason, duration and permanent/temporary with preview, optimistic locking and live sync; multiple evidence entries per punishment (video, screenshot, link, text, note) that can be added later; immutable change history; login checks from a local, disk-persisted cache (no network on join, works during outages); mutes enforced on Paper; duplicate prevention and idempotency; dashboard moderation page, player history, revoke, internal notes; full audit trail |
 | Dashboard | Live overview, players, online players, player profiles, servers, users & roles, audit log, settings; dark/light theme; responsive |
 | API | REST with OpenAPI docs at `/api/docs`; [permission matrix](docs/architecture/permission-matrix.md) generated from the code |
 | Operations | Verified backup/restore scripts, deployment verification and load test (run in CI against the real Compose stack), hardened containers, Content-Security-Policy |
@@ -32,15 +32,15 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 Requirements: a Linux server (amd64 or arm64) with Docker Engine 24+ and the Compose plugin. Nothing is compiled: the backend and dashboard are prebuilt images on GitHub Container Registry, the plugins are prebuilt jars on the [Releases page](https://github.com/epicclowds/Nexora/releases).
 
 ```sh
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.3/nexora-deploy-1.0.3.tar.gz
-tar -xzf nexora-deploy-1.0.3.tar.gz && cd nexora
+curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.1.0/nexora-deploy-1.1.0.tar.gz
+tar -xzf nexora-deploy-1.1.0.tar.gz && cd nexora
 sh infrastructure/scripts/generate-secrets.sh      # creates .env with random secrets
-docker compose pull                                # ghcr.io/epicclowds/nexora/{backend,dashboard}:1.0.3, MySQL, Redis
+docker compose pull                                # ghcr.io/epicclowds/nexora/{backend,dashboard}:1.1.0, MySQL, Redis
 docker compose up -d
 docker compose logs backend | grep "Setup code"    # one-time code for the setup wizard
 ```
 
-Open `http://<server>:3000`, complete the setup wizard, then install `Nexora-Velocity-1.0.3.jar` and `Nexora-Paper-1.0.3.jar` from the [release](https://github.com/epicclowds/Nexora/releases/tag/v1.0.3) and connect them under **Settings → Minecraft integration**.
+Open `http://<server>:3000`, complete the setup wizard, then install `Nexora-Velocity-1.1.0.jar` and `Nexora-Paper-1.1.0.jar` from the [release](https://github.com/epicclowds/Nexora/releases/tag/v1.1.0) and connect them under **Settings → Minecraft integration**.
 
 Step-by-step guides: [Installation](docs/installation/README.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md)
 
@@ -91,6 +91,7 @@ docs/               Architecture, installation, API and development docs
 | v1.0.0 | Production readiness: security review, 2FA, permission audit, deployment/load/backup verification | ✅ released |
 | v1.0.2 | Distribution: GitHub Releases with plugin jars, prebuilt GHCR images by default, release pipeline | ✅ released |
 | v1.0.3 | Database credentials: encoded connection URLs, P1000 diagnosis, non-destructive repair script | ✅ released |
+| v1.1.0 | Punishment editing (`/editban`, `/editmute`, dashboard), evidence management, change history, appeal link | ✅ released |
 
 ## License
 

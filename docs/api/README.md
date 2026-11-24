@@ -55,10 +55,16 @@ The complete list of routes with their required permissions is generated into th
 | `POST /api/i18n/languages` · `DELETE …/:locale` · `PUT/DELETE /api/i18n/catalogs/:locale` | session | `translations.manage` | Add/delete languages, import/reset catalogues |
 | `GET /api/i18n/messages/:locale` | public | – | Imported messages of an enabled language (used by the dashboard) |
 | `GET /api/servers/registration-tokens/:id` | session | `servers.manage` | Registration progress (pending, registered, expired) |
-| `GET/PATCH /api/settings/privacy` | session | `settings.manage` | IP retention period |
+| `GET/PATCH /api/settings/privacy` | session | `settings.manage` | IP retention period, retention of removed evidence |
 | `GET /api/punishments` | session | `punishments.history` | Search/filter punishments (`type`, `status`, `search`) |
 | `POST /api/punishments` | session | per type (e.g. `punishments.ban`) | Issue a punishment |
 | `POST /api/punishments/:id/revoke` | session | `punishments.unban` / `unmute` / … | Revoke an active punishment |
+| `GET /api/punishments/:id` | session | `punishments.history` | Punishment details (`version`, `evidenceCount`, `needsReview`, …) |
+| `PATCH /api/punishments/:id` | session | `punishments.edit` + issue permission + `punishments.edit.reason` / `.duration` / `.permanent` | Edit reason, expiry (`expiresAt`, `null` = permanent) and staff note; body needs the current `version` (`409 STALE_PUNISHMENT` otherwise) |
+| `POST /api/punishments/:id/reactivate` | session | `punishments.reactivate` + issue permission | Put an expired or revoked punishment back into force |
+| `GET /api/punishments/:id/history` | session | `punishments.history.view` | Immutable change history |
+| `GET/POST /api/punishments/:id/evidence` | session | `punishments.evidence.view` / `.add` | List and add evidence |
+| `PATCH/DELETE /api/punishments/:id/evidence/:evidenceId` | session | `punishments.evidence.edit` / `.delete` | Edit or remove (soft delete) evidence; body needs the evidence `version` |
 | `GET /api/players/:uuid/punishments` | session | `punishments.history` | History and active ban/mute |
 | `GET/POST /api/players/:uuid/notes` · `DELETE …/:noteId` | session | `players.notes` | Internal staff notes |
 | `GET /api/events` | session | per event | Server-Sent Events stream ([realtime](../architecture/realtime.md)) |
@@ -68,7 +74,7 @@ The complete list of routes with their required permissions is generated into th
 | `POST /api/plugin/v1/inventories` · `GET …/inventories/pending` · `POST …/inventories/revisions/:id/result` | request signature (Paper) | – | Inventory snapshots and edits |
 | `GET /api/plugin/v1/config` | request signature | – | Managed plugin settings (heartbeat and ping responses carry `configRevision`) |
 | `POST /api/plugin/v1/statistics` | request signature (Paper) | – | Statistics upload |
-| `GET /api/plugin/v1/punishments/active` · `…/changes?after=` · `POST …/punishments` · `…/punishments/revoke` · `GET …/players/lookup` | request signature | – | Punishment feed and in-game moderation ([punishments](../architecture/punishments.md)) |
+| `GET /api/plugin/v1/punishments/active` · `…/changes?after=` · `POST …/punishments` · `…/punishments/revoke` · `…/punishments/edit` · `GET …/players/lookup` | request signature | – | Punishment feed and in-game moderation ([punishments](../architecture/punishments.md)) |
 
 ## Plugin registration
 

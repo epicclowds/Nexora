@@ -94,7 +94,7 @@ Nothing is estimated: values that were not collected are shown as "not collected
 
 ## Moderation
 
-The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`, `/unmute`, `/kick`, `/warn`, `/history` and `/check`. Permissions and behaviour are described in [Punishments](../architecture/punishments.md). Both plugins keep `punishments-cache.json` in their folder so bans and mutes stay enforced during backend outages; do not delete it while the backend is unreachable.
+The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`, `/unmute`, `/kick`, `/warn`, `/history`, `/check`, `/editban` and `/editmute`. Ban screens can show an appeal link: set it under *Settings → Plugin settings → Appeal link* or with `appeal-url=https://…` in `config.properties`. Permissions and behaviour are described in [Punishments](../architecture/punishments.md). Both plugins keep `punishments-cache.json` in their folder so bans and mutes stay enforced during backend outages; do not delete it while the backend is unreachable.
 
 ## AntiCheat
 

@@ -49,6 +49,15 @@ Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` of the
 
 Whether you update in place or extract a newer release package into a new folder: **keep your existing `.env`** (copy it into the new folder). Do not run `generate-secrets.sh` again – MySQL keeps the passwords of its first start in the data volume, and new passwords make the backend fail with `P1000 Authentication failed` (since 1.0.3 the script refuses when it finds an existing database volume). If it already happened, follow [Database password mismatch](README.md#database-password-mismatch-p1000) – no data is lost.
 
+## Upgrading from 1.0.3 to 1.1.0
+
+1.1.0 adds punishment editing, evidence management and the change history. The database migration only adds columns, a table and permissions; existing punishments, evidence, players and statistics are kept, and every existing punishment receives a `CREATED` history entry. `docker-compose.yml` is unchanged apart from the default version.
+
+1. Take a backup (`infrastructure/scripts/backup.sh`, see [Backup & restore](backup-restore.md)).
+2. Set `NEXORA_VERSION=1.1.0` in `.env` (keep everything else), then `docker compose pull && docker compose up -d`.
+3. Replace `Nexora-Velocity-1.0.3.jar` and `Nexora-Paper-1.0.3.jar` with the 1.1.0 jars and restart the servers. Configuration folders stay the same; `config.properties` gains an optional `appeal-url`. Until the plugins are updated, 1.0.x plugins keep enforcing punishments (including edits of active ones), but `/editban`, `/editmute`, the remaining time and the appeal link on ban screens are missing.
+4. Grant the new permissions to custom roles if needed (system roles receive them automatically): `punishments.edit`, `punishments.edit.reason`, `punishments.edit.duration`, `punishments.edit.permanent`, `punishments.reactivate`, `punishments.evidence.view/add/edit/delete`, `punishments.history.view`; in-game `networkmanager.command.editban`, `networkmanager.command.editmute` and their `.permanent` variants.
+
 ## Upgrading from 1.0.2 to 1.0.3
 
 `docker-compose.yml` passes the database and Redis credentials as separate variables, so passwords with special characters work. Take `docker-compose.yml` and `infrastructure/scripts/` from the 1.0.3 release package (keep your `.env`), set `NEXORA_VERSION=1.0.3`, then `docker compose pull && docker compose up -d`. The 1.0.3 backend image still accepts the `DATABASE_URL`/`REDIS_URL` settings of the 1.0.2 `docker-compose.yml`, so the order of these steps does not matter.

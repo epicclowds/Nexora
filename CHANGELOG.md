@@ -2,6 +2,29 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.1.0] – 2026-11-25
+
+Punishment editing and evidence management.
+
+### Added
+- **Edit punishments** after they were issued: reason, duration/expiry, permanent ↔ temporary and an internal staff note. Durations count from the original creation time. The dashboard shows a preview (old → new duration, expiry and reason) and asks for confirmation; concurrent edits are detected (optimistic locking, `409 STALE_PUNISHMENT`).
+- In-game commands `/editban` and `/editmute` (`<player|#id> <duration|permanent|keep> [reason]`) with tab completion and the permissions `networkmanager.command.editban`/`editmute` (+ `.permanent`).
+- **Evidence**: any number of entries per punishment (video, screenshot, image, link, text, note) with title, https URL, description and visibility (staff-only by default); can be added later, e.g. after an in-game ban; editing and soft-deletion with a configurable retention period (*Settings → Privacy*, default 90 days).
+- **Change history**: immutable timeline of every change (created, reason changed, duration extended/shortened, made permanent/temporary, evidence added/edited/removed, revoked, reactivated) with actor, time, old/new values and note.
+- Punishment detail page in the dashboard (linked from every punishment list), explicit **Reactivate** action for expired or revoked punishments.
+- Optional *Require evidence* policy: active bans and mutes without evidence are flagged for review; they stay in force.
+- Ban screens show the remaining time and an optional appeal link (*Settings → Plugin settings*, or `appeal-url` in `config.properties`). Evidence and staff notes are never shown to players.
+- Permissions `punishments.edit`, `.edit.reason`, `.edit.duration`, `.edit.permanent`, `punishments.reactivate`, `punishments.evidence.view/add/edit/delete`, `punishments.history.view`; system roles receive suitable defaults.
+
+### Changed
+- Edits of active bans and mutes reach Velocity and Paper within about 3 seconds through the punishment feed. Editing an expired or revoked punishment never puts it back into force.
+
+### Security
+- Evidence URLs must be `https://` with a real host; `javascript:`, `data:`, `http:`, embedded credentials and control characters are rejected. Links are never fetched by the server and are rendered without previews or embeds. All changes are audit-logged; edit and evidence endpoints are rate-limited.
+
+### Migration from 1.0.3
+The migration is additive (new columns, the `punishment_history` table, permissions) and keeps all existing data. Back up, set `NEXORA_VERSION=1.1.0`, `docker compose pull && docker compose up -d`, then replace both plugin jars. See [Updating](docs/installation/updating.md#upgrading-from-103-to-110).
+
 ## [1.0.3] – 2026-11-24
 
 Fixes database authentication failures (`Prisma P1000`) in Docker deployments.
@@ -92,6 +115,7 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.1.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.1.0
 [1.0.3]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.3
 [1.0.2]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.2
 [1.0.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.0

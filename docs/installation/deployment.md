@@ -16,8 +16,8 @@ This guide takes a fresh Linux host to a production installation. The short vers
 Download the deployment package of the release you want to run (no source code, images are pulled from GHCR) – see [Installation, step 3](README.md#3-download-nexora):
 
 ```sh
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.0.3/nexora-deploy-1.0.3.tar.gz
-tar -xzf nexora-deploy-1.0.3.tar.gz && cd nexora
+curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.1.0/nexora-deploy-1.1.0.tar.gz
+tar -xzf nexora-deploy-1.1.0.tar.gz && cd nexora
 sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
 ```
 
