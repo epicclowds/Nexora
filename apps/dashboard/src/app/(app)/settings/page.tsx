@@ -12,6 +12,7 @@ import { ModerationPresets } from '@/components/moderation-presets';
 import { PluginSettingsEditor } from '@/components/plugin-settings-editor';
 import { LanguageSwitcher, ThemeToggle } from '@/components/preference-controls';
 import { useToast } from '@/components/toaster';
+import { TwoFactorCard } from '@/components/two-factor-card';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Label, Select, Skeleton, Textarea } from '@/components/ui/primitives';
 import { api, errorKey } from '@/lib/api';
 import { browserTimeZone, storeTimeZone } from '@/lib/preferences';
@@ -68,6 +69,7 @@ function Settings() {
         {section === 'general' && (
           <>
             <PreferencesCard />
+            <TwoFactorCard />
             {can(PERMISSIONS.SETTINGS_MANAGE) && <NetworkCard />}
           </>
         )}

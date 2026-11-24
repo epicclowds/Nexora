@@ -12,12 +12,14 @@ import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, C
 import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/table';
 import { api, errorKey, type Page } from '@/lib/api';
 import { useRoleName } from '@/lib/use-role-name';
+import { ConfirmDialog } from '@/components/confirm-dialog';
 
 interface UserRow {
   id: string;
   username: string;
   email: string;
   disabled: boolean;
+  twoFactorEnabled: boolean;
   lastLoginAt: string | null;
   createdAt: string;
   role: { id: string; key: string; name: string; priority: number };
@@ -179,14 +181,35 @@ export default function UsersPage() {
                         <Badge variant="outline">{roleName(u.role)}</Badge>
                       )}
                     </TD>
-                    <TD>{u.disabled ? <Badge variant="danger">{t('users.disabled')}</Badge> : <Badge>{t('users.active')}</Badge>}</TD>
+                    <TD>
+                      <div className="flex flex-wrap gap-1">
+                        {u.disabled ? <Badge variant="danger">{t('users.disabled')}</Badge> : <Badge>{t('users.active')}</Badge>}
+                        {u.twoFactorEnabled && <Badge variant="info">{t('users.twoFactor')}</Badge>}
+                      </div>
+                    </TD>
                     <TD className="text-muted-foreground">{u.lastLoginAt ? format.relativeTime(new Date(u.lastLoginAt), now) : t('common.never')}</TD>
                     {canManage && (
                       <TD className="text-right">
                         {manageable && (
-                          <Button size="sm" variant={u.disabled ? 'outline' : 'ghost'} onClick={() => void update(u, { disabled: !u.disabled })}>
-                            {u.disabled ? t('users.enable') : t('users.disable')}
-                          </Button>
+                          <div className="flex justify-end gap-1">
+                            {u.twoFactorEnabled && (
+                              <ConfirmDialog
+                                trigger={
+                                  <Button size="sm" variant="ghost">
+                                    {t('users.resetTwoFactor')}
+                                  </Button>
+                                }
+                                title={t('users.resetTwoFactorTitle', { user: u.username })}
+                                description={t('users.resetTwoFactorDescription')}
+                                confirmLabel={t('users.resetTwoFactor')}
+                                destructive
+                                onConfirm={() => update(u, { resetTwoFactor: true })}
+                              />
+                            )}
+                            <Button size="sm" variant={u.disabled ? 'outline' : 'ghost'} onClick={() => void update(u, { disabled: !u.disabled })}>
+                              {u.disabled ? t('users.enable') : t('users.disable')}
+                            </Button>
+                          </div>
                         )}
                       </TD>
                     )}

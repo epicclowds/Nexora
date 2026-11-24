@@ -61,7 +61,12 @@
     "submit": "Anmelden",
     "submitting": "Anmeldung läuft…",
     "invalidCredentials": "Benutzername oder Passwort ist ungültig.",
-    "rateLimited": "Zu viele Versuche. Bitte warte einen Moment und versuche es erneut."
+    "rateLimited": "Zu viele Versuche. Bitte warte einen Moment und versuche es erneut.",
+    "twoFactorCode": "Authentifizierungscode",
+    "twoFactorHint": "6-stelliger Code aus deiner Authenticator-App oder ein Wiederherstellungscode.",
+    "twoFactorInvalid": "Der Code ist ungültig.",
+    "twoFactorExpired": "Die Anmeldung ist abgelaufen. Bitte gib dein Passwort erneut ein.",
+    "twoFactorBack": "Anderes Konto verwenden"
   },
   "dashboard": {
     "title": "Übersicht",
@@ -84,10 +89,6 @@
     "recentActivity": "Letzte Aktivitäten",
     "recentActivityEmpty": "Noch keine Audit-Ereignisse vorhanden."
   },
-  "planned": {
-    "title": "Noch nicht verfügbar",
-    "description": "Das Modul {module} ist für eine spätere Entwicklungsphase geplant und in dieser Version noch nicht umgesetzt."
-  },
   "users": {
     "title": "Benutzerverwaltung",
     "subtitle": "Dashboard-Konten und ihre Rollen.",
@@ -105,7 +106,11 @@
     "empty": "Keine Benutzer gefunden.",
     "created": "Benutzer {username} wurde erstellt.",
     "updated": "Benutzer {username} wurde aktualisiert.",
-    "count": "{count, plural, one {# Benutzer} other {# Benutzer}}"
+    "count": "{count, plural, one {# Benutzer} other {# Benutzer}}",
+    "twoFactor": "2FA",
+    "resetTwoFactor": "2FA zurücksetzen",
+    "resetTwoFactorTitle": "Zwei-Faktor-Authentifizierung für {user} zurücksetzen?",
+    "resetTwoFactorDescription": "Verwende dies, wenn der Benutzer sein Authenticator-Gerät verloren hat. Seine Sitzungen werden beendet und er kann sich nur mit dem Passwort anmelden, bis er 2FA erneut einrichtet."
   },
   "roles": {
     "title": "Rollen & Berechtigungen",
@@ -434,8 +439,7 @@
     "moderation": "Moderation",
     "connections": "Verbindungen",
     "activity": "Aktivität",
-    "notes": "Notizen",
-    "planned": "{tab} wird in einer späteren Version verfügbar. Bis echte Daten erfasst werden, wird nichts angezeigt."
+    "notes": "Notizen"
   },
   "skin": {
     "preview": "3D-Skin-Vorschau",
@@ -839,5 +843,27 @@
       "too-long": "zu lang",
       "unknown-key": "unbekannter Schlüssel"
     }
+  },
+  "twoFactor": {
+    "title": "Zwei-Faktor-Authentifizierung",
+    "description": "Schütze dein Konto zusätzlich zum Passwort mit Codes aus einer Authenticator-App (TOTP).",
+    "on": "Aktiviert",
+    "off": "Nicht aktiviert",
+    "enable": "Zwei-Faktor-Authentifizierung einrichten",
+    "disable": "Deaktivieren",
+    "newCodes": "Neue Wiederherstellungscodes",
+    "remaining": "{count, plural, =0 {Keine Wiederherstellungscodes mehr – erstelle neue.} one {# Wiederherstellungscode übrig} other {# Wiederherstellungscodes übrig}}",
+    "password": "Aktuelles Passwort",
+    "invalidPassword": "Das Passwort ist falsch.",
+    "setupExpired": "Die Einrichtung ist abgelaufen. Bitte beginne erneut.",
+    "scan": "Scanne den QR-Code mit deiner Authenticator-App und gib den angezeigten 6-stelligen Code ein.",
+    "manual": "Oder gib diesen Schlüssel manuell ein:",
+    "qrAlt": "QR-Code für die Authenticator-App",
+    "confirm": "Aktivieren",
+    "enabled": "Die Zwei-Faktor-Authentifizierung ist aktiviert. Deine anderen Sitzungen wurden abgemeldet.",
+    "disabled": "Die Zwei-Faktor-Authentifizierung ist deaktiviert.",
+    "codesInfo": "Bewahre diese Wiederherstellungscodes sicher auf. Jeder Code funktioniert einmal, falls du keinen Zugriff auf deine Authenticator-App hast. Sie werden nur jetzt angezeigt.",
+    "downloadCodes": "Codes herunterladen",
+    "savedCodes": "Ich habe die Codes gespeichert"
   }
 }

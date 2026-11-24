@@ -61,7 +61,12 @@
     "submit": "Sign in",
     "submitting": "Signing in…",
     "invalidCredentials": "Invalid username or password.",
-    "rateLimited": "Too many attempts. Please wait a moment and try again."
+    "rateLimited": "Too many attempts. Please wait a moment and try again.",
+    "twoFactorCode": "Authentication code",
+    "twoFactorHint": "6-digit code from your authenticator app, or a recovery code.",
+    "twoFactorInvalid": "The code is invalid.",
+    "twoFactorExpired": "The sign-in expired. Please enter your password again.",
+    "twoFactorBack": "Use a different account"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -84,10 +89,6 @@
     "recentActivity": "Recent Activity",
     "recentActivityEmpty": "No audit events recorded yet."
   },
-  "planned": {
-    "title": "Not available yet",
-    "description": "The {module} module is planned for a later development phase and is not implemented in this version."
-  },
   "users": {
     "title": "User Management",
     "subtitle": "Dashboard accounts and their roles.",
@@ -105,7 +106,11 @@
     "empty": "No users found.",
     "created": "User {username} was created.",
     "updated": "User {username} was updated.",
-    "count": "{count, plural, one {# user} other {# users}}"
+    "count": "{count, plural, one {# user} other {# users}}",
+    "twoFactor": "2FA",
+    "resetTwoFactor": "Reset 2FA",
+    "resetTwoFactorTitle": "Reset two-factor authentication for {user}?",
+    "resetTwoFactorDescription": "Use this when the user lost their authenticator device. Their sessions end and they can sign in with the password only until they set up 2FA again."
   },
   "roles": {
     "title": "Roles & Permissions",
@@ -434,8 +439,7 @@
     "moderation": "Moderation",
     "connections": "Connections",
     "activity": "Activity",
-    "notes": "Notes",
-    "planned": "{tab} will be available in a later release. Nothing is shown until real data is collected."
+    "notes": "Notes"
   },
   "skin": {
     "preview": "3D skin preview",
@@ -839,5 +843,27 @@
       "too-long": "too long",
       "unknown-key": "unknown key"
     }
+  },
+  "twoFactor": {
+    "title": "Two-factor authentication",
+    "description": "Protect your account with codes from an authenticator app (TOTP) in addition to your password.",
+    "on": "Enabled",
+    "off": "Not enabled",
+    "enable": "Set up two-factor authentication",
+    "disable": "Turn off",
+    "newCodes": "New recovery codes",
+    "remaining": "{count, plural, =0 {No recovery codes left – create new ones.} one {# recovery code left} other {# recovery codes left}}",
+    "password": "Current password",
+    "invalidPassword": "The password is incorrect.",
+    "setupExpired": "The setup expired. Please start again.",
+    "scan": "Scan the QR code with your authenticator app, then enter the 6-digit code it shows.",
+    "manual": "Or enter this key manually:",
+    "qrAlt": "QR code for the authenticator app",
+    "confirm": "Activate",
+    "enabled": "Two-factor authentication is enabled. Your other sessions were signed out.",
+    "disabled": "Two-factor authentication is turned off.",
+    "codesInfo": "Store these recovery codes in a safe place. Each code works once if you lose access to your authenticator app. They are shown only now.",
+    "downloadCodes": "Download codes",
+    "savedCodes": "I have saved the codes"
   }
 }
