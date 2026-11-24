@@ -28,7 +28,23 @@ public final class BackendClient {
     private volatile RequestSigner signer;
 
     public BackendClient(URI baseUrl, String userAgent, Gson gson, Executor executor) {
-        this(baseUrl, userAgent, gson, HttpClient.newBuilder().connectTimeout(TIMEOUT).executor(executor).followRedirects(HttpClient.Redirect.NEVER).build(), System::currentTimeMillis);
+        this(baseUrl, userAgent, gson, newHttpClient(executor), System::currentTimeMillis);
+    }
+
+    /**
+     * HTTP client used for the backend. Pinned to HTTP/1.1: with the default
+     * (HTTP/2) the JDK sends an {@code Upgrade: h2c} request on plain-HTTP
+     * URLs, which the dashboard's Node.js server closes without a response
+     * ("header parser received no bytes") – plugins could not register with a
+     * dashboard reached over http://. HTTPS works with HTTP/1.1 as well.
+     */
+    static HttpClient newHttpClient(Executor executor) {
+        return HttpClient.newBuilder()
+                .version(HttpClient.Version.HTTP_1_1)
+                .connectTimeout(TIMEOUT)
+                .executor(executor)
+                .followRedirects(HttpClient.Redirect.NEVER)
+                .build();
     }
 
     BackendClient(URI baseUrl, String userAgent, Gson gson, HttpClient http, LongSupplier clock) {

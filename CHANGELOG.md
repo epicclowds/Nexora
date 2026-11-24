@@ -13,6 +13,9 @@ Distribution release: Nexora can now be installed entirely from prebuilt artifac
 - Dashboard warning for servers whose plugin belongs to another release (*Update recommended* / *Update required*).
 - `docker-compose.dev.yml` for building the images from source.
 
+### Fixed
+- Plugins could not register with a dashboard reached over plain `http://` (e.g. a private network address): Java's HTTP client tried an HTTP/2 (`h2c`) upgrade, which the dashboard server closes without a response. The plugins now use HTTP/1.1. Found by the new integration test with real Velocity/Paper servers.
+
 ### Changed
 - **Breaking (deployment):** `docker-compose.yml` now pulls `ghcr.io/epicclowds/nexora/{backend,dashboard}:${NEXORA_VERSION}` instead of building locally. `.env` uses `NEXORA_VERSION`/`NEXORA_IMAGE_PREFIX` instead of `MNM_VERSION`/`MNM_IMAGE_PREFIX`.
 - Plugin files are named `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar`; jars carry `Implementation-Version` and are built reproducibly. Plugin ids and data folders are unchanged.

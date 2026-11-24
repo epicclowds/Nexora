@@ -11,10 +11,10 @@ import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
-import java.net.http.HttpClient;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +32,11 @@ class BackendClientTest {
         server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
         RequestSigner verifier = new RequestSigner("unused", SECRET);
         server.createContext("/api/plugin/v1/heartbeat", exchange -> {
+            // Like the dashboard (Node.js): requests asking for a protocol upgrade (h2c) get no response.
+            if (exchange.getRequestHeaders().containsKey("Upgrade")) {
+                exchange.close();
+                return;
+            }
             byte[] body = exchange.getRequestBody().readAllBytes();
             var h = exchange.getRequestHeaders();
             String expected = verifier.signature(exchange.getRequestMethod(), exchange.getRequestURI().getRawPath(), h.getFirst(RequestSigner.HEADER_TIMESTAMP), h.getFirst(RequestSigner.HEADER_NONCE), body);
@@ -42,7 +47,8 @@ class BackendClientTest {
         server.createContext("/api/plugin/v1/events", exchange -> respond(exchange, 400, "{\"code\":\"VALIDATION_FAILED\",\"message\":\"bad\"}"));
         server.start();
         URI base = URI.create("http://127.0.0.1:" + server.getAddress().getPort());
-        client = new BackendClient(base, "test", new Gson(), HttpClient.newHttpClient(), System::currentTimeMillis);
+        // The production client configuration, so protocol regressions fail here.
+        client = new BackendClient(base, "test", new Gson(), BackendClient.newHttpClient(ForkJoinPool.commonPool()), System::currentTimeMillis);
         client.useCredentials(new Credentials("mnm_key_test", SECRET, "id", "lobby"));
     }
 
