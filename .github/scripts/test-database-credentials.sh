@@ -18,10 +18,14 @@ used_secrets=("$(env_file get MYSQL_PASSWORD)" "$(env_file get MYSQL_ROOT_PASSWO
 
 # Waits until the backend logged the credential diagnosis (since <timestamp>).
 expect_diagnosis() {
-  local since="$1"
+  local since="$1" logs
   for _ in $(seq 1 60); do
-    if docker compose logs --no-color --since "$since" backend 2>&1 | grep -q 'repair-db-credentials.sh'; then
-      docker compose logs --no-color --since "$since" backend 2>&1 | grep -q 'P1000' || fail "diagnosis without the P1000 error"
+    # Capture first: with pipefail, "docker compose logs | grep -q" can report a
+    # failure when grep stops reading early (SIGPIPE).
+    logs=$(docker compose logs --no-color --since "$since" backend 2>&1 || true)
+    if grep -q 'repair-db-credentials.sh' <<<"$logs"; then
+      grep -q 'P1000' <<<"$logs" || fail "diagnosis without the P1000 error"
+      if grep -q 'Retrying in 5s' <<<"$logs"; then fail "the backend retried instead of stopping on wrong credentials"; fi
       echo "  ✔ backend stopped with the credential diagnosis (no retry loop)"
       return 0
     fi
