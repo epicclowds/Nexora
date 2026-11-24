@@ -72,3 +72,18 @@ node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 load
 - Every user-facing string is a translation key in `packages/translations` – add it to **all** catalogues.
 - Every administrative action writes an audit entry, inside the same transaction as the change where possible.
 - Never show invented data: render "not recorded" when a value has not been collected.
+
+### Load test baseline (CI, release 1.0.0)
+
+Docker Compose stack on a standard GitHub-hosted runner, 2000 seeded players, 60 s at ~18.5 requests/s (limited by the per-IP rate limits, since all traffic comes from one machine), all requests through the dashboard proxy. Threshold: p95 ≤ 500 ms, no errors.
+
+| Endpoint | Requests | Errors | p50 | p95 | p99 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Plugin heartbeat | 361 | 0 | 15 ms | 24 ms | 34 ms |
+| Plugin events (join, switch, leave) | 361 | 0 | 32 ms | 50 ms | 60 ms |
+| Punishment feed | 180 | 0 | 13 ms | 30 ms | 46 ms |
+| Player search | 91 | 0 | 33 ms | 46 ms | 85 ms |
+| Player profile | 60 | 0 | 23 ms | 43 ms | 59 ms |
+| Dashboard summary | 60 | 0 | 22 ms | 43 ms | 64 ms |
+
+These numbers show headroom, not a capacity limit; the current results of every CI run are in the job summary of the *Deployment* job.
