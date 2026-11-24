@@ -75,6 +75,9 @@ services:
       redis:
         condition: service_healthy
     networks: [internal]
+    # Node.js needs no Linux capabilities and must never gain privileges.
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     stop_grace_period: 30s
 
   dashboard:
@@ -91,6 +94,9 @@ services:
     ports:
       - '${DASHBOARD_BIND:-0.0.0.0}:${DASHBOARD_PORT:-3000}:3000'
     networks: [internal]
+    # Node.js needs no Linux capabilities and must never gain privileges.
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     stop_grace_period: 20s
 
   # Optional HTTPS front with automatic certificates: docker compose --profile https up -d

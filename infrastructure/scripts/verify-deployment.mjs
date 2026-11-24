@@ -21,7 +21,7 @@
 // Uses only Node.js 22 built-ins. Never run "setup" against a production
 // installation: it creates an owner account and test data.
 import { createHash, createHmac, randomBytes, randomUUID } from 'node:crypto';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
 
 const [base = 'http://localhost:3000', mode = 'setup'] = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const BASE = base.replace(/\/$/, '');
@@ -284,12 +284,19 @@ async function load() {
     }),
   );
   console.log('\n  endpoint              requests  errors   p50     p95     p99   (ms)');
+  const summary = ['| Endpoint | Requests | Errors | p50 (ms) | p95 (ms) | p99 (ms) |', '| --- | ---: | ---: | ---: | ---: | ---: |'];
   for (const [name, r] of results) {
     const sorted = [...r.latencies].sort((a, b) => a - b);
-    const [p50, p95, p99] = [50, 95, 99].map((p) => percentile(sorted, p).toFixed(0).padStart(6));
-    console.log(`  ${name.padEnd(20)} ${String(sorted.length).padStart(8)} ${String(r.errors).padStart(7)} ${p50}  ${p95}  ${p99}`);
+    const [p50, p95, p99] = [50, 95, 99].map((p) => percentile(sorted, p).toFixed(0));
+    console.log(`  ${name.padEnd(20)} ${String(sorted.length).padStart(8)} ${String(r.errors).padStart(7)} ${p50.padStart(6)}  ${p95.padStart(6)}  ${p99.padStart(6)}`);
+    summary.push(`| ${name} | ${sorted.length} | ${r.errors} | ${p50} | ${p95} | ${p99} |`);
+    // CI: results as annotations (readable without access to the logs) and a job summary.
+    if (process.env.GITHUB_ACTIONS) console.log(`::notice title=Load test – ${name}::requests=${sorted.length} errors=${r.errors} p50=${p50}ms p95=${p95}ms p99=${p99}ms`);
     check(r.errors === 0, `${name}: no errors`);
     check(percentile(sorted, 95) <= p95Limit, `${name}: p95 ≤ ${p95Limit} ms`);
+  }
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    appendFileSync(process.env.GITHUB_STEP_SUMMARY, `### Load test (${seconds} s, ${state.players} seeded players)\n\n${summary.join('\n')}\n`);
   }
 }
 
