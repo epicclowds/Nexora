@@ -142,6 +142,57 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ matrix.component }}
 
+  deployment:
+    name: Deployment, load test & backup/restore (Docker Compose)
+    runs-on: ubuntu-latest
+    needs: [quality]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Create environment with generated secrets
+        run: |
+          sh infrastructure/scripts/generate-secrets.sh
+          token="ci-setup-$(openssl rand -hex 16)"
+          sed -i "s/^SETUP_TOKEN=.*/SETUP_TOKEN=$token/; s/^DASHBOARD_BIND=.*/DASHBOARD_BIND=127.0.0.1/" .env
+          echo "SETUP_TOKEN=$token" >> "$GITHUB_ENV"
+      - name: Build and start the stack
+        run: docker compose up -d --build --wait --wait-timeout 300
+      - name: Verify a fresh installation (setup, registration, plugin traffic, 2000 players)
+        run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 setup
+      - name: Load test (latency thresholds)
+        run: node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 load
+        env:
+          LOAD_SECONDS: '60'
+          LOAD_P95_MS: '500'
+      - name: Restart (migrations are idempotent, data persists)
+        run: |
+          docker compose restart backend dashboard
+          docker compose up -d --wait --wait-timeout 180
+          node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 check
+      - name: Back up the database
+        run: sh infrastructure/scripts/backup.sh backups 14
+      - name: Simulate data loss (remove all volumes)
+        run: |
+          docker compose down -v
+          docker compose up -d --wait --wait-timeout 300
+          curl -fsS http://127.0.0.1:3000/api/setup/status | grep -q '"initialized":false'
+      - name: Restore and verify
+        run: |
+          sh infrastructure/scripts/restore.sh "$(ls backups/mnm-*.sql.gz | tail -n 1)" --yes
+          docker compose up -d --wait --wait-timeout 180
+          node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 check
+      - name: Container logs
+        if: ${{ failure() }}
+        run: docker compose logs --no-color --tail 300
+      - name: Remove test data
+        if: ${{ always() }}
+        run: |
+          docker compose down -v || true
+          rm -f .verify-state.json .env
+
   compose:
     name: Docker Compose configuration
     runs-on: ubuntu-latest
@@ -167,7 +218,7 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
       - run: npm install -g npm@12
       - name: Audit production dependencies
-        run: npm audit --omit=dev --audit-level=critical
+        run: npm audit --omit=dev --audit-level=high
       - name: Gitleaks (full history)
         if: ${{ !cancelled() }}
         run: |

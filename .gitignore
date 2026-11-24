@@ -45,3 +45,6 @@ npm-debug.log*
 
 # MaxMind databases (licensed, downloaded by the operator)
 geoip/*.mmdb
+
+# Test credentials written by infrastructure/scripts/verify-deployment.mjs
+.verify-state.json
