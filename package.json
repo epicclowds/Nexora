@@ -34,5 +34,8 @@
     "@prisma/engines@7.10.1": true,
     "@parcel/watcher@2.6.0": true,
     "@scarf/scarf": false
+  },
+  "overrides": {
+    "effect": "3.22.5"
   }
 }
