@@ -204,15 +204,30 @@ function PrivacyCard() {
   const t = useTranslations();
   const toast = useToast();
   const [days, setDays] = useState<number | null | undefined>(undefined);
+  const [evidenceDays, setEvidenceDays] = useState<number | null>(90);
 
   useEffect(() => {
-    api<{ ipRetentionDays: number | null }>('/settings/privacy').then((p) => setDays(p.ipRetentionDays)).catch(() => undefined);
+    api<{ ipRetentionDays: number | null; deletedEvidenceRetentionDays?: number | null }>('/settings/privacy')
+      .then((p) => {
+        setDays(p.ipRetentionDays);
+        setEvidenceDays(p.deletedEvidenceRetentionDays ?? 90);
+      })
+      .catch(() => undefined);
   }, []);
 
   async function save(next: number | null) {
     setDays(next);
+    await patch({ ipRetentionDays: next });
+  }
+
+  async function saveEvidence(next: number | null) {
+    setEvidenceDays(next);
+    await patch({ deletedEvidenceRetentionDays: next });
+  }
+
+  async function patch(body: Record<string, number | null>) {
     try {
-      await api('/settings/privacy', { method: 'PATCH', body: { ipRetentionDays: next } });
+      await api('/settings/privacy', { method: 'PATCH', body });
       toast(t('settings.saved'));
     } catch (err) {
       toast(t(`errors.${errorKey(err)}`), 'error');
@@ -226,10 +241,20 @@ function PrivacyCard() {
         <CardTitle>{t('privacy.title')}</CardTitle>
         <CardDescription>{t('privacy.description')}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="grid gap-4">
         <Field label={t('privacy.ipRetention')} hint={t('privacy.ipRetentionHint')} htmlFor="ip-retention">
           <Select id="ip-retention" className="max-w-xs" value={days === null ? 'forever' : String(days)} onChange={(e) => void save(e.target.value === 'forever' ? null : Number(e.target.value))}>
             {[...new Set([...RETENTION_OPTIONS, ...(days === null ? [] : [days])])].sort((a, b) => a - b).map((d) => (
+              <option key={d} value={d}>
+                {t('privacy.days', { count: d })}
+              </option>
+            ))}
+            <option value="forever">{t('privacy.keepForever')}</option>
+          </Select>
+        </Field>
+        <Field label={t('privacy.evidenceRetention')} hint={t('privacy.evidenceRetentionHint')} htmlFor="evidence-retention">
+          <Select id="evidence-retention" className="max-w-xs" value={evidenceDays === null ? 'forever' : String(evidenceDays)} onChange={(e) => void saveEvidence(e.target.value === 'forever' ? null : Number(e.target.value))}>
+            {[...new Set([7, ...RETENTION_OPTIONS, ...(evidenceDays === null ? [] : [evidenceDays])])].sort((a, b) => a - b).map((d) => (
               <option key={d} value={d}>
                 {t('privacy.days', { count: d })}
               </option>

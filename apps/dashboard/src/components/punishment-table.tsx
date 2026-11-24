@@ -1,6 +1,7 @@
 'use client';
 
 import { PERMISSIONS } from '@mnm/shared-types';
+import { Paperclip } from 'lucide-react';
 import Link from 'next/link';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import type { Punishment, PunishmentType } from '@/lib/api';
@@ -63,7 +64,17 @@ export function PunishmentTable({ items, showTarget, onChange }: { items: Punish
             )}
             <TD className="min-w-48 max-w-80">
               <span className="line-clamp-2">{p.reason}</span>
-              <span className="font-mono text-[10px] text-muted-foreground">#{p.id}</span>
+              <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                <Link href={`/moderation/${p.id}`} className="font-mono hover:text-foreground hover:underline" title={t('punishment.open')}>
+                  #{p.id}
+                </Link>
+                {p.evidenceCount > 0 && (
+                  <span className="inline-flex items-center gap-0.5" title={t('punishment.evidenceCount', { count: p.evidenceCount })}>
+                    <Paperclip aria-hidden className="size-3" />
+                    {p.evidenceCount}
+                  </span>
+                )}
+              </span>
             </TD>
             <TD className="whitespace-nowrap">
               {p.issuer.name}
@@ -80,7 +91,14 @@ export function PunishmentTable({ items, showTarget, onChange }: { items: Punish
               <Badge variant={p.status === 'ACTIVE' ? 'default' : 'muted'} className="whitespace-nowrap">{t(`moderation.statuses.${p.status}`)}</Badge>
               {p.revokedBy && <span className="block text-xs text-muted-foreground">{t('moderation.revokedBy', { name: p.revokedBy })}</span>}
             </TD>
-            <TD className="text-right">{p.revocable && can(REVOKE_PERMISSION[p.type]) && <RevokeDialog punishment={p} onRevoked={onChange} />}</TD>
+            <TD className="text-right">
+              <span className="inline-flex items-center gap-1">
+                <Link href={`/moderation/${p.id}`} className="rounded-md px-2 py-1 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground">
+                  {t('punishment.details')}
+                </Link>
+                {p.revocable && can(REVOKE_PERMISSION[p.type]) && <RevokeDialog punishment={p} onRevoked={onChange} />}
+              </span>
+            </TD>
           </TR>
         ))}
       </TBody>

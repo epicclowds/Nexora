@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { splitDuration, TEMPORARY_TYPES, UNIT_SECONDS, type Unit } from '@/components/punishment-dialogs';
 import { useToast } from '@/components/toaster';
 import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Select, Textarea } from '@/components/ui/primitives';
+import { Switch } from '@/components/ui/switch';
 import { api, errorKey, type ModerationPreset, type PunishmentType } from '@/lib/api';
 
 const TYPES: PunishmentType[] = ['WARNING', 'KICK', 'TEMP_MUTE', 'MUTE', 'TEMP_BAN', 'BAN', 'BLACKLIST'];
@@ -30,11 +31,13 @@ export function ModerationPresets() {
   const [presets, setPresets] = useState<ModerationPreset[] | null>(null);
   const [saved, setSaved] = useState('');
   const [busy, setBusy] = useState(false);
+  const [requireEvidence, setRequireEvidence] = useState(false);
 
   useEffect(() => {
-    api<{ presets: ModerationPreset[] }>('/settings/moderation')
+    api<{ presets: ModerationPreset[]; requireEvidence?: boolean }>('/settings/moderation')
       .then((m) => {
         setPresets(m.presets);
+        setRequireEvidence(m.requireEvidence ?? false);
         setSaved(JSON.stringify(m.presets));
       })
       .catch(() => undefined);
@@ -54,7 +57,7 @@ export function ModerationPresets() {
     if (!presets) return;
     setBusy(true);
     try {
-      const body = { presets: presets.map((p) => ({ ...p, name: p.name.trim(), reason: p.reason.trim() })) };
+      const body = { presets: presets.map((p) => ({ ...p, name: p.name.trim(), reason: p.reason.trim() })), requireEvidence };
       const result = await api<{ presets: ModerationPreset[] }>('/settings/moderation', { method: 'PUT', body });
       setPresets(result.presets);
       setSaved(JSON.stringify(result.presets));
@@ -66,6 +69,18 @@ export function ModerationPresets() {
     }
   }
 
+  /** The evidence policy saves on its own, together with the last saved presets. */
+  async function savePolicy(next: boolean) {
+    setRequireEvidence(next);
+    try {
+      await api('/settings/moderation', { method: 'PUT', body: { presets: JSON.parse(saved) as ModerationPreset[], requireEvidence: next } });
+      toast(t('settings.saved'));
+    } catch (err) {
+      setRequireEvidence(!next);
+      toast(t(`errors.${errorKey(err)}`), 'error');
+    }
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -73,6 +88,13 @@ export function ModerationPresets() {
         <CardDescription>{t('presets.description')}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
+        <div className="flex items-start justify-between gap-4 rounded-lg border p-4">
+          <div className="grid gap-1">
+            <span className="text-sm font-medium">{t('presets.requireEvidence')}</span>
+            <span className="text-xs text-muted-foreground">{t('presets.requireEvidenceHint')}</span>
+          </div>
+          <Switch aria-label={t('presets.requireEvidence')} checked={requireEvidence} onCheckedChange={(v) => void savePolicy(v)} />
+        </div>
         {presets.length === 0 && (
           <Alert className="flex flex-wrap items-center justify-between gap-2">
             {t('presets.empty')}

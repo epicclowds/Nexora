@@ -185,6 +185,7 @@ export interface ManagedPluginSettings {
   inventorySync: boolean | null;
   enderChestSync: boolean | null;
   inventorySyncIntervalSeconds: number | null;
+  appealUrl: string | null;
   messages: Record<string, Record<string, string>>;
 }
 
@@ -268,6 +269,60 @@ export interface Punishment {
   revokedAt: string | null;
   revokedBy: string | null;
   revokedReason: string | null;
+  /** Optimistic lock token for edits. */
+  version: number;
+  updatedAt: string | null;
+  evidenceCount: number;
+}
+
+export interface PunishmentDetail extends Punishment {
+  staffNote?: string | null;
+  needsReview: boolean;
+  durationEditable: boolean;
+  reactivatable: boolean;
+}
+
+export type EvidenceType = 'VIDEO' | 'SCREENSHOT' | 'IMAGE' | 'LINK' | 'TEXT' | 'NOTE';
+
+export interface Evidence {
+  id: string;
+  punishmentId: string;
+  /** One of EvidenceType, or a system type such as ANTICHEAT. */
+  type: string;
+  title: string | null;
+  url: string | null;
+  description: string | null;
+  visibility: 'STAFF' | 'PUBLIC';
+  version: number;
+  system: boolean;
+  createdAt: string;
+  createdBy: string | null;
+  updatedAt: string | null;
+  updatedBy: string | null;
+}
+
+export type HistoryAction =
+  | 'CREATED'
+  | 'REASON_CHANGED'
+  | 'DURATION_EXTENDED'
+  | 'DURATION_SHORTENED'
+  | 'MADE_PERMANENT'
+  | 'MADE_TEMPORARY'
+  | 'NOTE_CHANGED'
+  | 'EVIDENCE_ADDED'
+  | 'EVIDENCE_UPDATED'
+  | 'EVIDENCE_REMOVED'
+  | 'REVOKED'
+  | 'REACTIVATED';
+
+export interface PunishmentHistoryEntry {
+  id: string;
+  action: HistoryAction;
+  previousValues: Record<string, unknown> | null;
+  newValues: Record<string, unknown> | null;
+  actor: { type: string; name: string };
+  note: string | null;
+  createdAt: string;
 }
 
 export interface PlayerPunishments extends Page<Punishment> {

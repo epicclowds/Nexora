@@ -147,6 +147,18 @@ export function PluginSettingsEditor() {
             </div>
           </fieldset>
 
+          <fieldset className="grid gap-4 rounded-lg border p-4">
+            <legend className="px-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase">{t('pluginSettings.punishments')}</legend>
+            <Field
+              label={t('pluginSettings.appealUrl')}
+              hint={t('pluginSettings.appealUrlHint')}
+              error={draft.appealUrl && !/^https:\/\/\S+$/.test(draft.appealUrl) ? t('pluginSettings.appealUrlInvalid') : null}
+              htmlFor="ps-appeal"
+            >
+              <Input id="ps-appeal" type="url" inputMode="url" placeholder="https://" maxLength={200} value={draft.appealUrl ?? ''} onChange={(e) => set('appealUrl', e.target.value.trim() || null)} />
+            </Field>
+          </fieldset>
+
           <Alert>{t('pluginSettings.localOnly')}</Alert>
         </CardContent>
       </Card>
