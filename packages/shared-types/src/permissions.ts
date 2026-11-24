@@ -19,6 +19,18 @@ export const PERMISSIONS = {
   PUNISHMENTS_WARN: 'punishments.warn',
   PUNISHMENTS_BLACKLIST: 'punishments.blacklist',
   PUNISHMENTS_HISTORY: 'punishments.history',
+  PUNISHMENTS_EDIT: 'punishments.edit',
+  PUNISHMENTS_EDIT_REASON: 'punishments.edit.reason',
+  PUNISHMENTS_EDIT_DURATION: 'punishments.edit.duration',
+  /** Converting between temporary and permanent (elevated). */
+  PUNISHMENTS_EDIT_PERMANENT: 'punishments.edit.permanent',
+  /** Making an expired or revoked punishment active again (elevated). */
+  PUNISHMENTS_REACTIVATE: 'punishments.reactivate',
+  PUNISHMENTS_EVIDENCE_VIEW: 'punishments.evidence.view',
+  PUNISHMENTS_EVIDENCE_ADD: 'punishments.evidence.add',
+  PUNISHMENTS_EVIDENCE_EDIT: 'punishments.evidence.edit',
+  PUNISHMENTS_EVIDENCE_DELETE: 'punishments.evidence.delete',
+  PUNISHMENTS_HISTORY_VIEW: 'punishments.history.view',
 
   ANTICHEAT_VIEW: 'anticheat.view',
   ANTICHEAT_MANAGE: 'anticheat.manage',

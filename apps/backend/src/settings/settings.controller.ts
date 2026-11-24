@@ -11,8 +11,16 @@ import { managedPluginSettingsSchema, moderationSettingsSchema, normalizePluginS
 import { networkSettingsSchema, privacySettingsSchema, SETTING_KEYS, SettingsService } from './settings.service';
 
 const updateNetworkSchema = networkSettingsSchema.partial().strict();
-const updatePrivacySchema = privacySettingsSchema.strict();
+// Partial update: fields that are not sent keep their stored value.
+const updatePrivacySchema = z
+  .object({
+    ipRetentionDays: z.number().int().min(7).max(3650).nullable().optional(),
+    deletedEvidenceRetentionDays: z.number().int().min(1).max(3650).nullable().optional(),
+  })
+  .strict();
 const updatePluginSettingsSchema = z.object({ baseRevision: z.number().int().min(0), settings: managedPluginSettingsSchema }).strict();
+
+const moderationUpdateSchema = moderationSettingsSchema.extend({ requireEvidence: z.boolean().optional() });
 
 @ApiTags('settings')
 @Controller('settings')
@@ -39,11 +47,12 @@ export class SettingsController {
   @ZodBody(updatePrivacySchema)
   async updatePrivacy(@CurrentUser() actor: AuthenticatedUser, @Body() body: z.infer<typeof updatePrivacySchema>, @Req() req: Request) {
     const before = await this.settings.getPrivacy();
+    const after = privacySettingsSchema.parse({ ...before, ...body });
     await this.prisma.$transaction(async (tx) => {
-      await this.settings.set(SETTING_KEYS.PRIVACY, body, actor.id, tx);
-      await this.audit.record({ actor: userActor(actor), action: 'settings.privacy_updated', targetType: 'setting', targetId: SETTING_KEYS.PRIVACY, metadata: { before, after: body }, ipAddress: clientIp(req) }, tx);
+      await this.settings.set(SETTING_KEYS.PRIVACY, after, actor.id, tx);
+      await this.audit.record({ actor: userActor(actor), action: 'settings.privacy_updated', targetType: 'setting', targetId: SETTING_KEYS.PRIVACY, metadata: { before, after }, ipAddress: clientIp(req) }, tx);
     });
-    return body;
+    return after;
   }
 
   @Patch('network')
@@ -114,11 +123,13 @@ export class SettingsController {
 
   @Put('moderation')
   @RequirePermissions(PERMISSIONS.SETTINGS_MANAGE)
-  @ZodBody(moderationSettingsSchema)
-  async updateModeration(@CurrentUser() actor: AuthenticatedUser, @Body() body: z.infer<typeof moderationSettingsSchema>, @Req() req: Request) {
+  @ZodBody(moderationUpdateSchema)
+  async updateModeration(@CurrentUser() actor: AuthenticatedUser, @Body() update: z.infer<typeof moderationUpdateSchema>, @Req() req: Request) {
+    // Older dashboards only send presets: keep the stored evidence policy then.
+    const body = moderationSettingsSchema.parse({ ...update, requireEvidence: update.requireEvidence ?? (await this.settings.getModeration()).requireEvidence });
     await this.prisma.$transaction(async (tx) => {
       await this.settings.set(SETTING_KEYS.MODERATION, body, actor.id, tx);
-      await this.audit.record({ actor: userActor(actor), action: 'settings.moderation_updated', targetType: 'setting', targetId: SETTING_KEYS.MODERATION, metadata: { presets: body.presets.length }, ipAddress: clientIp(req) }, tx);
+      await this.audit.record({ actor: userActor(actor), action: 'settings.moderation_updated', targetType: 'setting', targetId: SETTING_KEYS.MODERATION, metadata: { presets: body.presets.length, requireEvidence: body.requireEvidence }, ipAddress: clientIp(req) }, tx);
     });
     return body;
   }

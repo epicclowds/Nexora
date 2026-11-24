@@ -1,4 +1,5 @@
 import { Injectable, Logger, type OnApplicationBootstrap, type OnApplicationShutdown } from '@nestjs/common';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { SettingsService } from '../settings/settings.service';
@@ -35,10 +36,10 @@ export class MaintenanceService implements OnApplicationBootstrap, OnApplication
     if (this.timer) clearInterval(this.timer);
   }
 
-  async run(now = new Date(), force = false): Promise<{ connections: number; auditLogs: number; sessions: number }> {
+  async run(now = new Date(), force = false): Promise<{ connections: number; auditLogs: number; sessions: number; evidence: number }> {
     if (!force) {
       const lock = await this.redis.client.set('mnm:lock:maintenance', '1', 'PX', INTERVAL_MS - 60_000, 'NX');
-      if (lock !== 'OK') return { connections: 0, auditLogs: 0, sessions: 0 };
+      if (lock !== 'OK') return { connections: 0, auditLogs: 0, sessions: 0, evidence: 0 };
     }
     const { ipRetentionDays } = await this.settings.getPrivacy();
     let connections = 0;
@@ -51,9 +52,32 @@ export class MaintenanceService implements OnApplicationBootstrap, OnApplication
     const sessions = (
       await this.prisma.dashboardSession.deleteMany({ where: { expiresAt: { lt: new Date(now.getTime() - EXPIRED_SESSION_GRACE_DAYS * 86_400_000) } } })
     ).count;
-    if (connections || auditLogs || sessions) {
-      this.logger.log(`Retention: anonymised ${connections} connection(s) and ${auditLogs} audit entr(y/ies), removed ${sessions} expired session(s)`);
+    const evidence = await this.purgeRemovedEvidence(now);
+    if (connections || auditLogs || sessions || evidence) {
+      this.logger.log(`Retention: anonymised ${connections} connection(s) and ${auditLogs} audit entr(y/ies), removed ${sessions} expired session(s), purged ${evidence} removed evidence entr(y/ies)`);
     }
-    return { connections, auditLogs, sessions };
+    return { connections, auditLogs, sessions, evidence };
+  }
+
+  /**
+   * Permanently deletes evidence that was removed (soft-deleted) longer ago than
+   * the retention period, and redacts its content in the change history.
+   */
+  private async purgeRemovedEvidence(now: Date): Promise<number> {
+    const { deletedEvidenceRetentionDays } = await this.settings.getPrivacy();
+    if (deletedEvidenceRetentionDays === null) return 0;
+    const cutoff = new Date(now.getTime() - deletedEvidenceRetentionDays * 86_400_000);
+    const expired = await this.prisma.punishmentEvidence.findMany({ where: { deletedAt: { lt: cutoff } }, select: { id: true }, take: 1000 });
+    if (expired.length === 0) return 0;
+    const ids = expired.map((e) => e.id);
+    await this.prisma.$transaction(async (tx) => {
+      // Fixed column names (not user input); the ids are bound parameters.
+      for (const column of [Prisma.raw('previous_values'), Prisma.raw('new_values')]) {
+        await tx.$executeRaw`UPDATE punishment_history SET ${column} = JSON_REPLACE(${column}, '$.title', '[purged]', '$.url', NULL, '$.description', NULL)
+          WHERE ${column} IS NOT NULL AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$.evidenceId')) IN (${Prisma.join(ids)})`;
+      }
+      await tx.punishmentEvidence.deleteMany({ where: { id: { in: ids } } });
+    });
+    return ids.length;
   }
 }

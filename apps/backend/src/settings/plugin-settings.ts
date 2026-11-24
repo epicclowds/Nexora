@@ -28,6 +28,14 @@ export const managedPluginSettingsSchema = z
     inventorySync: z.boolean().nullable().default(null),
     enderChestSync: z.boolean().nullable().default(null),
     inventorySyncIntervalSeconds: z.number().int().min(30).max(3600).nullable().default(null),
+    /** Shown on ban screens (https only); null = no appeal line. */
+    appealUrl: z
+      .string()
+      .trim()
+      .max(200)
+      .regex(/^https:\/\/[^\s]+$/, 'Must be an https:// URL')
+      .nullable()
+      .default(null),
     /** locale → message key → MiniMessage template overriding the bundled text. */
     messages: z.record(localeKey, z.record(z.string().max(128), z.string().max(MAX_PLUGIN_MESSAGE_LENGTH))).default({}),
   })
@@ -119,6 +127,8 @@ export const moderationSettingsSchema = z
       .max(50)
       .refine((list) => new Set(list.map((p) => p.id)).size === list.length, 'Preset IDs must be unique')
       .default([]),
+    /** Flag active punishments without evidence for review (they stay in force). */
+    requireEvidence: z.boolean().default(false),
   })
   .strict();
 export type ModerationSettings = z.infer<typeof moderationSettingsSchema>;

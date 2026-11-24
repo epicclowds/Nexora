@@ -91,6 +91,9 @@ export class AntiCheatService {
               data: {
                 punishmentId,
                 kind: 'anticheat',
+                title: `${input.provider}: ${cheatType}`.slice(0, 200),
+                createdByType: ActorType.SYSTEM,
+                createdByName: `AntiCheat (${input.provider})`.slice(0, 64),
                 content: input.evidence?.slice(0, 10_000) ?? null,
                 metadata: { provider: input.provider, cheatType, violationLevel: input.violationLevel ?? null, rule: decision.matchedCheatType, details: (input.metadata ?? {}) as Prisma.InputJsonValue },
               },

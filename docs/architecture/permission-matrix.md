@@ -6,7 +6,7 @@ Every backend route and what it requires. Permissions are checked on the server 
 "session" = any signed-in dashboard user; "plugin signature" = HMAC-signed request from a registered Minecraft server.
 The `owner` role holds every permission (`*`).
 
-Routes: 99 · public: 10 · plugin: 16 · session only: 13 · checked in handler: 2 · permission-protected: 58
+Routes: 108 · public: 10 · plugin: 17 · session only: 13 · checked in handler: 2 · permission-protected: 66
 
 | Method | Path | Requires |
 | --- | --- | --- |
@@ -71,6 +71,7 @@ Routes: 99 · public: 10 · plugin: 16 · session only: 13 · checked in handler
 | POST | `/api/plugin/v1/punishments` | plugin signature |
 | GET | `/api/plugin/v1/punishments/active` | plugin signature |
 | GET | `/api/plugin/v1/punishments/changes` | plugin signature |
+| POST | `/api/plugin/v1/punishments/edit` | plugin signature |
 | POST | `/api/plugin/v1/punishments/revoke` | plugin signature |
 | POST | `/api/plugin/v1/register` | public |
 | POST | `/api/plugin/v1/shutdown` | plugin signature |
@@ -78,6 +79,14 @@ Routes: 99 · public: 10 · plugin: 16 · session only: 13 · checked in handler
 | POST | `/api/plugin/v1/sync` | plugin signature |
 | GET | `/api/punishments` | `punishments.history` |
 | POST | `/api/punishments` | per punishment type, checked in handler (e.g. `punishments.ban`) |
+| GET | `/api/punishments/:id` | `punishments.history` |
+| PATCH | `/api/punishments/:id` | `punishments.edit` |
+| GET | `/api/punishments/:id/evidence` | `punishments.evidence.view` |
+| POST | `/api/punishments/:id/evidence` | `punishments.evidence.add` |
+| DELETE | `/api/punishments/:id/evidence/:evidenceId` | `punishments.evidence.delete` |
+| PATCH | `/api/punishments/:id/evidence/:evidenceId` | `punishments.evidence.edit` |
+| GET | `/api/punishments/:id/history` | `punishments.history.view` |
+| POST | `/api/punishments/:id/reactivate` | `punishments.reactivate` |
 | POST | `/api/punishments/:id/revoke` | per punishment type, checked in handler (e.g. `punishments.unban`) |
 | GET | `/api/roles` | `users.view` |
 | POST | `/api/roles` | `roles.manage` |

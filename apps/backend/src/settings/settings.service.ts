@@ -24,6 +24,8 @@ export type NetworkSettings = z.infer<typeof networkSettingsSchema>;
 /** Data minimisation. IP addresses older than the retention period are removed (null = keep). */
 export const privacySettingsSchema = z.object({
   ipRetentionDays: z.number().int().min(7).max(3650).nullable().default(180),
+  /** Removed (soft-deleted) evidence is purged after this many days (null = keep). */
+  deletedEvidenceRetentionDays: z.number().int().min(1).max(3650).nullable().default(90),
 });
 export type PrivacySettings = z.infer<typeof privacySettingsSchema>;
 
@@ -95,6 +97,6 @@ export class SettingsService {
 
   async getModeration(): Promise<ModerationSettings> {
     const parsed = moderationSettingsSchema.safeParse((await this.get<unknown>(SETTING_KEYS.MODERATION)) ?? {});
-    return parsed.success ? parsed.data : { presets: [] };
+    return parsed.success ? parsed.data : { presets: [], requireEvidence: false };
   }
 }

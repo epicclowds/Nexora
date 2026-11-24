@@ -10,6 +10,7 @@ import { type PluginRequest, PluginAuthGuard, type PluginServer } from '../plugi
 import { uuidSchema } from '../plugin-api/plugin-events';
 import { MAX_DURATION_SECONDS, MIN_DURATION_SECONDS } from './punishment-rules';
 import { reasonSchema } from './punishments.controller';
+import { PunishmentEditingService } from './punishment-editing.service';
 import { type Issuer, PunishmentsService } from './punishments.service';
 
 const actorSchema = z.object({ uuid: uuidSchema.optional(), name: z.string().trim().min(1).max(32) });
@@ -31,6 +32,26 @@ const revokeSchema = z.object({
   revoker: actorSchema,
 });
 
+/**
+ * /editban, /editmute: by player (active ban/mute) or by punishment id.
+ * durationSeconds is the new TOTAL duration counted from the creation time;
+ * null = permanent, omitted = keep the duration (reason-only edit).
+ */
+const editSchema = z
+  .object({
+    kind: z.enum(['BAN', 'MUTE']),
+    target: z.string().trim().min(1).max(36).optional(),
+    id: z.string().trim().min(1).max(32).optional(),
+    durationSeconds: z.number().int().min(MIN_DURATION_SECONDS).max(MAX_DURATION_SECONDS).nullable().optional(),
+    reason: reasonSchema.optional(),
+    editor: actorSchema,
+    /** Whether the editor holds the in-game permission for temporary ↔ permanent changes. */
+    allowPermanentChange: z.boolean().default(false),
+  })
+  .strict()
+  .refine((b) => Boolean(b.id) !== Boolean(b.target), { message: 'Either id or target is required' })
+  .refine((b) => b.durationSeconds !== undefined || b.reason !== undefined, { message: 'Nothing to change' });
+
 const changesQuery = z.object({ after: z.string().regex(/^\d{1,19}$/).default('0') });
 const lookupQuery = z.object({ target: z.string().trim().min(1).max(36), limit: z.coerce.number().int().min(1).max(50).default(10) });
 
@@ -42,7 +63,10 @@ const lookupQuery = z.object({ target: z.string().trim().min(1).max(36), limit: 
 @Throttle({ default: { limit: 1200, ttl: 60_000 } })
 @Controller('plugin/v1')
 export class PluginPunishmentsController {
-  constructor(private readonly punishments: PunishmentsService) {}
+  constructor(
+    private readonly punishments: PunishmentsService,
+    private readonly editing: PunishmentEditingService,
+  ) {}
 
   @Get('punishments/active')
   snapshot() {
@@ -78,6 +102,18 @@ export class PluginPunishmentsController {
   async revoke(@Req() req: PluginRequest, @Body() body: z.infer<typeof revokeSchema>) {
     const player = await this.punishments.resolvePlayer(body.target);
     return this.punishments.revokeActive(player.uuid, body.kind, issuerFor(body.revoker, req.pluginServer!), body.reason || undefined);
+  }
+
+  /** /editban and /editmute (the plugin checks the in-game permission nodes). */
+  @Post('punishments/edit')
+  @HttpCode(200)
+  @ZodBody(editSchema)
+  async edit(@Req() req: PluginRequest, @Body() body: z.infer<typeof editSchema>) {
+    const editor = issuerFor(body.editor, req.pluginServer!);
+    const options = { kind: body.kind, allowPermanentChange: body.allowPermanentChange };
+    if (body.id) return this.editing.editByCommand(body.id, body.durationSeconds, body.reason, editor, options);
+    const player = await this.punishments.resolvePlayer(body.target!);
+    return this.editing.editActive(player.uuid, body.kind, body.durationSeconds, body.reason, editor, options);
   }
 
   /** Data for /history and /check. */

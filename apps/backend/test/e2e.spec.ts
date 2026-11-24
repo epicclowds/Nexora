@@ -11,6 +11,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sha256Hex } from '../src/common/crypto';
 import { base32Decode, hotp, totpStep } from '../src/auth/totp';
 import { canonicalRequest, sign } from '../src/plugin-api/plugin-signature';
+import { PrismaService } from '../src/prisma/prisma.service';
 
 const enabled = Boolean(process.env.E2E_DATABASE_URL && process.env.E2E_REDIS_URL);
 const SETUP_CODE = 'E2E-SETUP-CODE-0123456789';
@@ -547,6 +548,121 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     );
   });
 
+  // ── 1.1: punishment editing and evidence ──────────────────────
+
+  it('edits punishments, manages evidence and keeps an immutable history', async () => {
+    const steve = '069a79f4-44e9-4726-a5be-fca90e38aaf5';
+    const day = 86_400;
+    const cursor = (await signed(paper, 'GET', '/api/plugin/v1/punishments/active')).body.cursor as string;
+
+    // 1. In-game ban without evidence.
+    const ban = await signed(paper, 'POST', '/api/plugin/v1/punishments', {
+      type: 'TEMP_BAN', target: 'Steve', reason: 'Cheating', durationSeconds: 7 * day, issuer: { uuid: '0f0e0d0c-0b0a-4908-8706-050403020100', name: 'Mod123' }, idempotencyKey: 'edit-flow-0001',
+    });
+    expect(ban.status).toBe(201);
+    const id = ban.body.id as string;
+    const createdAt = Date.parse(ban.body.createdAt);
+    await call('PUT', '/api/settings/moderation', { presets: [], requireEvidence: true });
+    let detail = await call('GET', `/api/punishments/${id}`);
+    expect(detail.body).toMatchObject({ evidenceCount: 0, version: 1, needsReview: true, status: 'ACTIVE' });
+
+    // 2. Evidence, added later from the dashboard.
+    for (const url of ['javascript:alert(1)', 'http://insecure.example/clip', 'https://user:pw@example.com/x']) {
+      expect((await call('POST', `/api/punishments/${id}/evidence`, { type: 'VIDEO', title: 'x', url })).status, url).toBe(400);
+    }
+    expect((await call('POST', `/api/punishments/${id}/evidence`, { type: 'NOTE', title: 'n', description: 'x', visibility: 'PUBLIC' })).status).toBe(400);
+    const video = await call('POST', `/api/punishments/${id}/evidence`, { type: 'VIDEO', title: 'KillAura detection', url: 'https://medal.tv/clips/abc', description: 'Attacks without\nline of sight.' });
+    expect(video.status).toBe(201);
+    expect(video.body).toMatchObject({ type: 'VIDEO', visibility: 'STAFF', createdBy: 'owner', version: 1 });
+    const shot = await call('POST', `/api/punishments/${id}/evidence`, { type: 'SCREENSHOT', title: 'Suspicious combat', url: 'https://example.com/shot.png' });
+    expect((await call('GET', `/api/punishments/${id}/evidence`)).body.map((e: { title: string }) => e.title)).toEqual(['KillAura detection', 'Suspicious combat']);
+    detail = await call('GET', `/api/punishments/${id}`);
+    expect(detail.body).toMatchObject({ evidenceCount: 2, needsReview: false, status: 'ACTIVE' });
+    await call('PUT', '/api/settings/moderation', { presets: [], requireEvidence: false });
+
+    // Edit evidence (optimistic lock) and remove one (soft delete).
+    expect((await call('PATCH', `/api/punishments/${id}/evidence/${video.body.id}`, { version: 9, title: 'x' })).body.code).toBe('STALE_EVIDENCE');
+    const renamed = await call('PATCH', `/api/punishments/${id}/evidence/${video.body.id}`, { version: 1, title: 'KillAura (confirmed)', visibility: 'PUBLIC' });
+    expect(renamed.body).toMatchObject({ title: 'KillAura (confirmed)', visibility: 'PUBLIC', version: 2, updatedBy: 'owner' });
+    expect((await call('DELETE', `/api/punishments/${id}/evidence/${shot.body.id}`, { version: 1, reason: 'Duplicate' })).status).toBe(200);
+    expect((await call('GET', `/api/punishments/${id}/evidence`)).body).toHaveLength(1);
+
+    // 3. Edits from the dashboard: one punishment, never a second active ban.
+    const thirtyDays = new Date(createdAt + 30 * day * 1000).toISOString();
+    const edited = await call('PATCH', `/api/punishments/${id}`, { version: 1, reason: 'Repeated cheating', expiresAt: thirtyDays, note: 'Video confirms repeated violations.' });
+    expect(edited.status).toBe(200);
+    expect(edited.body.changes).toEqual(['REASON_CHANGED', 'DURATION_EXTENDED']);
+    expect(edited.body.previous).toMatchObject({ reason: 'Cheating', expiresAt: new Date(createdAt + 7 * day * 1000).toISOString() });
+    expect(edited.body.punishment).toMatchObject({ id, reason: 'Repeated cheating', expiresAt: thirtyDays, version: 2, type: 'TEMP_BAN' });
+    // A stale page cannot overwrite newer changes.
+    expect((await call('PATCH', `/api/punishments/${id}`, { version: 1, reason: 'Stale' })).body.code).toBe('STALE_PUNISHMENT');
+    expect((await call('PATCH', `/api/punishments/${id}`, { version: 2, expiresAt: new Date(createdAt - 1000).toISOString() })).body.code).toBe('INVALID_DURATION');
+    expect((await call('PATCH', `/api/punishments/${id}`, { version: 2, reason: 'Repeated cheating' })).body.code).toBe('NO_CHANGES');
+    const shorter = await call('PATCH', `/api/punishments/${id}`, { version: 2, expiresAt: new Date(createdAt + 3 * day * 1000).toISOString() });
+    expect(shorter.body.changes).toEqual(['DURATION_SHORTENED']);
+    const permanent = await call('PATCH', `/api/punishments/${id}`, { version: 3, expiresAt: null });
+    expect(permanent.body.punishment).toMatchObject({ type: 'BAN', expiresAt: null });
+    const temporary = await call('PATCH', `/api/punishments/${id}`, { version: 4, expiresAt: thirtyDays });
+    expect(temporary.body.punishment).toMatchObject({ type: 'TEMP_BAN', expiresAt: thirtyDays });
+    const actives = await call('GET', `/api/punishments?status=active&search=${steve}`);
+    expect(actives.body.items.filter((p: { type: string }) => ['BAN', 'TEMP_BAN'].includes(p.type))).toHaveLength(1);
+
+    // 4. /editban from the game: by player and by id; the plugins receive the update.
+    const editban = await signed(paper, 'POST', '/api/plugin/v1/punishments/edit', { kind: 'BAN', target: 'Steve', durationSeconds: 14 * day, reason: 'Repeated cheating (KillAura)', editor: { name: 'Admin123', uuid: '1f0e0d0c-0b0a-4908-8706-050403020100' } });
+    expect(editban.status).toBe(200);
+    expect(editban.body.punishment).toMatchObject({ id, reason: 'Repeated cheating (KillAura)', expiresAt: new Date(createdAt + 14 * day * 1000).toISOString() });
+    expect((await signed(paper, 'POST', '/api/plugin/v1/punishments/edit', { kind: 'BAN', id, durationSeconds: null, editor: { name: 'console' } })).body.code).toBe('PERMANENT_NOT_ALLOWED');
+    expect((await signed(paper, 'POST', '/api/plugin/v1/punishments/edit', { kind: 'MUTE', id, reason: 'x', editor: { name: 'console' } })).body.code).toBe('WRONG_PUNISHMENT_TYPE');
+    const byId = await signed(paper, 'POST', '/api/plugin/v1/punishments/edit', { kind: 'BAN', id, durationSeconds: null, editor: { name: 'console' }, allowPermanentChange: true });
+    expect(byId.body.punishment).toMatchObject({ type: 'BAN', expiresAt: null });
+    expect((await signed(paper, 'POST', '/api/plugin/v1/punishments/edit', { kind: 'MUTE', target: 'Steve', durationSeconds: day, editor: { name: 'console' } })).body.code).toBe('NOT_MUTED');
+    const feed = await signed(paper, 'GET', `/api/plugin/v1/punishments/changes?after=${cursor}`);
+    const kinds = feed.body.changes.filter((c: { punishment: { id: string } }) => c.punishment.id === id).map((c: { kind: string }) => c.kind);
+    expect(kinds[0]).toBe('CREATED');
+    expect(kinds.filter((k: string) => k === 'UPDATED').length).toBeGreaterThanOrEqual(5);
+    // Evidence and notes are never sent to the game servers.
+    expect(JSON.stringify(feed.body)).not.toContain('medal.tv');
+    const lookup = await signed(paper, 'GET', '/api/plugin/v1/players/lookup?target=Steve');
+    expect(lookup.body.active.ban).toMatchObject({ id, reason: 'Repeated cheating (KillAura)', expiresAt: null });
+
+    // 5. Expired punishments: corrections keep them expired; reactivation is explicit.
+    const mute = await call('POST', '/api/punishments', { type: 'TEMP_MUTE', target: 'Alex', reason: 'Spam', durationSeconds: day });
+    const prisma = app.get(PrismaService);
+    await prisma.punishment.update({ where: { id: mute.body.id }, data: { expiresAt: new Date(Date.now() - 60_000) } });
+    const corrected = await call('PATCH', `/api/punishments/${mute.body.id}`, { version: 1, reason: 'Spam in chat' });
+    expect(corrected.body.punishment).toMatchObject({ status: 'EXPIRED', reason: 'Spam in chat' });
+    expect((await call('PATCH', `/api/punishments/${mute.body.id}`, { version: 2, expiresAt: new Date(Date.now() + day * 1000).toISOString() })).body.code).toBe('NOT_ACTIVE');
+    const reactivated = await call('POST', `/api/punishments/${mute.body.id}/reactivate`, { version: 2, expiresAt: new Date(Date.now() + day * 1000).toISOString(), note: 'Expired by mistake' });
+    expect(reactivated.status).toBe(200);
+    expect(reactivated.body.status).toBe('ACTIVE');
+    // Revoked punishments stay revoked when corrected.
+    await call('POST', `/api/punishments/${mute.body.id}/revoke`, { reason: 'Cleanup' });
+    const revokedEdit = await call('PATCH', `/api/punishments/${mute.body.id}`, { version: 4, reason: 'Spam (corrected)' });
+    expect(revokedEdit.body.punishment).toMatchObject({ status: 'REVOKED', reason: 'Spam (corrected)' });
+    expect((await call('PATCH', `/api/punishments/${mute.body.id}`, { version: 5, expiresAt: null })).body.code).toBe('NOT_ACTIVE');
+    // Corrections of inactive punishments never reach the plugins' caches.
+    const muteFeed = (await signed(paper, 'GET', `/api/plugin/v1/punishments/changes?after=${cursor}`)).body.changes.filter((c: { punishment: { id: string } }) => c.punishment.id === mute.body.id);
+    expect(muteFeed.map((c: { kind: string }) => c.kind)).toEqual(['CREATED', 'REACTIVATED', 'REVOKED']);
+
+    // 6. Complete, ordered history with actors and previous values.
+    await call('POST', `/api/punishments/${id}/revoke`, { reason: 'Test cleanup' });
+    const history = await call('GET', `/api/punishments/${id}/history`);
+    expect(history.body.map((h: { action: string }) => h.action)).toEqual([
+      'CREATED', 'EVIDENCE_ADDED', 'EVIDENCE_ADDED', 'EVIDENCE_UPDATED', 'EVIDENCE_REMOVED', 'REASON_CHANGED', 'DURATION_EXTENDED',
+      'DURATION_SHORTENED', 'MADE_PERMANENT', 'MADE_TEMPORARY', 'REASON_CHANGED', 'DURATION_SHORTENED', 'MADE_PERMANENT', 'REVOKED',
+    ]);
+    expect(history.body[0]).toMatchObject({ actor: { type: 'PLAYER', name: 'Mod123' }, newValues: { reason: 'Cheating' } });
+    expect(history.body[3]).toMatchObject({ previousValues: { title: 'KillAura detection', visibility: 'STAFF' }, newValues: { title: 'KillAura (confirmed)', visibility: 'PUBLIC' } });
+    expect(history.body[5]).toMatchObject({ previousValues: { reason: 'Cheating' }, note: 'Video confirms repeated violations.', actor: { name: 'owner' } });
+    expect(history.body[10]).toMatchObject({ actor: { type: 'PLAYER', name: 'Admin123' } });
+    const muteHistory = await call('GET', `/api/punishments/${mute.body.id}/history`);
+    expect(muteHistory.body.map((h: { action: string }) => h.action)).toEqual(['CREATED', 'REASON_CHANGED', 'REACTIVATED', 'REVOKED', 'REASON_CHANGED']);
+    const audit = await call('GET', '/api/audit-logs?action=punishments.');
+    expect(audit.body.items.map((e: { action: string }) => e.action)).toEqual(
+      expect.arrayContaining(['punishments.edited', 'punishments.evidence_added', 'punishments.evidence_updated', 'punishments.evidence_removed', 'punishments.reactivated']),
+    );
+  });
+
   // ── Phase 5: statistics ────────────────────────────────────────
 
   it('ingests statistics from Paper and serves totals, ranges, series and leaderboards', async () => {
@@ -711,6 +827,13 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
       ['POST', '/api/servers/registration-tokens', { type: 'PAPER', name: 'rogue' }],
       ['POST', '/api/roles', { name: 'Root', permissions: ['*'] }],
       ['POST', `/api/players/${steve.uuid}/inventories/lobby/inventory/revisions`, { baseRevision: 1, changes: [] }],
+      ['PATCH', '/api/punishments/any-id', { version: 1, reason: 'x' }],
+      ['POST', '/api/punishments/any-id/reactivate', { version: 1, expiresAt: null }],
+      ['GET', '/api/punishments/any-id/history'],
+      ['GET', '/api/punishments/any-id/evidence'],
+      ['POST', '/api/punishments/any-id/evidence', { type: 'TEXT', title: 'x', description: 'x' }],
+      ['PATCH', '/api/punishments/any-id/evidence/e', { version: 1, title: 'x' }],
+      ['DELETE', '/api/punishments/any-id/evidence/e', { version: 1 }],
     ];
     for (const [method, path, body] of forbidden) {
       expect((await call(method, path, body)).status, `${method} ${path}`).toBe(403);

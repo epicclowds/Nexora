@@ -1,5 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
-import { ActorType, type Prisma, type Punishment, PunishmentChangeKind, type PunishmentSource, PunishmentStatus, PunishmentType } from '../generated/prisma/client';
+import { ActorType, type Prisma, type Punishment, PunishmentChangeKind, PunishmentHistoryAction, type PunishmentSource, PunishmentStatus, PunishmentType } from '../generated/prisma/client';
 import { type AuditActor, AuditService } from '../audit/audit.service';
 import { normalizeUuid } from '../players/players.controller';
 import { PrismaService } from '../prisma/prisma.service';
@@ -25,12 +25,13 @@ export interface CreatePunishmentInput {
   ipAddress?: string | null;
 }
 
-const withNames = {
+export const withNames = {
   target: { select: { uuid: true, username: true, online: true } },
   server: { select: { id: true, name: true } },
+  _count: { select: { evidence: { where: { deletedAt: null } } } },
 } as const;
 
-type PunishmentWithNames = Prisma.PunishmentGetPayload<{ include: typeof withNames }>;
+export type PunishmentWithNames = Prisma.PunishmentGetPayload<{ include: typeof withNames }>;
 
 export function serializePunishment(p: PunishmentWithNames, options: { includeIp?: boolean } = {}) {
   return {
@@ -48,6 +49,9 @@ export function serializePunishment(p: PunishmentWithNames, options: { includeIp
     revokedAt: p.revokedAt?.toISOString() ?? null,
     revokedBy: p.revokedByName,
     revokedReason: p.revokedReason,
+    version: p.version,
+    updatedAt: p.updatedAt?.toISOString() ?? null,
+    evidenceCount: p._count.evidence,
     ...(options.includeIp ? { targetIp: p.targetIp } : {}),
   };
 }
@@ -62,12 +66,19 @@ export function pluginPunishment(p: Punishment & { target: { username: string } 
     targetIp: p.type === PunishmentType.BLACKLIST ? p.targetIp : null,
     reason: p.reason,
     issuerName: p.issuerName,
+    /** Plugins only cache ACTIVE punishments. */
+    status: p.status,
     createdAt: p.createdAt.getTime(),
     expiresAt: p.expiresAt?.getTime() ?? null,
   };
 }
 
-function auditActor(issuer: Issuer): AuditActor {
+/** History actor columns for an issuer. */
+export function historyActor(actor: Issuer) {
+  return { actorType: actor.type, actorUserId: actor.userId ?? null, actorUuid: actor.uuid ?? null, actorName: actor.name.slice(0, 64) };
+}
+
+export function auditActor(issuer: Issuer): AuditActor {
   return { type: issuer.type, userId: issuer.userId ?? null, name: issuer.name };
 }
 
@@ -148,6 +159,14 @@ export class PunishmentsService {
         include: withNames,
       });
       await tx.punishmentChange.create({ data: { punishmentId: punishment.id, kind: PunishmentChangeKind.CREATED } });
+      await tx.punishmentHistory.create({
+        data: {
+          punishmentId: punishment.id,
+          action: PunishmentHistoryAction.CREATED,
+          newValues: { type: input.type, reason: input.reason, expiresAt: expiry.expiresAt?.toISOString() ?? null },
+          ...historyActor(input.issuer),
+        },
+      });
       await this.audit.record(
         {
           actor: auditActor(input.issuer),
@@ -195,10 +214,22 @@ export class PunishmentsService {
           revokedByUserId: revoker.userId ?? null,
           revokedByUuid: revoker.uuid ?? null,
           revokedByName: revoker.name.slice(0, 64),
+          version: { increment: 1 },
+          updatedAt: new Date(),
         },
       });
       if (result.count !== 1) throw new ConflictException({ code: 'NOT_ACTIVE', message: 'This punishment is not active' });
       await tx.punishmentChange.create({ data: { punishmentId: punishment.id, kind: PunishmentChangeKind.REVOKED } });
+      await tx.punishmentHistory.create({
+        data: {
+          punishmentId: punishment.id,
+          action: PunishmentHistoryAction.REVOKED,
+          previousValues: { status: PunishmentStatus.ACTIVE },
+          newValues: { status: PunishmentStatus.REVOKED },
+          note: reason?.slice(0, 1000) ?? null,
+          ...historyActor(revoker),
+        },
+      });
       await this.audit.record(
         {
           actor: auditActor(revoker),

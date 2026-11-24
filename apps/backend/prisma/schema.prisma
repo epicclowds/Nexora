@@ -316,6 +316,11 @@ model Punishment {
   revokedByName   String?          @map("revoked_by_name") @db.VarChar(64)
   /// BLACKLIST only: IP address blocked together with the account (personal data).
   targetIp        String?          @map("target_ip") @db.VarChar(45)
+  /// Optimistic lock: every modification increments it (stale edits are rejected).
+  version         Int              @default(1)
+  updatedAt       DateTime?        @map("updated_at") @db.DateTime(3)
+  /// Internal staff note; never shown to players.
+  staffNote       String?          @map("staff_note") @db.Text
 
   target          Player               @relation("PunishmentTarget", fields: [targetUuid], references: [uuid], onDelete: Cascade)
   issuerUser      DashboardUser?       @relation("PunishmentIssuer", fields: [issuerUserId], references: [id], onDelete: SetNull)
@@ -323,6 +328,7 @@ model Punishment {
   server          Server?              @relation(fields: [serverId], references: [id], onDelete: SetNull)
   evidence        PunishmentEvidence[]
   changes         PunishmentChange[]
+  history         PunishmentHistory[]
   antiCheatEvents AntiCheatEvent[]
 
   @@index([targetUuid, type, status])
@@ -335,6 +341,10 @@ model Punishment {
 enum PunishmentChangeKind {
   CREATED
   REVOKED
+  /// Reason, expiry or type changed (plugins upsert their cache entry).
+  UPDATED
+  /// Expired or revoked punishment made active again by an explicit action.
+  REACTIVATED
 }
 
 /// Append-only, ordered feed consumed by the plugins (cursor = id) to keep
@@ -351,19 +361,76 @@ model PunishmentChange {
   @@map("punishment_changes")
 }
 
+enum EvidenceVisibility {
+  STAFF
+  PUBLIC
+}
+
+/// Evidence attached to a punishment. kind: VIDEO, SCREENSHOT, IMAGE, LINK,
+/// TEXT, NOTE (staff note) – or system kinds such as "anticheat". File uploads
+/// can be added later as another kind with the storage reference in metadata.
 model PunishmentEvidence {
-  id           String   @id @default(cuid()) @db.VarChar(32)
-  punishmentId String   @map("punishment_id") @db.VarChar(32)
-  kind         String   @db.VarChar(32)
-  content      String?  @db.Text
-  url          String?  @db.VarChar(2048)
-  metadata     Json?
-  createdAt    DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  id              String             @id @default(cuid()) @db.VarChar(32)
+  punishmentId    String             @map("punishment_id") @db.VarChar(32)
+  kind            String             @db.VarChar(32)
+  title           String?            @db.VarChar(200)
+  /// Description (plain text, may span multiple lines).
+  content         String?            @db.Text
+  url             String?            @db.VarChar(2048)
+  metadata        Json?
+  visibility      EvidenceVisibility @default(STAFF)
+  version         Int                @default(1)
+  createdAt       DateTime           @default(now()) @map("created_at") @db.DateTime(3)
+  createdByType   ActorType?         @map("created_by_type")
+  createdByUserId String?            @map("created_by_user_id") @db.VarChar(32)
+  createdByName   String?            @map("created_by_name") @db.VarChar(64)
+  updatedAt       DateTime?          @map("updated_at") @db.DateTime(3)
+  updatedByName   String?            @map("updated_by_name") @db.VarChar(64)
+  /// Soft deletion: hidden from the dashboard, purged after the retention period.
+  deletedAt       DateTime?          @map("deleted_at") @db.DateTime(3)
+  deletedByName   String?            @map("deleted_by_name") @db.VarChar(64)
 
   punishment Punishment @relation(fields: [punishmentId], references: [id], onDelete: Cascade)
 
-  @@index([punishmentId])
+  @@index([punishmentId, deletedAt])
+  @@index([deletedAt])
   @@map("punishment_evidence")
+}
+
+enum PunishmentHistoryAction {
+  CREATED
+  REASON_CHANGED
+  DURATION_EXTENDED
+  DURATION_SHORTENED
+  MADE_PERMANENT
+  MADE_TEMPORARY
+  NOTE_CHANGED
+  EVIDENCE_ADDED
+  EVIDENCE_UPDATED
+  EVIDENCE_REMOVED
+  REVOKED
+  REACTIVATED
+}
+
+/// Immutable change history of a punishment (one row per changed aspect).
+model PunishmentHistory {
+  id            String                  @id @default(cuid()) @db.VarChar(32)
+  punishmentId  String                  @map("punishment_id") @db.VarChar(32)
+  action        PunishmentHistoryAction
+  previousValues Json?                  @map("previous_values")
+  newValues     Json?                   @map("new_values")
+  actorType     ActorType               @map("actor_type")
+  actorUserId   String?                 @map("actor_user_id") @db.VarChar(32)
+  actorUuid     String?                 @map("actor_uuid") @db.Char(36)
+  actorName     String                  @map("actor_name") @db.VarChar(64)
+  /// Optional explanation entered with the change.
+  note          String?                 @db.VarChar(1000)
+  createdAt     DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+
+  punishment Punishment @relation(fields: [punishmentId], references: [id], onDelete: Cascade)
+
+  @@index([punishmentId, createdAt])
+  @@map("punishment_history")
 }
 
 model AntiCheatEvent {
