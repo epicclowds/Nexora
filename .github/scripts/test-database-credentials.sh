@@ -6,6 +6,9 @@
 # Expects a running, initialised stack (verify-deployment.mjs setup was run)
 # whose .env uses special-character passwords. Run from the repository root.
 set -euo pipefail
+# Any unexpected failure is reported with its line and command (annotation).
+trap 'code=$?; echo "::error::test-database-credentials.sh line $LINENO: \"$BASH_COMMAND\" failed (exit $code)"' ERR
+backup_count() { { find backups -maxdepth 1 -name 'mnm-before-credential-repair-*.sql.gz' 2>/dev/null || true; } | wc -l; }
 
 base="${1:-http://127.0.0.1:3000}"
 env_file() { node .github/scripts/env-file.mjs "$@"; }
@@ -48,13 +51,13 @@ node infrastructure/scripts/verify-deployment.mjs "$base" check
 
 step "B: application and root password changed → backup + maintenance-mode repair"
 simulate_drift 'MYSQL_PASSWORD=B0th@ch:ng/d#%?&"B2' 'MYSQL_ROOT_PASSWORD=R00t@ch:ng/d#%?&"R2'
-before=$(ls backups 2>/dev/null | wc -l)
+before=$(backup_count)
 out=$(sh infrastructure/scripts/repair-db-credentials.sh --yes 2>&1) || { echo "$out"; fail "repair (maintenance mode) failed"; }
 echo "$out"
 grep -q 'Backup written to backups/mnm-before-credential-repair-' <<<"$out" || fail "expected a backup before the repair"
 dump=$(ls -t backups/mnm-before-credential-repair-*.sql.gz | head -n 1)
 sudo gzip -dc "$dump" | tail -n 1 | grep -q 'Dump completed' || fail "backup $dump is incomplete"
-[ "$(ls backups | wc -l)" -gt "$before" ] || fail "no new backup file"
+[ "$(backup_count)" -gt "$before" ] || fail "no new backup file"
 echo "  ✔ backup $dump is complete"
 docker compose up -d --wait --wait-timeout 180
 node infrastructure/scripts/verify-deployment.mjs "$base" check
