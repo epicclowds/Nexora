@@ -5,6 +5,7 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { PermissionsGuard, SessionGuard } from './guards';
 import { PasswordService } from './password.service';
+import { TwoFactorService } from './two-factor.service';
 
 @Global()
 @Module({
@@ -19,7 +20,7 @@ import { PasswordService } from './password.service';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, PasswordService, SessionGuard, PermissionsGuard],
-  exports: [AuthService, PasswordService, SessionGuard, PermissionsGuard],
+  providers: [AuthService, PasswordService, TwoFactorService, SessionGuard, PermissionsGuard],
+  exports: [AuthService, PasswordService, TwoFactorService, SessionGuard, PermissionsGuard],
 })
 export class AuthModule {}

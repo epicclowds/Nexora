@@ -6,7 +6,7 @@ Every backend route and what it requires. Permissions are checked on the server 
 "session" = any signed-in dashboard user; "plugin signature" = HMAC-signed request from a registered Minecraft server.
 The `owner` role holds every permission (`*`).
 
-Routes: 93 · public: 9 · plugin: 16 · session only: 8 · checked in handler: 2 · permission-protected: 58
+Routes: 99 · public: 10 · plugin: 16 · session only: 13 · checked in handler: 2 · permission-protected: 58
 
 | Method | Path | Requires |
 | --- | --- | --- |
@@ -16,9 +16,15 @@ Routes: 93 · public: 9 · plugin: 16 · session only: 8 · checked in handler: 
 | GET | `/api/anticheat/summary` | `anticheat.view` |
 | GET | `/api/audit-logs` | `audit.view` |
 | POST | `/api/auth/login` | public |
+| POST | `/api/auth/login/2fa` | public |
 | POST | `/api/auth/logout` | session |
 | GET | `/api/auth/me` | session |
 | PATCH | `/api/auth/me` | session |
+| GET | `/api/auth/me/2fa` | session |
+| POST | `/api/auth/me/2fa/disable` | session |
+| POST | `/api/auth/me/2fa/enable` | session |
+| POST | `/api/auth/me/2fa/recovery-codes` | session |
+| POST | `/api/auth/me/2fa/setup` | session |
 | POST | `/api/auth/me/password` | session |
 | POST | `/api/auth/refresh` | public |
 | GET | `/api/dashboard/summary` | session |

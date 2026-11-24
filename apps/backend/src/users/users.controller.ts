@@ -4,6 +4,7 @@ import { PERMISSIONS } from '@mnm/shared-types';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { AuthService } from '../auth/auth.service';
+import { TwoFactorService } from '../auth/two-factor.service';
 import { PasswordService } from '../auth/password.service';
 import { type AuthenticatedUser, clientIp, CurrentUser, RequirePermissions } from '../common/auth-context';
 import { emailSchema, passwordSchema, usernameSchema } from '../common/validation';
@@ -27,6 +28,8 @@ const updateUserSchema = z
     roleId: z.string().min(1).max(32).optional(),
     disabled: z.boolean().optional(),
     password: passwordSchema.optional(),
+    /** Removes two-factor authentication (lost device). */
+    resetTwoFactor: z.literal(true).optional(),
   })
   .strict();
 
@@ -50,6 +53,7 @@ export class UsersController {
     private readonly passwords: PasswordService,
     private readonly auth: AuthService,
     private readonly audit: AuditService,
+    private readonly twoFactor: TwoFactorService,
   ) {}
 
   @Get()
@@ -100,7 +104,7 @@ export class UsersController {
     if (!isSelf && !canManagePriority(actor, target.role.priority)) {
       throw new ForbiddenException({ code: 'PRIORITY_TOO_HIGH', message: 'You cannot manage this user' });
     }
-    if (isSelf && (body.disabled !== undefined || body.roleId !== undefined)) {
+    if (isSelf && (body.disabled !== undefined || body.roleId !== undefined || body.resetTwoFactor)) {
       throw new BadRequestException({ code: 'SELF_MODIFICATION', message: 'You cannot change your own role or status' });
     }
     if (body.roleId && body.roleId !== target.roleId) await this.assertAssignableRole(actor, body.roleId);
@@ -112,6 +116,7 @@ export class UsersController {
     }
 
     const passwordHash = body.password ? await this.passwords.hash(body.password) : undefined;
+    if (body.resetTwoFactor) await this.twoFactor.clear(id);
     const updated = await this.prisma.$transaction(async (tx) => {
       const user = await tx.dashboardUser.update({
         where: { id },
@@ -132,7 +137,7 @@ export class UsersController {
       );
       return user;
     });
-    if (body.disabled || body.password || body.roleId) await this.auth.revokeAllSessions(id);
+    if (body.disabled || body.password || body.roleId || body.resetTwoFactor) await this.auth.revokeAllSessions(id);
     return updated;
   }
 

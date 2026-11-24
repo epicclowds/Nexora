@@ -8,6 +8,7 @@ import { AuditService } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { PasswordService } from './password.service';
+import { TwoFactorService } from './two-factor.service';
 
 /** Failed logins per account before a temporary lock. */
 export const MAX_LOGIN_FAILURES = 10;
@@ -35,9 +36,10 @@ export class AuthService {
     private readonly audit: AuditService,
     private readonly config: AppConfig,
     private readonly redis: RedisService,
+    private readonly twoFactor: TwoFactorService,
   ) {}
 
-  async login(identifier: string, password: string, meta: { ip: string | null; userAgent: string | null }): Promise<IssuedSession> {
+  async login(identifier: string, password: string, meta: { ip: string | null; userAgent: string | null }): Promise<IssuedSession | { challenge: string }> {
     const normalized = identifier.trim();
     // Per-account lockout, independent of the client IP (which may be spoofable
     // when no trusted reverse proxy is in front of the dashboard).
@@ -73,7 +75,48 @@ export class AuthService {
       throw new ForbiddenException({ code: 'ACCOUNT_DISABLED', message: 'This account is disabled' });
     }
 
+    // Second factor: no session until a valid code was entered.
+    if (user.twoFactorEnabled) return { challenge: await this.twoFactor.createChallenge(user.id) };
+
     await this.redis.client.del(failureKey).catch(() => undefined);
+    return this.completeLogin(user, meta, 'password');
+  }
+
+  /** Second login step for accounts with two-factor authentication. */
+  async loginWithSecondFactor(challenge: string, code: string, meta: { ip: string | null; userAgent: string | null }): Promise<IssuedSession> {
+    const pending = await this.twoFactor.resolveChallenge(challenge);
+    if (!pending) throw new UnauthorizedException({ code: 'TWO_FACTOR_CHALLENGE_EXPIRED', message: 'Sign in again' });
+    const user = await this.prisma.dashboardUser.findUniqueOrThrow({ where: { id: pending.userId } });
+    const failureKey = `mnm:login-failures:${sha256Hex(user.username.toLowerCase())}`;
+    if (Number((await this.redis.client.get(failureKey).catch(() => null)) ?? 0) >= MAX_LOGIN_FAILURES) {
+      throw new HttpException({ code: 'ACCOUNT_LOCKED', message: 'Too many failed attempts. Try again later.' }, HttpStatus.TOO_MANY_REQUESTS);
+    }
+    if (user.disabled) throw new ForbiddenException({ code: 'ACCOUNT_DISABLED', message: 'This account is disabled' });
+
+    const method = await this.twoFactor.verifyCode(user.id, code);
+    if (!method) {
+      await this.redis.client.multi().incr(failureKey).expire(failureKey, LOGIN_LOCKOUT_SECONDS).exec().catch(() => undefined);
+      const retry = await pending.attempt();
+      await this.audit.record({
+        actor: { type: ActorType.SYSTEM, name: 'auth' },
+        action: 'auth.login_failed',
+        targetType: 'dashboard_user',
+        targetId: user.id,
+        metadata: { stage: 'two_factor' },
+        ipAddress: meta.ip,
+      });
+      throw new UnauthorizedException(
+        retry
+          ? { code: 'INVALID_TWO_FACTOR_CODE', message: 'The code is invalid' }
+          : { code: 'TWO_FACTOR_CHALLENGE_EXPIRED', message: 'Too many attempts. Sign in again.' },
+      );
+    }
+    await pending.consume();
+    await this.redis.client.del(failureKey).catch(() => undefined);
+    return this.completeLogin(user, meta, method === 'recovery' ? 'recovery_code' : 'totp');
+  }
+
+  private async completeLogin(user: { id: string; username: string }, meta: { ip: string | null; userAgent: string | null }, method: 'password' | 'totp' | 'recovery_code'): Promise<IssuedSession> {
     const session = await this.issueSession(user.id, meta);
     await this.prisma.dashboardUser.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
     await this.audit.record({
@@ -81,6 +124,7 @@ export class AuthService {
       action: 'auth.login',
       targetType: 'dashboard_user',
       targetId: user.id,
+      metadata: method === 'password' ? undefined : { secondFactor: method },
       ipAddress: meta.ip,
     });
     return session;
@@ -126,6 +170,11 @@ export class AuthService {
   async logout(user: AuthenticatedUser, ip: string | null): Promise<void> {
     await this.prisma.dashboardSession.updateMany({ where: { id: user.sessionId, revokedAt: null }, data: { revokedAt: new Date() } });
     await this.audit.record({ actor: { type: ActorType.USER, userId: user.id, name: user.username }, action: 'auth.logout', ipAddress: ip });
+  }
+
+  /** Ends every session of the user except the given one. */
+  async revokeOtherSessions(userId: string, keepSessionId: string): Promise<void> {
+    await this.prisma.dashboardSession.updateMany({ where: { userId, revokedAt: null, id: { not: keepSessionId } }, data: { revokedAt: new Date() } });
   }
 
   async revokeAllSessions(userId: string): Promise<void> {

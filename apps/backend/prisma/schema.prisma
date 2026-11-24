@@ -488,9 +488,13 @@ model DashboardUser {
   theme            String?   @db.VarChar(16)
   timezone         String?   @db.VarChar(64)
   disabled         Boolean   @default(false)
-  /// Reserved for optional TOTP 2FA (encrypted secret).
+  /// TOTP secret, AES-256-GCM sealed (see src/auth/totp.ts).
   twoFactorSecret  String?   @map("two_factor_secret") @db.VarChar(255)
   twoFactorEnabled Boolean   @default(false) @map("two_factor_enabled")
+  /// SHA-256 hashes of unused recovery codes.
+  twoFactorRecoveryCodes Json? @map("two_factor_recovery_codes")
+  /// Last accepted TOTP time step (replay protection).
+  twoFactorLastStep Int?     @map("two_factor_last_step")
   lastLoginAt      DateTime? @map("last_login_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)

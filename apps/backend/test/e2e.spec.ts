@@ -9,6 +9,7 @@ import { randomBytes } from 'node:crypto';
 import cookieParser from 'cookie-parser';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { sha256Hex } from '../src/common/crypto';
+import { base32Decode, hotp, totpStep } from '../src/auth/totp';
 import { canonicalRequest, sign } from '../src/plugin-api/plugin-signature';
 
 const enabled = Boolean(process.env.E2E_DATABASE_URL && process.env.E2E_REDIS_URL);
@@ -635,6 +636,48 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
 
     // Unban Alex again so later tests are unaffected.
     await call('POST', `/api/punishments/${ban.body.punishmentId}/revoke`, { reason: 'test cleanup' });
+  });
+
+  // ── Phase 9: two-factor authentication ─────────────────────────
+
+  it('enrols TOTP two-factor authentication and requires it at login', async () => {
+    expect((await call('GET', '/api/auth/me/2fa')).body).toEqual({ enabled: false, recoveryCodesRemaining: 0 });
+    expect((await call('POST', '/api/auth/me/2fa/setup', { password: 'wrong-password' })).body.code).toBe('INVALID_PASSWORD');
+
+    const setup = await call('POST', '/api/auth/me/2fa/setup', { password: owner.password });
+    expect(setup.body.otpauthUri).toMatch(/^otpauth:\/\/totp\//);
+    const secret = base32Decode(setup.body.secret);
+    expect((await call('POST', '/api/auth/me/2fa/enable', { code: hotp(secret, totpStep() + 5) })).body.code).toBe('INVALID_TWO_FACTOR_CODE');
+    const enrolCode = hotp(secret, totpStep());
+    const enabled = await call('POST', '/api/auth/me/2fa/enable', { code: enrolCode });
+    expect(enabled.status).toBe(200);
+    const recoveryCodes = enabled.body.recoveryCodes as string[];
+    expect(recoveryCodes).toHaveLength(10);
+    expect((await call('GET', '/api/auth/me/2fa')).body).toEqual({ enabled: true, recoveryCodesRemaining: 10 });
+
+    // Password alone no longer creates a session.
+    await call('POST', '/api/auth/logout');
+    jar.clear();
+    const first = await call('POST', '/api/auth/login', { identifier: owner.username, password: owner.password });
+    expect(first.body).toMatchObject({ twoFactorRequired: true });
+    expect(jar.has('mnm_access')).toBe(false);
+    expect((await call('POST', '/api/auth/login/2fa', { challenge: first.body.challenge, code: '000000' })).body.code).toBe('INVALID_TWO_FACTOR_CODE');
+    // The code used for enrolment cannot be replayed.
+    expect((await call('POST', '/api/auth/login/2fa', { challenge: first.body.challenge, code: enrolCode })).status).toBe(401);
+    const second = await call('POST', '/api/auth/login/2fa', { challenge: first.body.challenge, code: recoveryCodes[0].toLowerCase() });
+    expect(second.status).toBe(200);
+    expect(jar.has('mnm_access')).toBe(true);
+    expect((await call('GET', '/api/auth/me/2fa')).body.recoveryCodesRemaining).toBe(9);
+
+    // Recovery codes and challenges are single-use.
+    expect((await call('POST', '/api/auth/login/2fa', { challenge: first.body.challenge, code: recoveryCodes[1] })).body.code).toBe('TWO_FACTOR_CHALLENGE_EXPIRED');
+    const retry = await call('POST', '/api/auth/login', { identifier: owner.username, password: owner.password });
+    expect((await call('POST', '/api/auth/login/2fa', { challenge: retry.body.challenge, code: recoveryCodes[0] })).status).toBe(401);
+
+    expect((await call('POST', '/api/auth/me/2fa/disable', { password: owner.password, code: recoveryCodes[1] })).status).toBe(200);
+    expect((await call('GET', '/api/auth/me/2fa')).body.enabled).toBe(false);
+    const audit = await call('GET', '/api/audit-logs?action=auth.2fa');
+    expect(audit.body.items.map((e: { action: string }) => e.action)).toEqual(expect.arrayContaining(['auth.2fa_enabled', 'auth.2fa_disabled']));
   });
 
   it('enforces RBAC for lower roles', async () => {
