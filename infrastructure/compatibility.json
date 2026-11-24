@@ -1,0 +1,7 @@
+{
+  "$comment": "Server versions the plugins are smoke-tested against in CI (build-plugins.yml). Only list versions that pass; the release notes and docs are generated from this file.",
+  "java": "25",
+  "velocity": ["4.3.1"],
+  "paper": ["26.1.2", "26.2", "26.3"],
+  "integration": { "velocity": "4.3.1", "paper": "26.3" }
+}

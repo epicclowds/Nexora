@@ -36,7 +36,18 @@ tasks.processResources {
 }
 
 tasks.jar {
-    archiveBaseName = "NetworkManager-Paper"
+    // Release artifact name: Nexora-Paper-<version>.jar (plugin id and data folder stay "networkmanager"/"NetworkManager").
+    archiveBaseName = "Nexora-Paper"
+    manifest {
+        attributes(
+            "Implementation-Title" to "Nexora Paper plugin",
+            "Implementation-Version" to project.version,
+            "Implementation-Vendor" to "Nexora",
+        )
+    }
+    // Reproducible archives: stable file order, no timestamps.
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
     dependsOn(configurations.runtimeClasspath)
     from({ configurations.runtimeClasspath.get().map { zipTree(it) } })
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE

@@ -54,7 +54,18 @@ tasks.processResources {
 }
 
 tasks.jar {
-    archiveBaseName = "NetworkManager-Velocity"
+    // Release artifact name: Nexora-Velocity-<version>.jar (plugin id and data folder stay "networkmanager"/"NetworkManager").
+    archiveBaseName = "Nexora-Velocity"
+    manifest {
+        attributes(
+            "Implementation-Title" to "Nexora Velocity plugin",
+            "Implementation-Version" to project.version,
+            "Implementation-Vendor" to "Nexora",
+        )
+    }
+    // Reproducible archives: stable file order, no timestamps.
+    isPreserveFileTimestamps = false
+    isReproducibleFileOrder = true
     // Bundle plugin-common (its own dependencies are provided by Velocity).
     dependsOn(configurations.runtimeClasspath)
     from({ configurations.runtimeClasspath.get().map { zipTree(it) } })

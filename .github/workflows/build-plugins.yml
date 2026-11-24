@@ -1,0 +1,109 @@
+name: Build plugins
+
+# Compiles, tests, inspects and smoke-tests the Velocity and Paper plugins.
+# Branch builds publish the jars as workflow artifacts; release.yml calls this
+# workflow and attaches the jars to the GitHub Release.
+on:
+  pull_request:
+    paths:
+      - 'apps/plugin-common/**'
+      - 'apps/velocity-plugin/**'
+      - 'apps/paper-plugin/**'
+      - 'packages/translations/minecraft/**'
+      - 'gradle/**'
+      - '*.gradle.kts'
+      - 'gradle.properties'
+      - 'gradlew*'
+      - 'infrastructure/compatibility.json'
+      - 'infrastructure/scripts/verify-plugin-jars.mjs'
+      - 'infrastructure/scripts/plugin-smoke-test.sh'
+      - '.github/workflows/build-plugins.yml'
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+  workflow_call:
+    outputs:
+      version:
+        description: Plugin version that was built
+        value: ${{ jobs.build.outputs.version }}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-plugins-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    name: Compile, test & inspect
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      matrix: ${{ steps.compat.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+      # Validates the Gradle wrapper checksum and configures caching.
+      - uses: gradle/actions/setup-gradle@v6
+      - id: version
+        run: echo "version=$(sed -n 's/^pluginVersion=//p' gradle.properties)" >> "$GITHUB_OUTPUT"
+      # One smoke test per server version listed in infrastructure/compatibility.json.
+      - id: compat
+        run: |
+          matrix=$(node -p 'const c=require("./infrastructure/compatibility.json");JSON.stringify([...c.velocity.map(v=>({platform:"velocity",version:v})),...c.paper.map(v=>({platform:"paper",version:v}))])')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+      - name: Test and build both plugins
+        run: ./gradlew clean build --no-daemon --warning-mode=fail
+      - name: Inspect the jars (descriptors, versions, classes, bundled libraries)
+        run: node infrastructure/scripts/verify-plugin-jars.mjs "${{ steps.version.outputs.version }}"
+      - name: Upload plugin jars
+        uses: actions/upload-artifact@v7
+        with:
+          name: nexora-plugins-${{ steps.version.outputs.version }}
+          path: |
+            apps/velocity-plugin/build/libs/Nexora-Velocity-${{ steps.version.outputs.version }}.jar
+            apps/paper-plugin/build/libs/Nexora-Paper-${{ steps.version.outputs.version }}.jar
+          if-no-files-found: error
+
+  smoke:
+    name: Start ${{ matrix.platform }} ${{ matrix.version }}
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.build.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: actions/download-artifact@v8
+        with:
+          name: nexora-plugins-${{ needs.build.outputs.version }}
+          path: jars
+      - name: Start the server with the plugin
+        env:
+          SMOKE_WORKDIR: ${{ runner.temp }}/smoke
+          PLATFORM: ${{ matrix.platform }}
+          SERVER_VERSION: ${{ matrix.version }}
+        run: |
+          prefix=$([ "$PLATFORM" = velocity ] && echo Velocity || echo Paper)
+          jar=$(find jars -name "Nexora-$prefix-*.jar" | head -n 1)
+          bash infrastructure/scripts/plugin-smoke-test.sh "$PLATFORM" "$SERVER_VERSION" "$jar"
+      - name: Upload server log
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-log-${{ matrix.platform }}-${{ matrix.version }}
+          path: ${{ runner.temp }}/smoke/**/server.log
