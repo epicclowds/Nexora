@@ -5,6 +5,9 @@ import dev.mnm.plugin.ManagedSettings;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.PluginConfig;
 import dev.mnm.plugin.StatusLines;
+import dev.mnm.plugin.UpdateNotifier;
+import java.time.Instant;
+import java.util.Locale;
 import dev.mnm.plugin.punish.PunishmentCache;
 import dev.mnm.plugin.punish.PunishmentFeed;
 import dev.mnm.plugin.punish.PunishmentTexts;
@@ -47,24 +50,44 @@ public final class NetworkManagerPaper extends JavaPlugin {
         connector = new BackendConnector(getDataFolder().toPath(), config, new PaperPlatform(this), getPluginMeta().getVersion(), getSLF4JLogger());
         connector.useManagedSettings(managed);
         BackendConnector statusSource = connector;
+        // Update information from the backend's heartbeat responses. In-game notifications are off on
+        // Paper by default (update-notifications=auto): the Velocity proxy notifies the network once.
+        UpdateNotifier updates = new UpdateNotifier(messages, getPluginMeta().getVersion(), config.updateNotifications(), false);
+        connector.onHeartbeatResponse(updates::accept);
+        getServer().getPluginManager().registerEvents(new UpdateJoinListener(this, updates), this);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> event.registrar().register(
                 "networkmanager",
-                "Shows the Network Manager connection status",
-                List.of("nm"),
+                "Shows the Network Manager connection status (\"update\": update information)",
+                List.of("nm", "nexora"),
                 new BasicCommand() {
                     @Override
                     public void execute(CommandSourceStack source, String[] args) {
-                        StatusLines.render(messages, statusSource.status(), "PAPER").forEach(source.getSender()::sendMessage);
+                        CommandSender sender = source.getSender();
+                        if (args.length > 0 && List.of("update", "version").contains(args[0].toLowerCase(Locale.ROOT))) {
+                            if (!sender.hasPermission(UpdateNotifier.CHECK_PERMISSION) && !sender.hasPermission(ADMIN_PERMISSION)) {
+                                sender.sendMessage(messages.prefixed("error.no-permission", java.util.Map.of()));
+                                return;
+                            }
+                            updates.infoLines(Instant.now()).forEach(sender::sendMessage);
+                            return;
+                        }
+                        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+                            sender.sendMessage(messages.prefixed("error.no-permission", java.util.Map.of()));
+                            return;
+                        }
+                        StatusLines.render(messages, statusSource.status(), "PAPER").forEach(sender::sendMessage);
+                    }
+
+                    @Override
+                    public java.util.Collection<String> suggest(CommandSourceStack source, String[] args) {
+                        if (args.length > 1) return List.of();
+                        String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
+                        return List.of("update", "version").stream().filter(a -> a.startsWith(prefix)).toList();
                     }
 
                     @Override
                     public boolean canUse(CommandSender sender) {
-                        return sender.hasPermission(ADMIN_PERMISSION);
-                    }
-
-                    @Override
-                    public String permission() {
-                        return ADMIN_PERMISSION;
+                        return sender.hasPermission(ADMIN_PERMISSION) || sender.hasPermission(UpdateNotifier.CHECK_PERMISSION);
                     }
                 }));
         // Mutes are enforced here (chat); bans and kicks are handled by the proxy.

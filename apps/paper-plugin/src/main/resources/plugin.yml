@@ -8,6 +8,12 @@ permissions:
   networkmanager.admin:
     description: Allows /networkmanager (connection status)
     default: op
+  networkmanager.update.notify:
+    description: Receives in-game Nexora update notifications (only with update-notifications=true on Paper)
+    default: op
+  networkmanager.update.check:
+    description: Allows /networkmanager update (update information)
+    default: op
   networkmanager.anticheat.command:
     description: Allows /anticheatban (meant for the console and AntiCheat plugins)
     default: false

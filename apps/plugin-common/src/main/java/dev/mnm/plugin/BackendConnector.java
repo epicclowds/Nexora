@@ -62,6 +62,7 @@ public final class BackendConnector {
     private final AtomicBoolean flushing = new AtomicBoolean();
     private final List<Runnable> periodicTasks = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile ManagedSettings managedSettings;
+    private volatile java.util.function.Consumer<JsonObject> heartbeatListener;
     private final AtomicBoolean fetchingConfig = new AtomicBoolean();
     private volatile Credentials credentials;
     private volatile boolean connected;
@@ -150,6 +151,11 @@ public final class BackendConnector {
         periodicTasks.add(task);
     }
 
+    /** Receives every successful heartbeat response (e.g. cached update information). */
+    public void onHeartbeatResponse(java.util.function.Consumer<JsonObject> listener) {
+        this.heartbeatListener = listener;
+    }
+
     /** Receives centrally managed settings whenever their revision changes. */
     public void useManagedSettings(ManagedSettings settings) {
         this.managedSettings = settings;
@@ -195,6 +201,14 @@ public final class BackendConnector {
                     }
                     onSuccess();
                     if (response != null && response.has("configRevision")) checkConfig(response.get("configRevision").getAsLong());
+                    java.util.function.Consumer<JsonObject> listener = heartbeatListener;
+                    if (listener != null && response != null) {
+                        try {
+                            listener.accept(response);
+                        } catch (RuntimeException e) {
+                            logger.warn("Could not process the heartbeat response: {}", e.getMessage());
+                        }
+                    }
                 });
     }
 

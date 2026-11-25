@@ -11,6 +11,7 @@ import dev.mnm.plugin.BackendConnector;
 import dev.mnm.plugin.ManagedSettings;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.PluginConfig;
+import dev.mnm.plugin.UpdateNotifier;
 import dev.mnm.plugin.punish.ModerationClient;
 import dev.mnm.plugin.punish.PunishmentCache;
 import dev.mnm.plugin.punish.PunishmentFeed;
@@ -58,9 +59,13 @@ public final class NetworkManagerVelocity {
         connector = new BackendConnector(dataDirectory, config, new VelocityPlatform(proxy, sessions), BuildInfo.VERSION, logger);
         connector.useManagedSettings(managed);
         proxy.getEventManager().register(this, new PlayerListener(connector, sessions, config.collectIpAddresses()));
+        // Update notifications: cached release info from the backend's heartbeat responses.
+        UpdateNotifier updates = new UpdateNotifier(messages, BuildInfo.VERSION, config.updateNotifications(), true);
+        connector.onHeartbeatResponse(updates::accept);
+        proxy.getEventManager().register(this, new UpdateListener(proxy, this, updates));
         proxy.getCommandManager().register(
-                proxy.getCommandManager().metaBuilder("networkmanager").aliases("nm").plugin(this).build(),
-                new StatusCommand(connector, messages, "VELOCITY"));
+                proxy.getCommandManager().metaBuilder("networkmanager").aliases("nm", "nexora").plugin(this).build(),
+                new StatusCommand(connector, messages, "VELOCITY", updates));
         // Punishments: local cache (login checks), change feed (actions), commands.
         if (config.punishmentsEnabled()) {
             PunishmentCache cache = new PunishmentCache();

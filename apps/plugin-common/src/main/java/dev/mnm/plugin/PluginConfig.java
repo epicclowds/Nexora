@@ -33,6 +33,7 @@ public record PluginConfig(
         boolean punishmentsEnabled,
         boolean moderationCommands,
         String appealUrl,
+        String updateNotifications,
         boolean managedSettings,
         boolean debug) {
 
@@ -76,6 +77,7 @@ public record PluginConfig(
                 bool(p, "punishments-enabled", true),
                 bool(p, "moderation-commands", true),
                 appealUrl(p.getProperty("appeal-url", "").trim()),
+                p.getProperty("update-notifications", "auto").trim(),
                 bool(p, "managed-settings", true),
                 bool(p, "debug", false));
     }
