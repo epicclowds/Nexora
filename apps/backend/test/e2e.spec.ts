@@ -53,6 +53,8 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     });
     const { AppModule } = await import('../src/app.module.js');
     app = await NestFactory.create(AppModule, { logger: ['error', 'warn'], rawBody: true });
+    // Same as main.ts with the default TRUST_PROXY (loopback): X-Forwarded-For from the test client is honoured.
+    app.getHttpAdapter().getInstance().set('trust proxy', ['loopback']);
     app.use(cookieParser());
     app.setGlobalPrefix('api');
     await app.listen(0, '127.0.0.1');
