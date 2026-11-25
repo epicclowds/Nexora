@@ -60,6 +60,18 @@ Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` of the
 
 Whether you update in place, extract a newer release package into a new folder, or move to Portainer or Arcane: **keep your existing secret values** (copy the old `.env`). Do not run `generate-secrets.sh` again – MySQL keeps the passwords of its first start in the data volume, and new passwords make the backend fail with `P1000 Authentication failed` (since 1.0.3 the script refuses when it finds an existing database volume). If it already happened, follow [Database password mismatch](README.md#database-password-mismatch-p1000) – no data is lost.
 
+## Upgrading from 1.2.x to 1.3.0
+
+1.3.0 adds punishment reason presets, the network-wide command mode, the optional LuckPerms integration with account linking, and the Nexora branding. The migrations only add tables and columns; punishments, evidence, players and statistics are kept.
+
+1. Back up the database.
+2. Update the server (`docker compose pull && docker compose up -d`, or re-pull in Portainer/Arcane).
+3. Replace both plugin jars with the 1.3.0 jars. On Paper servers the data folder moves from `plugins/NetworkManager/` to `plugins/Nexora/` automatically on the first start (configuration and credentials are kept). The Velocity folder `plugins/networkmanager/` does not change.
+4. Nothing changes for your moderators until you decide: the command mode stays **typed reasons only**, and your existing punishment templates are now numbered reasons. To use reason IDs, grant the reason permissions (`nexora.punishment.ban.1`, …, or `nexora.punishment.ban.*`) in LuckPerms and switch the mode under Settings → Moderation. Update the plugins on all proxies **before** switching to hybrid or reason-ID mode – 1.2 plugins cannot report reason permissions.
+5. Optional: install LuckPerms on the proxy and configure Settings → Integrations → LuckPerms ([LuckPerms](../architecture/luckperms.md)).
+
+The dashboard now follows the operating system's light/dark preference for users who never chose a theme; saved theme preferences are kept.
+
 ## Upgrading from 1.1.0 to 1.2.0
 
 1.2.0 adds update notifications and makes `docker-compose.yml` standalone. The migration only adds one column (dismissed update notifications) and the `updates.*` permissions.

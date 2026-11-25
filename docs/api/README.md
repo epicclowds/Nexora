@@ -55,6 +55,14 @@ The complete list of routes with their required permissions is generated into th
 | `POST /api/i18n/languages` · `DELETE …/:locale` · `PUT/DELETE /api/i18n/catalogs/:locale` | session | `translations.manage` | Add/delete languages, import/reset catalogues |
 | `GET /api/i18n/messages/:locale` | public | – | Imported messages of an enabled language (used by the dashboard) |
 | `GET /api/servers/registration-tokens/:id` | session | `servers.manage` | Registration progress (pending, registered, expired) |
+| `GET/POST /api/moderation/presets` · `PATCH …/:id` · `POST …/:id/archive` · `POST …/:id/duplicate` | session | `punishments.presets.manage` | Punishment reasons ([punishments](../architecture/punishments.md#reason-presets-and-the-command-mode)) |
+| `GET /api/moderation/presets/usable` | session | `punishments.history` | Reasons the current user may use, the mode and allowed overrides |
+| `GET /api/moderation/presets/catalog` | session | `users.view` | Reasons with permissions (role editor) |
+| `GET/PUT /api/moderation/command-mode` | session | `punishments.history` / `punishments.presets.manage` | Network-wide command mode |
+| `GET /api/integrations/luckperms` · `PUT …/settings` · `POST/PUT/DELETE …/mappings` | session | `integrations.manage` | LuckPerms integration and role mapping ([LuckPerms](../architecture/luckperms.md)) |
+| `GET/POST /api/account/minecraft-link` | session | – | Link the signed-in user's Minecraft account with a code |
+| `GET /api/auth/registration` · `POST /api/auth/register-linked` | public | – | Staff registration with a link code (when enabled; rate-limited) |
+| `GET /api/users/:id/staff` · `POST …/staff/recheck` · `POST …/staff/revoke-sessions` · `DELETE …/minecraft-link` | session | `users.view` / `users.manage` | Staff details, permission matrix and actions |
 | `GET /api/updates` | session | `updates.view` | Installed and latest versions, plugin versions per server, warnings, settings ([updates](../architecture/updates.md)) |
 | `GET /api/updates/notification` · `POST …/notification/dismiss` | session | `updates.notify` | Update notification for the current user; dismiss it for a version |
 | `POST /api/updates/check` | session | `updates.check` | Manual check (5/min; cached within one minute) |

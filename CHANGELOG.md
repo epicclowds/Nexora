@@ -2,6 +2,28 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.3.0] – 2026-11-25
+
+Punishment reason presets, LuckPerms integration and staff accounts, Nexora branding and a refreshed dashboard.
+
+### Added
+- **Punishment reason presets:** numbered ban, mute, kick and warning reasons (separate ID ranges, never reused after archiving) with player-facing reason, internal description, duration or permanent, required permission (default `nexora.punishment.<category>.<id>`), enabled state and order. Managed under Settings → Moderation → Punishment reasons (search, filter, sort, duplicate, disable, archive). Punishments store a snapshot of the reason used.
+- **Network-wide command mode:** reason IDs only, typed reasons only, or hybrid – for every proxy, server, staff member and the dashboard, applied live. `/ban <player> <reason-id> [duration]`, permission-aware tab completion and `/nexora reasons`. Typed reasons in hybrid mode need `nexora.punishment.custom`, duration overrides `nexora.punishment.duration-override`, permanent overrides `nexora.punishment.permanent`; the backend enforces everything, also for edits.
+- Dashboard punishment dialog with the reasons the user may use (duration fixed unless overrides are allowed); roles can grant individual reasons.
+- **Optional LuckPerms integration** on the Velocity proxy: snapshots of groups, rank, prefix and the canonical permissions as LuckPerms evaluates them (inheritance, negated nodes, temporary nodes), event-driven with a five-minute reconciliation. Modes *Disabled*, *Hybrid* and *LuckPerms-managed staff*; stale data blocks sensitive actions.
+- **Account linking:** `/nexora link` one-time codes (hashed, single use, 5 minutes, rate-limited); linking in Settings → General or staff registration on /register (optional).
+- **Group → role mapping** with priorities and deny rules. LuckPerms-managed accounts change role with their groups, are disabled with all sessions revoked when no eligible group remains, and are re-enabled (fresh sign-in) when eligible again. The Owner role cannot be mapped; the protected Owner never depends on LuckPerms.
+- **Staff management:** linked Minecraft account, rank, status, permission source and synchronisation in User Management; staff details with the per-reason permission matrix, account history, recheck, session revocation and unlinking.
+- Player profiles show the Minecraft rank (validated colour, text only).
+
+### Changed
+- **Nexora branding:** plugins, messages (`[Nexora]` prefix), logs and the dashboard (name, subtitle, logo, favicon, titles). The Paper plugin's data folder moves from `plugins/NetworkManager/` to `plugins/Nexora/` automatically; the Velocity plugin id and folder are unchanged.
+- **System** is the default theme (follows the operating system, also on sign-in pages); saved preferences are kept. Neutral light and dark palettes with one restrained accent, active-page indicator, language and theme controls in the sidebar.
+- Error responses include safe detail fields (`reasonId`, `punishmentId`).
+
+### Migration from 1.2.x
+Additive migrations only. Upgraded installations keep typed reasons until the mode is changed; existing punishment templates become numbered reasons. Update all plugins before switching to hybrid or reason-ID mode. See [Updating](docs/installation/updating.md#upgrading-from-12x-to-130).
+
 ## [1.2.1] – 2026-11-25
 
 Fixes the update checker staying at "GitHub rate limit reached … last known result from Never".
@@ -162,6 +184,7 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.3.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.0
 [1.2.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.1
 [1.2.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.0
 [1.1.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.1.0

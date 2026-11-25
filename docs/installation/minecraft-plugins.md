@@ -97,6 +97,22 @@ Nothing is estimated: values that were not collected are shown as "not collected
 
 The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`, `/unmute`, `/kick`, `/warn`, `/history`, `/check`, `/editban` and `/editmute`. Ban screens can show an appeal link: set it under *Settings → Plugin settings → Appeal link* or with `appeal-url=https://…` in `config.properties`. Permissions and behaviour are described in [Punishments](../architecture/punishments.md). Both plugins keep `punishments-cache.json` in their folder so bans and mutes stay enforced during backend outages; do not delete it while the backend is unreachable.
 
+## Punishment reasons, LuckPerms and account linking
+
+- **Reason IDs:** `/ban Steve 1` uses ban reason 1 from **Settings → Moderation → Punishment reasons**; `/nexora reasons` lists the reasons you may use. Whether typed reasons are allowed is decided by the network-wide command mode. Details and permissions: [Punishments](../architecture/punishments.md#reason-presets-and-the-command-mode).
+- **LuckPerms (optional):** install LuckPerms on the Velocity proxy (shared storage recommended when Paper servers run it too). The Nexora plugin detects it, synchronises staff permissions and ranks, and the dashboard can use them – see [LuckPerms](../architecture/luckperms.md).
+- **Account linking:** staff run `/nexora link` and enter the code in the dashboard (Settings → General → Minecraft account, or /register when staff registration is enabled).
+
+| Permission | Allows |
+| --- | --- |
+| `nexora.punishment.<ban|mute|kick|warn>.<id>` | Using a punishment reason |
+| `nexora.punishment.custom` | Typed reasons in hybrid mode |
+| `nexora.punishment.duration-override`, `nexora.punishment.permanent` | Changing a reason's duration / making it permanent |
+| `nexora.command.reasons` | `/nexora reasons` |
+| `nexora.dashboard.register` | `/nexora link` without a mapped staff group |
+
+**Plugin name:** since 1.3 both plugins are called *Nexora*. The Velocity plugin keeps its id `networkmanager` (data folder `plugins/networkmanager/` unchanged). The Paper plugin's data folder becomes `plugins/Nexora/`: on the first start of 1.3, `plugins/NetworkManager/` is moved there automatically (configuration and credentials are kept), and plugins that depend on `NetworkManager` keep working.
+
 ## Update notifications
 
 When the dashboard reports a newer Nexora release, staff with `networkmanager.update.notify` get a short message when they join the network (from the Velocity proxy, at most once per cooldown – default 24 hours, set under **Settings → Updates**). Players without the permission never see it. Paper servers do not notify by default, so nobody is notified twice; for a network without Velocity set `update-notifications=true` in the Paper plugin's `config.properties` (`false` disables it on any server). The plugins only read cached information from the backend – they never contact GitHub and never download or replace anything. Details: [Update notifications](../architecture/updates.md).

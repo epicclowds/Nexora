@@ -42,16 +42,17 @@ Blacklist entries include an IP address, which is personal data. It is only sent
 
 | Command | Permission |
 | --- | --- |
-| `/ban <player> <reason>` | `networkmanager.command.ban` |
+| `/ban <player> <reason-id> [duration]` or `/ban <player> <reason>` | `networkmanager.command.ban` + reason permission |
 | `/tempban <player> <duration> <reason>` | `networkmanager.command.tempban` |
 | `/unban <player> [reason]` | `networkmanager.command.unban` |
-| `/mute <player> <reason>` | `networkmanager.command.mute` |
+| `/mute <player> <reason-id> [duration]` or `/mute <player> <reason>` | `networkmanager.command.mute` + reason permission |
 | `/tempmute <player> <duration> <reason>` | `networkmanager.command.tempmute` |
 | `/unmute <player> [reason]` | `networkmanager.command.unmute` |
-| `/kick <player> <reason>` | `networkmanager.command.kick` |
-| `/warn <player> <reason>` | `networkmanager.command.warn` |
+| `/kick <player> <reason-id or reason>` | `networkmanager.command.kick` + reason permission |
+| `/warn <player> <reason-id or reason>` | `networkmanager.command.warn` + reason permission |
 | `/history <player>` | `networkmanager.command.history` |
 | `/check <player>` | `networkmanager.command.check` |
+| `/nexora reasons` | `nexora.command.reasons` – lists the reasons you may use |
 | `/editban <player\|#id> <duration\|permanent\|keep> [reason]` | `networkmanager.command.editban` (+ `.permanent` to switch between permanent and temporary) |
 | `/editmute <player\|#id> <duration\|permanent\|keep> [reason]` | `networkmanager.command.editmute` (+ `.permanent`) |
 
@@ -60,6 +61,49 @@ Blacklist entries include an IP address, which is personal data. It is only sent
 Staff with `networkmanager.notify` receive a message for every new punishment. Durations: `30m`, `12h`, `7d`, `2w`, `1mo` (30 days), `1y` and combinations such as `1d12h`. Targets can be names (players who have joined before) or UUIDs.
 
 Assign permissions with your proxy permission plugin (e.g. LuckPerms). Dashboard permissions are separate and listed in [security.md](security.md).
+
+## Reason presets and the command mode
+
+Administrators configure numbered punishment reasons under **Settings → Moderation → Punishment reasons** (permission `punishments.presets.manage`):
+
+| ID | Category | Reason | Duration | Permission |
+| --- | --- | --- | --- | --- |
+| 1 | Ban | Hacking | 30 days | `nexora.punishment.ban.1` |
+| 5 | Ban | Severe cheating | permanent | `nexora.punishment.ban.5` |
+| 1 | Mute | Spam | 1 hour | `nexora.punishment.mute.1` |
+
+- **Reason ID ≠ punishment ID.** `/ban Steve 1` uses *ban reason 1*; the punishment still gets its own unique ID (`#clx…`). Ban, mute, kick and warning reasons have separate ID ranges (1–9999).
+- Each reason has a display name, the player-facing reason, an optional internal description, a duration (or permanent), a required permission (default `nexora.punishment.<category>.<id>`), enabled/disabled status and a sort order. Reasons can be searched, filtered, sorted, duplicated, disabled and **archived**. Archived reasons keep their ID, so it is never reused for a different reason.
+- **Snapshots:** a punishment stores the reason text, duration and the reason it came from. Editing or archiving a reason later never changes issued punishments; the history stays readable.
+- Fresh installations start with example reasons; upgraded installations import their 1.x punishment templates once as numbered reasons.
+
+### Command mode (network-wide)
+
+**Settings → Moderation → Command mode** is one setting for the whole network – all proxies, servers, staff members and the dashboard. Plugins receive changes within seconds (no restart).
+
+| Mode | `/ban Steve 1` | `/ban Steve Cheating` |
+| --- | --- | --- |
+| **Reason IDs only** | ✓ preset reason and duration | rejected |
+| **Typed reasons only** | `1` is just text | ✓ (behaviour before presets) |
+| **Hybrid** | ✓ | ✓ with `nexora.punishment.custom` |
+
+Upgraded installations keep *typed reasons only* until the Owner changes the mode; fresh installations start in *hybrid* mode.
+
+**Ambiguous input:** in preset and hybrid mode, a reason consisting of **exactly one number** (optionally followed by a duration, `/ban Steve 1 7d`) is always a reason ID – it never falls back to free text, so typing an ID cannot bypass the reason's permission. Anything else (`/ban Steve 1 day of griefing`) is a typed reason.
+
+### Permissions
+
+| Permission | Allows |
+| --- | --- |
+| `nexora.punishment.ban.1` (etc.) | Using that reason |
+| `nexora.punishment.ban.*`, `.mute.*`, `.kick.*`, `.warn.*`, `nexora.punishment.*` | All reasons of a category / everything |
+| `nexora.punishment.custom` | Typed reasons in hybrid mode (and changing a reason by `/editban`/`PATCH` outside free-text mode) |
+| `nexora.punishment.duration-override` | A different duration than the reason's (`/ban Steve 1 7d`) |
+| `nexora.punishment.permanent` | Making a temporary reason permanent through an override |
+
+The same permission keys are checked in-game (by the proxy – through LuckPerms when installed) and in the dashboard (dashboard role, or LuckPerms for linked staff – see [LuckPerms](luckperms.md)). The backend makes the final decision for every request; the dashboard only shows reasons the user may use, and tab completion only suggests them. The command permissions (`networkmanager.command.ban`, …) and dashboard type permissions (`punishments.ban`, …) are still required in addition.
+
+Default roles: Administrator `nexora.punishment.*`; Moderator all categories plus `custom`; Supporter mute, kick and warning reasons. Roles can grant individual reasons in User Management → Roles.
 
 ## Dashboard
 
