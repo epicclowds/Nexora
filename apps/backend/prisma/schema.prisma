@@ -562,6 +562,8 @@ model DashboardUser {
   twoFactorRecoveryCodes Json? @map("two_factor_recovery_codes")
   /// Last accepted TOTP time step (replay protection).
   twoFactorLastStep Int?     @map("two_factor_last_step")
+  /// Newest Nexora version whose update notification this user dismissed.
+  dismissedUpdateVersion String? @map("dismissed_update_version") @db.VarChar(64)
   lastLoginAt      DateTime? @map("last_login_at") @db.DateTime(3)
   createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)

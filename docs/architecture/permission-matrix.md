@@ -6,7 +6,7 @@ Every backend route and what it requires. Permissions are checked on the server 
 "session" = any signed-in dashboard user; "plugin signature" = HMAC-signed request from a registered Minecraft server.
 The `owner` role holds every permission (`*`).
 
-Routes: 108 · public: 10 · plugin: 17 · session only: 13 · checked in handler: 2 · permission-protected: 66
+Routes: 114 · public: 10 · plugin: 17 · session only: 13 · checked in handler: 2 · permission-protected: 72
 
 | Method | Path | Requires |
 | --- | --- | --- |
@@ -115,6 +115,12 @@ Routes: 108 · public: 10 · plugin: 17 · session only: 13 · checked in handle
 | GET | `/api/setup/status` | public |
 | GET | `/api/statistics/leaderboard` | `players.view.statistics` |
 | GET | `/api/statistics/overview` | `players.view.statistics` |
+| GET | `/api/updates` | `updates.view` |
+| POST | `/api/updates/check` | `updates.check` |
+| GET | `/api/updates/notification` | `updates.notify` |
+| POST | `/api/updates/notification/dismiss` | `updates.notify` |
+| GET | `/api/updates/settings` | `updates.view` |
+| PUT | `/api/updates/settings` | `updates.manage` |
 | GET | `/api/users` | `users.view` |
 | POST | `/api/users` | `users.manage` |
 | PATCH | `/api/users/:id` | `users.manage` |

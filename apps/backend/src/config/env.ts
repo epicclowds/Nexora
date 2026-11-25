@@ -25,6 +25,12 @@ export const envSchema = z.object({
   /** Optional MaxMind GeoLite2 databases for approximate IP geolocation. */
   GEOIP_CITY_DB: z.string().optional().transform((v) => v || undefined),
   GEOIP_ASN_DB: z.string().optional().transform((v) => v || undefined),
+  /** Releases API used by the update checker (default: GitHub Releases of epicclowds/Nexora). For mirrors and tests. */
+  UPDATES_RELEASES_URL: z
+    .string()
+    .optional()
+    .transform((v) => v || undefined)
+    .refine((v) => v === undefined || /^https?:\/\//.test(v), 'UPDATES_RELEASES_URL must be an http(s) URL'),
 });
 
 export type Env = z.infer<typeof envSchema>;

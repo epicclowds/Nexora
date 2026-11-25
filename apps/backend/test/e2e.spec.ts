@@ -195,6 +195,19 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(lobby.status).toBe('ONLINE');
     expect(lobby.tps).toBeCloseTo(19.97);
     expect(lobby.memoryMaxBytes).toBe('4294967296');
+
+    // Update status: no GitHub request in tests, so nothing is known yet – reported as such, never guessed.
+    expect(hb.body).toHaveProperty('update', null);
+    const updates = await call('GET', '/api/updates');
+    expect(updates.status).toBe(200);
+    expect(updates.body).toMatchObject({ latest: null, updateAvailable: false, lastSuccessAt: null, settings: { enabled: true, channel: 'stable', checkIntervalHours: 6 } });
+    expect(updates.body.servers.find((s: { name: string }) => s.name === 'lobby')).toMatchObject({ pluginVersion: '0.2.0', state: 'unknown' });
+    expect((await call('GET', '/api/updates/notification')).body).toEqual({ notification: null });
+    expect((await call('PUT', '/api/updates/settings', { checkIntervalHours: 0 })).status).toBe(400);
+    const saved = await call('PUT', '/api/updates/settings', { enabled: true, checkIntervalHours: 12, channel: 'stable', dashboardNotifications: true, minecraftNotifications: false, notificationCooldownHours: 48, manualChecks: true });
+    expect(saved.status).toBe(200);
+    expect((await call('GET', '/api/updates/settings')).body).toMatchObject({ checkIntervalHours: 12, minecraftNotifications: false });
+    await call('PUT', '/api/updates/settings', {});
   });
 
   it('only accepts session events from proxies', async () => {
@@ -834,6 +847,11 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
       ['POST', '/api/punishments/any-id/evidence', { type: 'TEXT', title: 'x', description: 'x' }],
       ['PATCH', '/api/punishments/any-id/evidence/e', { version: 1, title: 'x' }],
       ['DELETE', '/api/punishments/any-id/evidence/e', { version: 1 }],
+      ['GET', '/api/updates'],
+      ['GET', '/api/updates/notification'],
+      ['POST', '/api/updates/notification/dismiss', { version: '9.9.9' }],
+      ['POST', '/api/updates/check'],
+      ['PUT', '/api/updates/settings', {}],
     ];
     for (const [method, path, body] of forbidden) {
       expect((await call(method, path, body)).status, `${method} ${path}`).toBe(403);

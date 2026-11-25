@@ -45,6 +45,11 @@ export const PERMISSIONS = {
   SETTINGS_MANAGE: 'settings.manage',
   TRANSLATIONS_MANAGE: 'translations.manage',
   AUDIT_VIEW: 'audit.view',
+
+  UPDATES_VIEW: 'updates.view',
+  UPDATES_NOTIFY: 'updates.notify',
+  UPDATES_CHECK: 'updates.check',
+  UPDATES_MANAGE: 'updates.manage',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -24,6 +24,7 @@ import { ServersModule } from './servers/servers.module';
 import { SettingsModule } from './settings/settings.module';
 import { SetupModule } from './setup/setup.module';
 import { StatisticsModule } from './statistics/statistics.module';
+import { UpdatesModule } from './updates/updates.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -56,6 +57,7 @@ import { UsersModule } from './users/users.module';
     StatisticsModule,
     AntiCheatModule,
     InventoryModule,
+    UpdatesModule,
   ],
   providers: [
     // Order matters: rate limiting → authentication/CSRF → authorization.
