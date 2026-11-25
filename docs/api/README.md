@@ -60,6 +60,9 @@ The complete list of routes with their required permissions is generated into th
 | `GET /api/moderation/presets/catalog` | session | `users.view` | Reasons with permissions (role editor) |
 | `GET/PUT /api/moderation/command-mode` | session | `punishments.history` / `punishments.presets.manage` | Network-wide command mode |
 | `GET /api/integrations/luckperms` · `PUT …/settings` · `POST/PUT/DELETE …/mappings` | session | `integrations.manage` | LuckPerms integration and role mapping ([LuckPerms](../architecture/luckperms.md)) |
+| `GET /api/integrations/luckperms/rank-displays` · `PUT/DELETE …/:group` · `PUT/DELETE …/:group/icon` | session | `integrations.manage` | Rank displays per LuckPerms group, icon upload (base64 JSON, PNG/WebP/GIF/JPEG, ≤ 64 KB) ([LuckPerms](../architecture/luckperms.md#rank-display)) |
+| `GET /api/rank-icons/:id` | session | – | Uploaded rank icon (inert image) |
+| `GET/PUT /api/settings/client-detection` | session | `servers.manage` | Client detection settings ([player profiles](../architecture/player-profiles.md#client-detection)) |
 | `GET/POST /api/account/minecraft-link` | session | – | Link the signed-in user's Minecraft account with a code |
 | `GET /api/account/minecraft-link/skin` | session | – | Skin PNG of the signed-in user's linked account (avatar; 404 when unlinked or unavailable) |
 | `GET /api/users/:id/minecraft-link/skin` | session | `users.view` | Skin PNG of a dashboard account's linked Minecraft account |

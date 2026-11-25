@@ -2,6 +2,24 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.4.0] – 2026-11-25
+
+LuckPerms rank rendering, custom rank displays and reliable client detection.
+
+### Added
+- **Formatted ranks:** LuckPerms prefixes and display names render with their colours and styles – legacy `&`/`§` codes, hex colours and MiniMessage – parsed into safe structured text (never HTML). One rank component is used on player profiles, player and online lists, the linked-account card, User Management and staff details; rank changes refresh through the existing realtime stream.
+- **Rank display (Settings → Integrations → LuckPerms):** per LuckPerms group a custom display name or the LuckPerms prefix / display name / group name, text and background colour, bold, icon text or an uploaded icon (PNG, WebP, GIF, JPEG, ≤ 64 KB, content-checked), fallback text for resource-pack glyphs and a tooltip – with a live preview on light and dark backgrounds and a contrast warning. Appearance only; permissions are unaffected.
+- **Client detection settings (Settings → Minecraft integration):** enable detection, optional NoRisk Client integration, raw brands for all staff, and debug logging that explains each detection step without IP addresses.
+- **Optional NoRisk Client integration:** when the official NoRisk Client server API plugin is installed on the Velocity proxy, Nexora asks it whether a player uses NoRisk Client (looked up at runtime, nothing bundled). Not verified with a real NoRisk client yet.
+- Connection history shows the client name (with a small monogram), protocol, and – for administrators or when enabled – the raw reported brand and the detection source; *Unknown* when nothing was reported.
+
+### Fixed
+- **Raw formatting codes in ranks:** a display name or prefix like `&4&lADMIN &4` was shown with its codes; it now shows as bold dark red *ADMIN*.
+- **Missing client brands ("Client: —"):** the backend stored a brand only when it differed from the player's previous one, so a player rejoining with the same client got no brand on the new connection; and a brand sent before the proxy opened the session was dropped. Brands now belong to exactly the session that reported them, also arrive with the join and the proxy sync, are never overwritten by an empty brand and never copied from an earlier session.
+
+### Database
+- Migration `20261206000000_rank_display_client_detection` (additive): table `rank_displays`; `player_connections.client_name`, `client_source`, `client_detected_at`. Existing connections keep their brand and are normalised on read.
+
 ## [1.3.2] – 2026-11-25
 
 ### Added
@@ -205,6 +223,7 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.4.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.4.0
 [1.3.2]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.2
 [1.3.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.1
 [1.3.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.0

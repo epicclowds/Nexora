@@ -31,6 +31,9 @@
 | Servers | `servers`, `server_credentials` (hashed), `registration_tokens` (hashed, single-use, expiring) |
 | Dashboard | `dashboard_users`, `dashboard_roles`, `dashboard_permissions`, `dashboard_role_permissions`, `dashboard_sessions` |
 | System | `audit_logs`, `system_settings`, `language_settings` |
+| Integrations | `linked_minecraft_accounts`, `luckperms_group_mappings`, `permission_sync_states`, `rank_displays` (rank appearance and icons – never used for permissions) |
+
+`player_connections` stores the client per connection: `client_brand` (raw, self-reported), `client_name` (normalised), `client_source` (`BRAND` / `INTEGRATION`) and `client_detected_at`. Connections recorded before 1.4.0 only have the raw brand and are normalised when read.
 
 Tables for later phases are created now so the schema evolves additively; they stay empty until the corresponding feature ships.
 

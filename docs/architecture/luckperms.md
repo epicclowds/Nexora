@@ -25,11 +25,29 @@ For every linked staff member and every online player, the proxy sends a snapsho
 | --- | --- |
 | Primary group, group display name, weight | `User#getPrimaryGroup`, group display name/weight |
 | Groups | all inherited groups (including temporary ones) |
-| Prefix / suffix | LuckPerms meta (shown on player profiles as text with one validated colour – never as markup) |
+| Prefix / suffix | LuckPerms meta (rendered with its colours and styles – see [Rank display](#rank-display) – never as markup) |
 | Permissions | the canonical Nexora permissions (every reason permission, `nexora.punishment.custom`, `.duration-override`, `.permanent`, `nexora.dashboard.register`) evaluated by LuckPerms: inheritance, wildcards and **negated nodes** (explicit denials) are respected; undefined permissions are omitted |
 | Expiry | the earliest expiry of a temporary node – the snapshot is no longer trusted after it |
 
 Synchronisation is **event-driven** (`UserDataRecalculateEvent`, `GroupDataRecalculateEvent`) with a **full reconciliation every five minutes** to recover from missed events, plus immediate resyncs requested by the backend (e.g. *Recheck* in User Management). Every snapshot increments a revision. All LuckPerms calls are asynchronous.
+
+## Rank display
+
+Ranks appear with the same component on player profiles, the player and online lists, Settings → General → Minecraft account, User Management and staff details.
+
+**Formatting.** LuckPerms prefixes and display names are parsed by the backend into structured text segments (text, a validated `#RRGGBB` colour, bold/italic/underline/strikethrough) and rendered as React text – never as HTML. Supported: legacy codes with `&` or `§` (`&4`, `&l`, `&r` …), hex colours (`&#RRGGBB`, `§x§R§R§G§G§B§B`, `{#RRGGBB}`) and the common MiniMessage tags (`<red>`, `<color:#hex>`, `<#hex>`, `<bold>`/`<b>`, `<italic>`, `<underlined>`, `<strikethrough>`, `<reset>`; gradients use their first colour; hover/click/font tags are removed). Unknown tags stay readable text; surrounding whitespace and codes without text are dropped. `&4&lADMIN &4` shows as a bold dark red **ADMIN**.
+
+**Priority.**
+1. An enabled Nexora rank display for the player's primary group.
+2. The formatted LuckPerms display name (coloured by the prefix when it has no colour of its own), or the prefix when no display name is set.
+3. The readable group name (`senior_mod` → *Senior Mod*).
+4. Nothing (no badge) – a rank is never invented.
+
+**Settings → Integrations → LuckPerms → Rank display** (`integrations.manage`) configures a group: custom display name or the LuckPerms prefix / display name / group name as text source, text and background colour, bold, an icon (Unicode text or an uploaded PNG, WebP, GIF or JPEG of at most 64 KB), fallback text and tooltip, enabled/disabled. The live preview uses the group's real LuckPerms texts (from the latest synchronised member), shows the badge on light and dark backgrounds and warns below a 4.5:1 contrast. Coloured ranks without their own background get a dark or light badge background, whichever reads better, in both themes.
+
+**Resource packs.** Browsers do not have a server's resource-pack fonts. Icon text made of private-use characters (custom glyphs) is not shown; the fallback text (or an uploaded image of the glyph) is used instead, and the badge falls back to text when an image cannot load.
+
+**Security.** Uploaded icons are checked by their content (SVG, HTML and anything else are rejected), stored in the database (`rank_displays`) and served by `GET /api/rank-icons/:id` to signed-in users with a fixed image content type, `nosniff` and a sandboxing CSP. Rank displays change appearance only: permissions and dashboard access still come from the LuckPerms snapshot and the group mapping. Changes are audited and reach open dashboards through the realtime stream; rank changes in LuckPerms arrive with the next synchronisation.
 
 ## Integration modes (Settings → Integrations → LuckPerms)
 

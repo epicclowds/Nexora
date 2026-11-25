@@ -100,6 +100,7 @@ The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`,
 ## Punishment reasons, LuckPerms and account linking
 
 - **Reason IDs:** `/ban Steve 1` uses ban reason 1 from **Settings → Moderation → Punishment reasons**; `/ban` or `/mute` without a reason – and `/nexora reasons [category] [page]` – list the reasons you may use. Whether typed reasons are allowed is decided by the network-wide command mode. Details and permissions: [Punishments](../architecture/punishments.md#reason-presets-and-the-command-mode).
+- **NoRisk Client (optional):** to identify NoRisk Client players through NoRisk's own API, install the official [NoRisk Client server API](https://docs.norisk.gg/) plugin on the Velocity proxy. Nexora detects it at start (log line *NoRisk Client server API found*); without it, clients are identified by the brand they report. Settings → Minecraft integration → Client detection turns this on or off.
 - **LuckPerms (optional):** install LuckPerms on the Velocity proxy (shared storage recommended when Paper servers run it too). The Nexora plugin detects it, synchronises staff permissions and ranks, and the dashboard can use them – see [LuckPerms](../architecture/luckperms.md).
 - **Account linking:** staff run `/nexora link` and enter the code in the dashboard (Settings → General → Minecraft account, or /register when staff registration is enabled).
 

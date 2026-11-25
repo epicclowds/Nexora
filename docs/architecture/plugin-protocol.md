@@ -29,14 +29,14 @@ A fixed test vector is asserted on both sides (`apps/backend/test/plugin.spec.ts
 | Endpoint | Sender | Purpose |
 | --- | --- | --- |
 | `GET /ping` | both | Verify credentials and clock |
-| `POST /heartbeat` | both | Status and metrics; Paper also sends players' game modes |
-| `POST /events` | Velocity | Ordered batch (≤ 500) of `player.join`, `player.switch`, `player.brand`, `player.leave` |
-| `POST /sync` | Velocity | Complete list of connected sessions; backend closes missing and opens unknown sessions |
+| `POST /heartbeat` | both | Status and metrics; Paper also sends players' game modes. The response to Velocity carries `clientDetection` (`enabled`, `debug`, `norisk`, `showRawBrand`) |
+| `POST /events` | Velocity | Ordered batch (≤ 500) of `player.join` (optional `brand` when the client reported it before login completed), `player.switch`, `player.brand`, `player.client` (client confirmed by a client's server API: `client`, `source: "INTEGRATION"`), `player.leave` |
+| `POST /sync` | Velocity | Complete list of connected sessions (with the client brand when known); backend closes missing and opens unknown sessions |
 | `POST /shutdown` | both | Marks the server offline; Velocity's open sessions are closed |
 
 ## Idempotency and ordering
 
-- The proxy generates a random **session key** (UUID) per login. Join, switch and leave events reference it; the backend ignores a join whose key exists and a leave for an already closed session. Retried batches therefore never duplicate data (`{ applied, skipped }` in the response).
+- The proxy generates a random **session key** (UUID) per login. Join, switch and leave events reference it; the backend ignores a join whose key exists and a leave for an already closed session. Retried batches therefore never duplicate data (`{ applied, skipped }` in the response). Brand and client events update only the connection of their own session; repeated or empty brands are skipped.
 - Events carry the time they happened (`at`, epoch ms), so buffered events keep correct timestamps. Times in the future are clamped to the backend clock.
 - One sender thread per plugin delivers batches strictly in order; a batch is removed from the buffer only after the backend acknowledged it. A batch rejected as invalid (`400`) is dropped and a sync is scheduled so the queue cannot block forever.
 
