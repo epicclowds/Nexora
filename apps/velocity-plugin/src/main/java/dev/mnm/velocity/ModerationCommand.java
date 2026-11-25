@@ -15,6 +15,7 @@ import dev.mnm.plugin.punish.ModerationClient;
 import dev.mnm.plugin.punish.PunishmentTexts;
 import dev.mnm.plugin.punish.ReasonArguments;
 import dev.mnm.plugin.punish.ReasonCatalog;
+import dev.mnm.plugin.punish.ReasonHelp;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -134,6 +135,11 @@ final class ModerationCommand implements SimpleCommand {
     public void execute(Invocation invocation) {
         CommandSource source = invocation.source();
         String[] args = invocation.arguments();
+        if ((kind == Kind.BAN || kind == Kind.MUTE) && args.length < 2) {
+            // /ban and /ban <player> without a reason: usage plus the reasons this sender may use.
+            showReasons(source, invocation.alias(), args.length == 1 ? args[0] : null);
+            return;
+        }
         if (args.length < kind.minArgs) {
             source.sendMessage(messages.prefixed("error.usage", Map.of("usage", "/" + invocation.alias() + " " + kind.usage)));
             return;
@@ -163,6 +169,21 @@ final class ModerationCommand implements SimpleCommand {
             case CHECK -> handle(source, target, client.lookup(target, 1), response -> check(source, response));
             case EDITBAN, EDITMUTE -> edit(source, invocation.alias(), args, actor);
         }
+    }
+
+    /**
+     * Usage and the sender's usable reasons for this command's category, following
+     * the global command mode (see {@link ReasonHelp}). Only presets the sender
+     * holds the permission for are listed; executing a reason re-checks it.
+     */
+    private void showReasons(CommandSource source, String alias, String player) {
+        String category = category(kind);
+        List<ReasonHelp.Line> lines = ReasonHelp.lines(reasons.mode(), category, alias, player, reasons.usable(category, source::hasPermission), 1, source::hasPermission, messages::raw);
+        send(source, messages, lines);
+    }
+
+    static void send(CommandSource source, Messages messages, List<ReasonHelp.Line> lines) {
+        for (ReasonHelp.Line line : lines) source.sendMessage(line.prefixed() ? messages.prefixed(line.key(), line.vars()) : messages.render(line.key(), line.vars()));
     }
 
     /** /ban, /mute, /kick, /warn: a reason ID (preset) or a typed reason, depending on the global mode. */

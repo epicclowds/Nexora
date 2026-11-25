@@ -6,8 +6,8 @@ import dev.mnm.plugin.BackendConnector;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.StatusLines;
 import dev.mnm.plugin.UpdateNotifier;
-import dev.mnm.plugin.punish.Durations;
 import dev.mnm.plugin.punish.ReasonCatalog;
+import dev.mnm.plugin.punish.ReasonHelp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Locale;
@@ -62,7 +62,7 @@ final class StatusCommand implements SimpleCommand {
                 source.sendMessage(messages.prefixed("error.no-permission", java.util.Map.of()));
                 return;
             }
-            listReasons(source);
+            listReasons(source, args);
             return;
         }
         if (!source.hasPermission(PERMISSION)) {
@@ -116,8 +116,12 @@ final class StatusCommand implements SimpleCommand {
 
     static final String REGISTER_PERMISSION = "nexora.dashboard.register";
 
-    /** /nexora reasons: the reasons the sender may use, per category (cached from the backend). */
-    private void listReasons(CommandSource source) {
+    /**
+     * /nexora reasons [category] [page]: the reasons the sender may use (cached from
+     * the backend, refreshed when presets change). Without a category every
+     * category is summarised (first page each); with one it is paginated.
+     */
+    private void listReasons(CommandSource source, String[] args) {
         if (reasons == null || reasons.mode() == null) {
             source.sendMessage(messages.prefixed("reasons.unavailable", java.util.Map.of()));
             return;
@@ -126,19 +130,39 @@ final class StatusCommand implements SimpleCommand {
             source.sendMessage(messages.prefixed("reasons.free-text-mode", java.util.Map.of()));
             return;
         }
+        String category = args.length > 1 ? ReasonHelp.parseCategory(args[1]) : null;
+        if (args.length > 1 && category == null) {
+            source.sendMessage(messages.prefixed("error.usage", java.util.Map.of("usage", "/nexora reasons [ban|mute|kick|warn] [page]")));
+            return;
+        }
+        if (category != null) {
+            int page = 1;
+            if (args.length > 2) {
+                try {
+                    page = Integer.parseInt(args[2]);
+                } catch (NumberFormatException e) {
+                    page = 1;
+                }
+            }
+            String command = category.toLowerCase(Locale.ROOT);
+            ModerationCommand.send(source, messages, ReasonHelp.lines(reasons.mode(), category, command, null, reasons.usable(category, source::hasPermission), page, source::hasPermission, messages::raw));
+            return;
+        }
         source.sendMessage(messages.prefixed("reasons.title", java.util.Map.of("mode", messages.raw("reasons.mode." + reasons.mode().name().toLowerCase(Locale.ROOT)))));
         boolean any = false;
-        for (String category : CATEGORIES) {
-            List<ReasonCatalog.Preset> usable = reasons.usable(category, source::hasPermission);
+        for (String cat : CATEGORIES) {
+            List<ReasonCatalog.Preset> usable = reasons.usable(cat, source::hasPermission);
             if (usable.isEmpty()) continue;
             any = true;
-            source.sendMessage(messages.render("reasons.category." + category.toLowerCase(Locale.ROOT), java.util.Map.of()));
-            for (ReasonCatalog.Preset p : usable) {
-                String duration = !category.equals("BAN") && !category.equals("MUTE") ? ""
-                        : p.permanent() || p.durationSeconds() == null ? messages.raw("reasons.permanent")
-                        : Durations.format(java.time.Duration.ofSeconds(p.durationSeconds()));
-                source.sendMessage(messages.render(duration.isEmpty() ? "reasons.entry-no-duration" : "reasons.entry", java.util.Map.of(
-                        "id", String.valueOf(p.numericId()), "name", p.name(), "duration", duration)));
+            source.sendMessage(messages.render("reasons.category." + cat.toLowerCase(Locale.ROOT), java.util.Map.of()));
+            ReasonHelp.Page<ReasonCatalog.Preset> first = ReasonHelp.page(usable, 1, ReasonHelp.PAGE_SIZE);
+            boolean durations = cat.equals("BAN") || cat.equals("MUTE");
+            for (ReasonCatalog.Preset p : first.items()) {
+                ReasonHelp.Line line = ReasonHelp.entry(p, durations, messages::raw);
+                source.sendMessage(messages.render(line.key(), line.vars()));
+            }
+            if (first.hasNext()) {
+                source.sendMessage(messages.render("reasons.more", java.util.Map.of("count", String.valueOf(first.total() - first.items().size()), "command", "/nexora reasons " + cat.toLowerCase(Locale.ROOT) + " 2")));
             }
         }
         if (!any) source.sendMessage(messages.render("reasons.none", java.util.Map.of()));
@@ -147,6 +171,10 @@ final class StatusCommand implements SimpleCommand {
     @Override
     public List<String> suggest(Invocation invocation) {
         String[] args = invocation.arguments();
+        if (args.length == 2 && args[0].equalsIgnoreCase("reasons")) {
+            String partial = args[1].toLowerCase(Locale.ROOT);
+            return CATEGORIES.stream().map(c -> c.toLowerCase(Locale.ROOT)).filter(c -> c.startsWith(partial)).toList();
+        }
         if (args.length > 1) return List.of();
         String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
         return SUBCOMMANDS.stream().filter(a -> a.startsWith(prefix)).toList();
