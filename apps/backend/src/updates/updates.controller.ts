@@ -49,7 +49,7 @@ export class UpdatesController {
     return { dismissed: body.version };
   }
 
-  /** Manual check (rate-limited; repeated checks within a minute return the cached result). */
+  /** Manual check (rate-limited; within a minute of the last request or during a GitHub rate limit the cached result is returned). */
   @Post('check')
   @HttpCode(200)
   @RequirePermissions(PERMISSIONS.UPDATES_CHECK)
@@ -57,9 +57,10 @@ export class UpdatesController {
   async check(@CurrentUser() user: AuthenticatedUser, @Req() req: Request) {
     const settings = await this.updates.getSettings();
     if (!settings.manualChecks) throw new ForbiddenException({ code: 'MANUAL_CHECKS_DISABLED', message: 'Manual update checks are disabled in the update settings' });
-    const { refreshed } = await this.updates.checkNow();
+    // Never bypasses a GitHub rate limit; repeated clicks within a minute reuse the cached result.
+    const { refreshed, outcome } = await this.updates.checkNow();
     if (refreshed) await this.audit.record({ actor: userActor(user), action: 'updates.checked', targetType: 'setting', targetId: 'updates', ipAddress: clientIp(req) });
-    return { refreshed, status: await this.updates.status() };
+    return { refreshed, outcome, status: await this.updates.status() };
   }
 
   @Get('settings')

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AppConfig } from '../src/config/app-config';
 import type { PrismaService } from '../src/prisma/prisma.service';
+import type { RedisService } from '../src/redis/redis.service';
 import type { SettingsService } from '../src/settings/settings.service';
 import { componentState, latestRelease, parseCompatibility, parseReleases, pluginCompatibility } from '../src/updates/releases';
 import { compareVersions, parseSemVer } from '../src/updates/semver';
@@ -28,13 +29,49 @@ function json(body: unknown, init: { status?: number; headers?: Record<string, s
   return new Response(JSON.stringify(body), { status: init.status ?? 200, headers: { 'content-type': 'application/json', ...init.headers } });
 }
 
-/** UpdatesService with in-memory settings, a fake GitHub and fake users/servers. */
-function setup(installed: string, responses: Array<Response | Error>, servers: Array<{ name: string; type: string; pluginVersion: string | null }> = []) {
-  const store = new Map<string, unknown>();
+/** In-memory stand-in for the ioredis client (get/set with NX/PX, compare-and-delete eval). */
+function fakeRedis(options: { broken?: boolean } = {}) {
+  const data = new Map<string, string>();
+  const fail = () => {
+    if (options.broken) throw new Error('ECONNREFUSED');
+  };
+  const client = {
+    data,
+    get: async (key: string) => (fail(), data.get(key) ?? null),
+    set: async (key: string, value: string, ...args: (string | number)[]) => {
+      fail();
+      if (args.includes('NX') && data.has(key)) return null;
+      data.set(key, value);
+      return 'OK';
+    },
+    eval: async (_script: string, _keys: number, key: string, token: string) => {
+      fail();
+      if (data.get(key) === token) data.delete(key);
+      return 1;
+    },
+  };
+  return { client } as unknown as RedisService & { client: typeof client };
+}
+
+interface SetupOptions {
+  servers?: Array<{ name: string; type: string; pluginVersion: string | null }>;
+  env?: Record<string, string>;
+  store?: Map<string, unknown>;
+  redis?: RedisService | null;
+  requests?: Array<{ url: string; headers: Record<string, string> }>;
+  delayMs?: number;
+}
+
+/** UpdatesService with in-memory settings, a fake Redis, a fake GitHub and fake users/servers. */
+function setup(installed: string, responses: Array<Response | Error>, serversOrOptions: SetupOptions['servers'] | SetupOptions = []) {
+  const options: SetupOptions = Array.isArray(serversOrOptions) ? { servers: serversOrOptions } : serversOrOptions;
+  const servers = options.servers ?? [];
+  const store = options.store ?? new Map<string, unknown>();
   const users = new Map<string, { dismissedUpdateVersion: string | null }>([['u1', { dismissedUpdateVersion: null }]]);
-  const requests: Array<{ url: string; headers: Record<string, string> }> = [];
+  const requests = options.requests ?? [];
   const fetchImpl: FetchLike = async (url, init) => {
     requests.push({ url, headers: init.headers as Record<string, string> });
+    if (options.delayMs) await new Promise((r) => setTimeout(r, options.delayMs));
     const next = responses.shift();
     if (!next) throw new Error('no response configured');
     if (next instanceof Error) throw next;
@@ -51,8 +88,9 @@ function setup(installed: string, responses: Array<Response | Error>, servers: A
       update: async ({ where, data }: { where: { id: string }; data: { dismissedUpdateVersion: string } }) => users.set(where.id, { dismissedUpdateVersion: data.dismissedUpdateVersion }),
     },
   } as unknown as PrismaService;
-  const config = { version: installed, env: {} } as unknown as AppConfig;
-  return { service: new UpdatesService(prisma, settings, config, fetchImpl), requests, store };
+  const config = { version: installed, env: options.env ?? {} } as unknown as AppConfig;
+  const redis = options.redis === undefined ? fakeRedis() : (options.redis ?? undefined);
+  return { service: new UpdatesService(prisma, settings, config, redis, fetchImpl), requests, store, redis };
 }
 
 describe('semantic versions', () => {
@@ -231,5 +269,151 @@ describe('update checker', () => {
     expect(info).toMatchObject({ latestVersion: '1.2.0', updateAvailable: true, notify: true, cooldownMinutes: 1440 });
     expect((await service.pluginInfo('1.2.0'))?.updateAvailable).toBe(false);
     expect((await service.pluginInfo(null))?.updateAvailable).toBe(false);
+  });
+});
+
+describe('update checker: caching, rate limits and failures (1.2.1)', () => {
+  const TOKEN = 'test-token-not-a-real-secret-0123456789';
+
+  it('recovers from the 1.2.0 rate-limit state at the reset time instead of after 6 hours', async () => {
+    // Exactly what 1.2.0 stored after its first check hit an exhausted shared quota.
+    const store = new Map<string, unknown>([
+      ['updates.state', { releases: [], etag: null, lastAttemptAt: '2026-11-25T02:05:30.000Z', lastSuccessAt: null, lastError: { code: 'RATE_LIMITED', status: 403, at: '2026-11-25T02:05:30.000Z' }, rateLimitedUntil: '2026-11-25T03:05:00.000Z' }],
+    ]);
+    const { service, requests } = setup('1.2.0', [json([release('v1.2.0')])], { store });
+    expect((await service.status()).verification).toBe('unable-to-verify');
+    expect(await service.checkIfDue(new Date('2026-11-25T03:00:00Z'))).toBeNull(); // still limited
+    expect(requests).toHaveLength(0);
+    const state = await service.checkIfDue(new Date('2026-11-25T03:06:00Z'));
+    expect(requests).toHaveLength(1);
+    expect(state?.lastSuccessAt).toBe('2026-11-25T03:06:00.000Z');
+    const status = await service.status();
+    expect(status).toMatchObject({ verification: 'up-to-date', lastError: null, rateLimitedUntil: null, nextCheckAt: '2026-11-25T09:06:00.000Z' });
+  });
+
+  it('schedules the next request at the GitHub reset time and never earlier (also for manual checks)', async () => {
+    const reset = Math.floor(Date.parse('2026-11-25T11:00:00Z') / 1000);
+    const limited = json({ message: 'API rate limit exceeded' }, { status: 403, headers: { 'x-ratelimit-limit': '60', 'x-ratelimit-remaining': '0', 'x-ratelimit-reset': String(reset), 'x-ratelimit-resource': 'core' } });
+    const { service, requests } = setup('1.1.0', [limited, json([release('v1.2.0')])]);
+    const state = await service.check(new Date('2026-11-25T10:00:00Z'));
+    expect(state).toMatchObject({ rateLimitedUntil: '2026-11-25T11:00:00.000Z', nextCheckAt: '2026-11-25T11:00:00.000Z', rateLimit: { limit: 60, remaining: 0, resource: 'core' } });
+    expect(await service.checkNow(new Date('2026-11-25T10:30:00Z'))).toMatchObject({ refreshed: false, outcome: 'rate-limited' });
+    expect(await service.checkIfDue(new Date('2026-11-25T10:59:59Z'))).toBeNull();
+    expect(requests).toHaveLength(1);
+    await service.checkIfDue(new Date('2026-11-25T11:00:00Z'));
+    expect(requests).toHaveLength(2);
+    expect((await service.status()).verification).toBe('update-available');
+  });
+
+  it('handles Retry-After, 429 without headers and secondary rate limits; other 403s are errors', async () => {
+    const retry = setup('1.1.0', [json({}, { status: 429, headers: { 'retry-after': '120' } })]);
+    expect((await retry.service.check(new Date('2026-11-25T10:00:00Z'))).rateLimitedUntil).toBe('2026-11-25T10:02:00.000Z');
+
+    const bare = setup('1.1.0', [new Response('', { status: 429 })]);
+    expect((await bare.service.check(new Date('2026-11-25T10:00:00Z'))).rateLimitedUntil).toBe('2026-11-25T10:01:00.000Z');
+
+    const secondary = setup('1.1.0', [json({ message: 'You have exceeded a secondary rate limit.' }, { status: 403 })]);
+    const s = await secondary.service.check(new Date('2026-11-25T10:00:00Z'));
+    expect(s.lastError?.code).toBe('RATE_LIMITED');
+    expect(s.rateLimitedUntil).toBe('2026-11-25T10:01:00.000Z');
+
+    const denied = setup('1.1.0', [json({ message: 'Repository access blocked' }, { status: 403 })]);
+    const d = await denied.service.check(new Date('2026-11-25T10:00:00Z'));
+    expect(d.lastError).toMatchObject({ code: 'HTTP_ERROR', status: 403 });
+    expect(d.rateLimitedUntil).toBeNull();
+  });
+
+  it('backs off after failures (15 min, 30 min, ...) and resets after a success', async () => {
+    const { service } = setup('1.1.0', [new Error('ECONNREFUSED'), new Response('bad gateway', { status: 502 }), json([release('v1.2.0')])]);
+    expect((await service.check(new Date('2026-11-25T10:00:00Z'))).nextCheckAt).toBe('2026-11-25T10:15:00.000Z');
+    expect(await service.checkIfDue(new Date('2026-11-25T10:10:00Z'))).toBeNull();
+    const second = await service.checkIfDue(new Date('2026-11-25T10:15:00Z'));
+    expect(second).toMatchObject({ nextCheckAt: '2026-11-25T10:45:00.000Z', consecutiveFailures: 2, lastError: { code: 'HTTP_ERROR', status: 502 } });
+    const ok = await service.checkIfDue(new Date('2026-11-25T10:45:00Z'));
+    expect(ok).toMatchObject({ consecutiveFailures: 0, lastError: null, nextCheckAt: '2026-11-25T16:45:00.000Z' });
+  });
+
+  it('page loads, notifications and plugin heartbeats never call GitHub', async () => {
+    const { service, requests } = setup('1.1.0', [json([release('v1.2.0')])], { servers: [{ name: 'proxy', type: 'VELOCITY', pluginVersion: '1.1.0' }] });
+    await service.check(new Date('2026-11-25T10:00:00Z'));
+    for (let i = 0; i < 50; i++) {
+      await service.status();
+      await service.notificationFor('u1');
+      await service.pluginInfo('1.1.0');
+    }
+    expect(requests).toHaveLength(1);
+  });
+
+  it('shares the cache through Redis and lets only one replica send a request', async () => {
+    const redis = fakeRedis();
+    const store = new Map<string, unknown>();
+    const requests: Array<{ url: string; headers: Record<string, string> }> = [];
+    const a = setup('1.1.0', [json([release('v1.2.0')])], { redis, store, requests, delayMs: 50 });
+    const b = setup('1.1.0', [json([release('v1.2.0')])], { redis, store, requests, delayMs: 50 });
+    const now = new Date('2026-11-25T10:00:00Z');
+    await Promise.all([a.service.checkIfDue(now), b.service.checkIfDue(now)]);
+    expect(requests).toHaveLength(1);
+    expect(redis.client.data.has('nexora:updates:check-lock')).toBe(false); // released
+    expect((await b.service.status()).latest?.version).toBe('1.2.0'); // replica b reads the result from Redis
+    expect(JSON.parse(redis.client.data.get('nexora:updates:state')!).lastSuccessAt).toBe('2026-11-25T10:00:00.000Z');
+  });
+
+  it('works without Redis (database only) when Redis is unavailable', async () => {
+    const { service, requests } = setup('1.1.0', [json([release('v1.2.0')])], { redis: fakeRedis({ broken: true }) });
+    await service.check(new Date('2026-11-25T10:00:00Z'));
+    expect(requests).toHaveLength(1);
+    expect((await service.status()).verification).toBe('update-available');
+  });
+
+  it('sends ETag and Last-Modified conditionally; a 304 keeps the cached releases', async () => {
+    const { service, requests } = setup('1.2.0', [json([release('v1.2.0')], { headers: { etag: 'W/"e1"', 'last-modified': 'Tue, 24 Nov 2026 12:00:00 GMT' } }), new Response(null, { status: 304 })]);
+    await service.check(new Date('2026-11-25T10:00:00Z'));
+    await service.check(new Date('2026-11-25T16:00:00Z'));
+    expect(requests[1].headers).toMatchObject({ 'if-none-match': 'W/"e1"', 'if-modified-since': 'Tue, 24 Nov 2026 12:00:00 GMT' });
+    expect((await service.status()).latest?.version).toBe('1.2.0');
+  });
+
+  it('uses GITHUB_TOKEN only for api.github.com and never exposes it', async () => {
+    const github = setup('1.1.0', [json([release('v1.2.0')])], { env: { GITHUB_TOKEN: TOKEN } });
+    await github.service.check(new Date('2026-11-25T10:00:00Z'));
+    expect(github.requests[0].headers.authorization).toBe('Bearer ' + TOKEN);
+    const status = await github.service.status();
+    expect(status.authenticated).toBe(true);
+    expect(JSON.stringify(status)).not.toContain(TOKEN);
+    expect(JSON.stringify(await github.service.getState())).not.toContain(TOKEN);
+
+    const mirror = setup('1.1.0', [json([release('v1.2.0')])], { env: { GITHUB_TOKEN: TOKEN, UPDATES_RELEASES_URL: 'https://mirror.example.com/releases' } });
+    await mirror.service.check(new Date('2026-11-25T10:00:00Z'));
+    expect(mirror.requests[0].headers.authorization).toBeUndefined();
+    expect((await mirror.service.status()).authenticated).toBe(false);
+  });
+
+  it('reports a rejected token as TOKEN_INVALID with backoff', async () => {
+    const { service } = setup('1.1.0', [json({ message: 'Bad credentials' }, { status: 401 })], { env: { GITHUB_TOKEN: TOKEN } });
+    const state = await service.check(new Date('2026-11-25T10:00:00Z'));
+    expect(state).toMatchObject({ lastError: { code: 'TOKEN_INVALID', status: 401 }, rateLimitedUntil: null, nextCheckAt: '2026-11-25T10:15:00.000Z' });
+  });
+
+  it('distinguishes up to date, update available and unable to verify', async () => {
+    const never = setup('1.2.0', [new Error('offline')]);
+    await never.service.check();
+    expect((await never.service.status()).verification).toBe('unable-to-verify');
+    const unknownInstalled = setup('dev', [json([release('v1.2.0')])]);
+    await unknownInstalled.service.check();
+    expect((await unknownInstalled.service.status()).verification).toBe('unable-to-verify');
+    const current = setup('1.2.0', [json([release('v1.2.0')])]);
+    await current.service.check();
+    expect((await current.service.status()).verification).toBe('up-to-date');
+    const old = setup('1.1.0', [json([release('v1.2.0')]), new Error('offline')]);
+    await old.service.check(new Date('2026-11-25T10:00:00Z'));
+    await old.service.check(new Date('2026-11-25T17:00:00Z')); // failure keeps the verified result
+    expect(await old.service.status()).toMatchObject({ verification: 'update-available', lastSuccessAt: '2026-11-25T10:00:00.000Z', lastError: { code: 'NETWORK' } });
+  });
+
+  it('applies a shorter check interval right away', async () => {
+    const { service } = setup('1.2.0', [json([release('v1.2.0')])]);
+    await service.check(new Date('2026-11-25T10:00:00Z'));
+    await service.saveSettings({ ...(await service.getSettings()), checkIntervalHours: 1 }, 'u1');
+    expect((await service.getState()).nextCheckAt).toBe('2026-11-25T11:00:00.000Z');
   });
 });

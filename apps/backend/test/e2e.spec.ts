@@ -200,7 +200,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(hb.body).toHaveProperty('update', null);
     const updates = await call('GET', '/api/updates');
     expect(updates.status).toBe(200);
-    expect(updates.body).toMatchObject({ latest: null, updateAvailable: false, lastSuccessAt: null, settings: { enabled: true, channel: 'stable', checkIntervalHours: 6 } });
+    expect(updates.body).toMatchObject({ latest: null, updateAvailable: false, verification: 'unable-to-verify', authenticated: false, lastSuccessAt: null, settings: { enabled: true, channel: 'stable', checkIntervalHours: 6 } });
     expect(updates.body.servers.find((s: { name: string }) => s.name === 'lobby')).toMatchObject({ pluginVersion: '0.2.0', state: 'unknown' });
     expect((await call('GET', '/api/updates/notification')).body).toEqual({ notification: null });
     expect((await call('PUT', '/api/updates/settings', { checkIntervalHours: 0 })).status).toBe(400);

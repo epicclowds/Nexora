@@ -31,6 +31,16 @@ export const envSchema = z.object({
     .optional()
     .transform((v) => v || undefined)
     .refine((v) => v === undefined || /^https?:\/\//.test(v), 'UPDATES_RELEASES_URL must be an http(s) URL'),
+  /**
+   * Optional GitHub token for the update checker (raises GitHub's limit from 60 requests per hour
+   * per public IP address to 5000 per hour). A fine-grained token without any permissions is enough
+   * for public releases. Only sent to https://api.github.com; never logged or returned by the API.
+   */
+  GITHUB_TOKEN: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined)
+    .refine((v) => v === undefined || /^[\x21-\x7e]{20,255}$/.test(v), 'GITHUB_TOKEN must be a GitHub token (20-255 visible characters, no spaces)'),
 });
 
 export type Env = z.infer<typeof envSchema>;

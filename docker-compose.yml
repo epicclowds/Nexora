@@ -91,6 +91,8 @@ services:
       RUN_MIGRATIONS: ${RUN_MIGRATIONS:-true}
       GEOIP_CITY_DB: ${GEOIP_CITY_DB:-}
       GEOIP_ASN_DB: ${GEOIP_ASN_DB:-}
+      # Optional GitHub token for the update checker (60 → 5000 requests/hour). Never sent to the browser.
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
     volumes:
       # Optional MaxMind GeoLite2 files. Default: an (empty) named volume, so no
       # host directory is needed. Set GEOIP_DIR to a host path such as ./geoip
