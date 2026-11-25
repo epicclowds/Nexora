@@ -790,7 +790,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     const registered = await call('POST', '/api/auth/register-linked', { code: code.body.code, username: 'alexmod', email: 'alex@example.test', password: 'alex-password-123' });
     expect(registered.status).toBe(201);
     expect((await call('POST', '/api/auth/register-linked', { code: code.body.code, username: 'other', email: 'other@example.test', password: 'other-password-123' })).body.code).toBe('INVALID_LINK_CODE');
-    expect((await call('POST', '/api/auth/register-linked', { code: 'ZZZZ-ZZZZ', username: 'x2', email: 'x2@example.test', password: 'x-password-1234' })).body.code).toBe('INVALID_LINK_CODE');
+    expect((await call('POST', '/api/auth/register-linked', { code: 'ZZZZ-ZZZZ', username: 'guesser', email: 'guesser@example.test', password: 'x-password-1234' })).body.code).toBe('INVALID_LINK_CODE');
 
     const staff = await call('GET', `/api/users/${registered.body.id}/staff`);
     expect(staff.body).toMatchObject({ managedBy: 'LUCKPERMS', status: 'ACTIVE', role: { key: 'moderator' }, permissionSource: 'LUCKPERMS', link: { minecraftUsername: 'Alex' } });
