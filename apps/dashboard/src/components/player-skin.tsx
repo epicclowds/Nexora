@@ -1,51 +1,67 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
+import { canvasHeadRenderer, createHeadCache, type HeadSource, headUrl } from '@/lib/player-head';
 import { cn } from '@/lib/utils';
 import { PlayerAvatar } from './player-avatar';
 
 /** Skins are served by the backend (cached, Mojang texture host only); no third-party request from the browser. */
 export const skinUrl = (uuid: string) => `/api/players/${uuid}/skin`;
 
+const heads = createHeadCache(canvasHeadRenderer);
+
 /**
- * Player head rendered from the skin texture: face (8×8 at 8,8) plus the hat
- * overlay (8×8 at 40,8), pixel-perfect. Falls back to a lettered avatar.
+ * Player head (face plus hat layer) rendered from the player's skin, identified by UUID.
+ * Renders are cached and shared across the page. While loading a neutral tile is
+ * shown; a missing, invalid or unavailable skin falls back to a lettered avatar –
+ * never a broken image.
  */
-export function PlayerHead({ uuid, username, size = 32, className }: { uuid: string; username: string; size?: number; className?: string }) {
-  const canvas = useRef<HTMLCanvasElement>(null);
-  const [failed, setFailed] = useState(false);
+export function PlayerHead({
+  uuid,
+  username,
+  size = 32,
+  source,
+  fallback,
+  className,
+}: {
+  uuid: string;
+  username: string;
+  size?: number;
+  /** Where the skin is loaded from; defaults to the player endpoint (players.view). */
+  source?: HeadSource;
+  /** Shown instead of the lettered player avatar when no skin is available. */
+  fallback?: ReactNode;
+  className?: string;
+}) {
+  const t = useTranslations('skin');
+  const url = headUrl(source ?? { kind: 'player', uuid });
+  const [image, setImage] = useState<string | null | undefined>(() => (url ? heads.peek(url) : null));
 
   useEffect(() => {
-    setFailed(false);
-    const img = new Image();
-    img.onload = () => {
-      const ctx = canvas.current?.getContext('2d');
-      if (!ctx) return;
-      ctx.imageSmoothingEnabled = false;
-      ctx.clearRect(0, 0, 8, 8);
-      ctx.drawImage(img, 8, 8, 8, 8, 0, 0, 8, 8);
-      ctx.drawImage(img, 40, 8, 8, 8, 0, 0, 8, 8);
-    };
-    img.onerror = () => setFailed(true);
-    img.src = skinUrl(uuid);
+    if (!url) return setImage(null);
+    let active = true;
+    setImage(heads.peek(url));
+    void heads.load(url).then((value) => {
+      if (active) setImage(value);
+    });
     return () => {
-      img.onload = null;
-      img.onerror = null;
+      active = false;
     };
-  }, [uuid]);
+  }, [url]);
 
-  if (failed) return <PlayerAvatar uuid={uuid} username={username} className={className} />;
-  return (
-    <canvas
-      ref={canvas}
-      width={8}
-      height={8}
-      aria-hidden
-      className={cn('pixelated shrink-0 rounded-md bg-muted', className)}
-      style={{ width: size, height: size }}
-    />
-  );
+  const box = { width: size, height: size };
+  if (image === null) {
+    if (fallback) return <span title={t('unavailable')} className="inline-flex shrink-0">{fallback}</span>;
+    return (
+      <span title={t('unavailable')} className="inline-flex shrink-0">
+        <PlayerAvatar uuid={uuid} username={username} className={className} style={{ ...box, fontSize: Math.max(10, Math.round(size * 0.45)) }} />
+      </span>
+    );
+  }
+  if (image === undefined) return <span aria-hidden className={cn('inline-block shrink-0 animate-pulse rounded-md bg-muted', className)} style={box} />;
+  // Data URL rendered locally from the cached skin.
+  return <img src={image} alt="" aria-hidden width={size} height={size} draggable={false} className={cn('pixelated shrink-0 rounded-md bg-muted', className)} style={box} />;
 }
 
 /** Interactive 3D skin preview (skinview3d, loaded on demand). Drag to rotate. */

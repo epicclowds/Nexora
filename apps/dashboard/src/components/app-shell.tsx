@@ -9,6 +9,7 @@ import { type ReactNode, useState } from 'react';
 import { useRoleName } from '@/lib/use-role-name';
 import { cn } from '@/lib/utils';
 import { useAuth } from './auth-provider';
+import { AccountAvatar, useOwnMinecraftLink } from './account-avatar';
 import { Logo } from './logo';
 import { LanguageSwitcher, ThemeToggle } from './preference-controls';
 import { Button } from './ui/primitives';
@@ -60,34 +61,26 @@ export function AppShell({ children, version }: { children: ReactNode; version: 
 
   return (
     <div className="flex min-h-dvh">
-      <aside className={cn('fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r bg-sidebar transition-transform lg:static lg:translate-x-0', open ? 'translate-x-0' : '-translate-x-full')}>
+      <aside className={cn('fixed inset-y-0 left-0 z-40 flex w-64 max-w-[85vw] flex-col border-r bg-sidebar transition-transform lg:sticky lg:top-0 lg:h-dvh lg:max-w-none lg:translate-x-0', open ? 'translate-x-0' : '-translate-x-full')}>
         <div className="flex h-16 items-center gap-3 border-b px-5">
           <Logo />
-          <div className="leading-tight">
-            <div className="font-semibold tracking-tight">{t('common.appName')}</div>
-            <div className="text-xs text-muted-foreground" title={t('common.version', { version })}>
+          <div className="min-w-0 leading-tight">
+            <div className="truncate font-semibold tracking-tight">{t('common.appName')}</div>
+            <div className="truncate text-xs text-muted-foreground" title={t('common.appSubtitle')}>
               {t('common.appSubtitle')}
             </div>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
-        <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
-          <LanguageSwitcher persist />
-          <ThemeToggle persist />
-        </div>
-        <div className="px-4 pb-1 text-[11px] text-muted-foreground">{t('common.version', { version })}</div>
-        <div className="flex items-center gap-3 border-t p-4">
-          <div className="flex size-9 items-center justify-center rounded-md bg-primary/15 font-semibold text-primary" aria-hidden>
-            {user.username.slice(0, 1).toUpperCase()}
+        <div className="grid gap-2 border-t p-3">
+          <LanguageSwitcher persist className="w-full [&_select]:w-full" />
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <span className="min-w-0 truncate pl-1 text-xs tabular-nums text-muted-foreground" title={t('common.version', { version })}>
+              {t('common.version', { version })}
+            </span>
+            <ThemeToggle persist />
           </div>
-          <div className="min-w-0 flex-1 leading-tight">
-            <div className="truncate text-sm font-medium">{user.username}</div>
-            <div className="truncate text-xs text-muted-foreground">{roleName({ key: user.roleKey, name: user.roleKey })}</div>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => void signOut()} title={t('common.signOut')}>
-            <LogOut aria-hidden />
-            <span className="sr-only">{t('common.signOut')}</span>
-          </Button>
+          <SidebarProfile roleName={roleName({ key: user.roleKey, name: user.roleKey })} onSignOut={() => void signOut()} />
         </div>
       </aside>
       {open && <button type="button" aria-label={t('common.close')} className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setOpen(false)} />}
@@ -104,6 +97,29 @@ export function AppShell({ children, version }: { children: ReactNode; version: 
         </header>
         <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>
       </div>
+    </div>
+  );
+}
+
+/** Signed-in account: Minecraft head (when linked) or the default avatar, username, dashboard role, sign-out. */
+function SidebarProfile({ roleName, onSignOut }: { roleName: string; onSignOut: () => void }) {
+  const t = useTranslations();
+  const { user } = useAuth();
+  const minecraft = useOwnMinecraftLink();
+  const link = minecraft?.link ?? null;
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-lg border bg-background/60 p-2">
+      <Link href="/settings" className="flex min-w-0 flex-1 items-center gap-3 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" title={link ? t('staff.linkedAs', { name: link.minecraftUsername }) : undefined}>
+        <AccountAvatar username={user.username} minecraftUuid={link?.minecraftUuid} minecraftUsername={link?.minecraftUsername} size={36} />
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate text-sm font-medium">{user.username}</span>
+          <span className="block truncate text-xs text-muted-foreground">{roleName}</span>
+        </span>
+      </Link>
+      <Button variant="ghost" size="icon" className="size-8 shrink-0" onClick={onSignOut} title={t('common.signOut')}>
+        <LogOut aria-hidden />
+        <span className="sr-only">{t('common.signOut')}</span>
+      </Button>
     </div>
   );
 }

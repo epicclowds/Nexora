@@ -36,14 +36,15 @@ export function LanguageSwitcher({ persist, className }: { persist: boolean; cla
   const options = languages.length ? languages : [{ locale, nativeName: locale }];
 
   return (
-    <label className={cn('relative inline-flex items-center', className)}>
+    <label className={cn('relative inline-flex min-w-0 max-w-full items-center', className)}>
       <span className="sr-only">{t('label')}</span>
       <Languages className="pointer-events-none absolute left-2.5 size-4 text-muted-foreground" aria-hidden />
       <select
         value={locale}
+        title={options.find((l) => l.locale === locale)?.nativeName}
         disabled={pending}
         onChange={(e) => void change(e.target.value)}
-        className="h-9 rounded-md border border-input bg-background pl-8 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="h-9 min-w-0 max-w-full truncate rounded-md border border-input bg-background pl-8 pr-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
         {options.map((l) => (
           <option key={l.locale} value={l.locale}>
@@ -73,7 +74,7 @@ export function ThemeToggle({ persist }: { persist: boolean }) {
   }
 
   return (
-    <div role="radiogroup" aria-label={t('label')} className="inline-flex h-9 w-fit items-center rounded-md border border-input p-0.5">
+    <div role="radiogroup" aria-label={t('label')} className="inline-flex h-9 w-fit shrink-0 items-center rounded-md border border-input p-0.5">
       {THEMES.map(({ value, icon: Icon }) => (
         <button
           key={value}

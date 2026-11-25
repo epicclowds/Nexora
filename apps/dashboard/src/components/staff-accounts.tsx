@@ -6,7 +6,7 @@ import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { type FormEvent, type ReactNode, useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { PlayerHead } from '@/components/player-skin';
+import { AccountAvatar, DefaultAvatar, refreshOwnMinecraftLink, useOwnMinecraftLink } from '@/components/account-avatar';
 import { useToast } from '@/components/toaster';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, Badge, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Select, Skeleton } from '@/components/ui/primitives';
@@ -80,17 +80,11 @@ export function MinecraftLinkCard() {
   const format = useFormatter();
   const toast = useToast();
   const linkError = useLinkError();
-  const [state, setState] = useState<{ linkingEnabled: boolean; link: { minecraftUuid: string; minecraftUsername: string; linkedAt: string } | null; rank: MinecraftRank | null } | null>(null);
+  const { user } = useAuth();
+  const state = useOwnMinecraftLink();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    api<typeof state>('/account/minecraft-link')
-      .then(setState)
-      .catch(() => undefined);
-  }, []);
-  useEffect(load, [load]);
 
   async function submit(e: FormEvent) {
     e.preventDefault();
@@ -100,7 +94,7 @@ export function MinecraftLinkCard() {
       await api('/account/minecraft-link', { method: 'POST', body: { code: code.trim() } });
       toast(t('staff.linked'));
       setCode('');
-      load();
+      await refreshOwnMinecraftLink(user.id);
     } catch (err) {
       setError(linkError(err));
     } finally {
@@ -108,39 +102,75 @@ export function MinecraftLinkCard() {
     }
   }
 
+  if (state === undefined) return <Skeleton className="h-40" />;
   if (!state || (!state.linkingEnabled && !state.link)) return null;
+  const link = state.link;
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t('staff.minecraftAccount')}</CardTitle>
-        <CardDescription>{t('staff.minecraftAccountDescription')}</CardDescription>
+        <CardDescription>{link ? t('staff.connected') : t('staff.minecraftAccountDescription')}</CardDescription>
       </CardHeader>
       <CardContent className="grid gap-4">
-        {state.link ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <PlayerHead uuid={state.link.minecraftUuid} username={state.link.minecraftUsername} size={36} />
-            <div className="grid gap-0.5">
-              <span className="flex items-center gap-2 font-medium">
-                {state.link.minecraftUsername}
-                <RankBadge rank={state.rank} />
-              </span>
-              <span className="text-xs text-muted-foreground">{t('staff.linkedSince', { date: format.dateTime(new Date(state.link.linkedAt), { dateStyle: 'medium' }) })}</span>
+        {link ? (
+          <div className="grid gap-4">
+            <div className="flex min-w-0 items-center gap-4">
+              <AccountAvatar username={user.username} minecraftUuid={link.minecraftUuid} minecraftUsername={link.minecraftUsername} size={56} />
+              <div className="grid min-w-0 gap-1">
+                <span className="flex flex-wrap items-center gap-2">
+                  <span className="truncate text-base font-medium">{link.minecraftUsername}</span>
+                  <Badge>
+                    <Check className="size-3" aria-hidden />
+                    {t('staff.linkedStatus')}
+                  </Badge>
+                </span>
+                <span className="break-all font-mono text-xs text-muted-foreground" title={t('staff.uuid')}>
+                  {link.minecraftUuid}
+                </span>
+              </div>
             </div>
+            <dl aria-label={t('staff.connectedAccount')} className="grid gap-3 rounded-lg border p-3 text-sm sm:grid-cols-3">
+              <LinkFact label={t('staff.minecraftRank')}>
+                {state.rank && (state.rank.displayName || state.rank.primaryGroup) ? <RankBadge rank={state.rank} /> : <span className="text-muted-foreground">{t('staff.noRank')}</span>}
+              </LinkFact>
+              <LinkFact label={t('staff.linkedSinceLabel')}>{format.dateTime(new Date(link.linkedAt), { dateStyle: 'long' })}</LinkFact>
+              <LinkFact label={t('staff.status')}>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-primary" aria-hidden />
+                  {t('staff.linkedStatus')}
+                </span>
+              </LinkFact>
+            </dl>
           </div>
         ) : (
-          <form onSubmit={submit} className="grid gap-3 sm:max-w-md">
-            {error && <Alert variant="destructive">{error}</Alert>}
-            <Field label={t('staff.code')} htmlFor="link-code" hint={t('staff.codeHint')}>
-              <Input id="link-code" className="font-mono uppercase tracking-widest" placeholder="ABCD-1234" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} maxLength={16} required />
-            </Field>
-            <Button type="submit" disabled={busy || code.trim().length < 8} className="w-fit">
-              <Link2 aria-hidden />
-              {t('staff.linkAccount')}
-            </Button>
-          </form>
+          <>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+              <DefaultAvatar username={user.username} size={36} />
+              {t('staff.notLinked')}
+            </div>
+            <form onSubmit={submit} className="grid gap-3 sm:max-w-md">
+              {error && <Alert variant="destructive">{error}</Alert>}
+              <Field label={t('staff.code')} htmlFor="link-code" hint={t('staff.codeHint')}>
+                <Input id="link-code" className="font-mono uppercase tracking-widest" placeholder="ABCD-1234" autoComplete="one-time-code" value={code} onChange={(e) => setCode(e.target.value)} maxLength={16} required />
+              </Field>
+              <Button type="submit" disabled={busy || code.trim().length < 8} className="w-fit">
+                <Link2 aria-hidden />
+                {t('staff.linkAccount')}
+              </Button>
+            </form>
+          </>
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function LinkFact({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid min-w-0 gap-1">
+      <dt className="text-xs text-muted-foreground">{label}</dt>
+      <dd className="min-w-0">{children}</dd>
+    </div>
   );
 }
 
@@ -442,7 +472,7 @@ export function StaffDetailDialog({ userId, username, trigger, onChange }: { use
         ) : (
           <div className="grid max-h-[75vh] gap-5 overflow-y-auto pr-1">
             <div className="flex flex-wrap items-center gap-3">
-              {detail.link && <PlayerHead uuid={detail.link.minecraftUuid} username={detail.link.minecraftUsername} size={40} />}
+              <AccountAvatar username={username} userId={userId} minecraftUuid={detail.link?.minecraftUuid} minecraftUsername={detail.link?.minecraftUsername} size={48} />
               <div className="grid gap-1">
                 <span className="flex flex-wrap items-center gap-2 font-medium">
                   {detail.link?.minecraftUsername ?? t('staff.notLinked')}

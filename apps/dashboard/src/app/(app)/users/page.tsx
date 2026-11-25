@@ -13,7 +13,7 @@ import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/table';
 import { api, errorKey, type Page } from '@/lib/api';
 import { useRoleName } from '@/lib/use-role-name';
 import { ConfirmDialog } from '@/components/confirm-dialog';
-import { PlayerHead } from '@/components/player-skin';
+import { AccountAvatar } from '@/components/account-avatar';
 import { StaffDetailDialog } from '@/components/staff-accounts';
 
 interface UserRow {
@@ -173,23 +173,23 @@ export default function UsersPage() {
                 return (
                   <TR key={u.id}>
                     <TD className="font-medium">
+                      <span className="flex items-center gap-2.5">
+                      <AccountAvatar username={u.username} userId={u.id} minecraftUuid={u.minecraftLink?.minecraftUuid} minecraftUsername={u.minecraftLink?.minecraftUsername} size={28} />
                       <StaffDetailDialog
                         userId={u.id}
                         username={u.username}
                         onChange={() => void load()}
                         trigger={
-                          <button type="button" className="hover:underline" title={t('staff.details')}>
+                          <button type="button" className="whitespace-nowrap hover:underline" title={t('staff.details')}>
                             {u.username}
                           </button>
                         }
                       />
+                      </span>
                     </TD>
                     <TD>
                       {u.minecraftLink ? (
-                        <span className="flex items-center gap-2">
-                          <PlayerHead uuid={u.minecraftLink.minecraftUuid} username={u.minecraftLink.minecraftUsername} size={20} />
-                          {u.minecraftLink.minecraftUsername}
-                        </span>
+                        <span title={u.minecraftLink.minecraftUuid}>{u.minecraftLink.minecraftUsername}</span>
                       ) : (
                         <span className="text-muted-foreground">–</span>
                       )}

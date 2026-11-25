@@ -72,9 +72,9 @@ function Settings() {
       <div className="grid gap-6">
         {section === 'general' && (
           <>
+            <MinecraftLinkCard />
             <PreferencesCard />
             <TwoFactorCard />
-            <MinecraftLinkCard />
             {can(PERMISSIONS.SETTINGS_MANAGE) && <NetworkCard />}
           </>
         )}
