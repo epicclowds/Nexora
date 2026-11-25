@@ -800,7 +800,8 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     const login = async (identifier: string, password: string) => {
       await call('POST', '/api/auth/logout');
       jar.clear();
-      return call('POST', '/api/auth/login', { identifier, password });
+      // Own client address: these sign-ins must not use up the login throttle of later tests.
+      return call('POST', '/api/auth/login', { identifier, password }, { 'x-forwarded-for': '198.51.100.20' });
     };
     expect((await login('alexmod', 'alex-password-123')).status).toBe(200);
     const usable = await call('GET', '/api/moderation/presets/usable');
