@@ -62,6 +62,8 @@ The **Owner role can never be mapped**, so no LuckPerms group can create or gran
 3. The code is shown only to that player (click to copy). It is random (31-symbol alphabet, 8 characters), valid for **5 minutes**, **single use**, stored only as a SHA-256 hash; requesting a new code invalidates the previous one; at most 3 codes per 10 minutes per player; invalid attempts are limited per client address.
 4. The player enters the code in **Settings → General → Minecraft account** (existing dashboard account), or on **/register** to create a staff account (only when *Staff registration* is enabled; the role comes from the group mapping, and the account is LuckPerms-managed).
 
+Once linked, **Settings → General → Minecraft account** shows the player head, Minecraft name, UUID, rank, link date and status, and the player head becomes the account's avatar in the sidebar, User Management and staff details. Avatars are resolved by the linked **UUID** (never the name) through Nexora's server-side skin cache – browsers never contact Mojang or a third-party skin service, and custom skins work. Rendered heads are cached in the browser for an hour (failed lookups for five minutes); when no valid skin is available the default Nexora avatar (the account's initial) is shown instead of a broken image. Accounts without a link keep the default avatar.
+
 A Minecraft account can be linked to one dashboard account. Administrators can unlink accounts in User Management (a LuckPerms-managed account is disabled when unlinked).
 
 ## Automatic deactivation and reactivation

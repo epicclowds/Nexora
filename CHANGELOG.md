@@ -2,6 +2,18 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.3.1] – 2026-11-25
+
+Sidebar polish and Minecraft player heads as account avatars.
+
+### Added
+- **Player heads as avatars:** accounts with a linked Minecraft account show the player's head (face and hat layer, custom skins included) in the sidebar, Settings, User Management and staff details. Resolved by the linked UUID through the existing server-side skin cache (`GET /api/account/minecraft-link/skin`, `GET /api/users/:id/minecraft-link/skin`), cached in the browser, with the default Nexora avatar as fallback for unlinked accounts and missing or invalid skins.
+- **Linked account status:** Settings → General → Minecraft account shows the head, Minecraft name, UUID, rank, link date and status instead of the linking instructions once an account is linked.
+
+### Fixed
+- Sidebar footer: the language selector gets its own row and truncates long language names instead of squeezing the theme controls; version and theme share a row; the profile (avatar, username, role, sign-out) is a single aligned block. The sidebar stays in view on long pages and no longer overflows on narrow windows.
+- User Management usernames no longer wrap inside the table.
+
 ## [1.3.0] – 2026-11-25
 
 Punishment reason presets, LuckPerms integration and staff accounts, Nexora branding and a refreshed dashboard.
@@ -184,6 +196,7 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.3.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.1
 [1.3.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.0
 [1.2.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.1
 [1.2.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.0

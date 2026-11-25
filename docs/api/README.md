@@ -61,6 +61,8 @@ The complete list of routes with their required permissions is generated into th
 | `GET/PUT /api/moderation/command-mode` | session | `punishments.history` / `punishments.presets.manage` | Network-wide command mode |
 | `GET /api/integrations/luckperms` · `PUT …/settings` · `POST/PUT/DELETE …/mappings` | session | `integrations.manage` | LuckPerms integration and role mapping ([LuckPerms](../architecture/luckperms.md)) |
 | `GET/POST /api/account/minecraft-link` | session | – | Link the signed-in user's Minecraft account with a code |
+| `GET /api/account/minecraft-link/skin` | session | – | Skin PNG of the signed-in user's linked account (avatar; 404 when unlinked or unavailable) |
+| `GET /api/users/:id/minecraft-link/skin` | session | `users.view` | Skin PNG of a dashboard account's linked Minecraft account |
 | `GET /api/auth/registration` · `POST /api/auth/register-linked` | public | – | Staff registration with a link code (when enabled; rate-limited) |
 | `GET /api/users/:id/staff` · `POST …/staff/recheck` · `POST …/staff/revoke-sessions` · `DELETE …/minecraft-link` | session | `users.view` / `users.manage` | Staff details, permission matrix and actions |
 | `GET /api/updates` | session | `updates.view` | Installed and latest versions, plugin versions per server, warnings, settings ([updates](../architecture/updates.md)) |
