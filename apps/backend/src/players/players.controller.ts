@@ -1,4 +1,5 @@
 import { Controller, Get, NotFoundException, Param, Query, Res } from '@nestjs/common';
+import { LuckPermsService } from '../luckperms/luckperms.service';
 import { ApiTags } from '@nestjs/swagger';
 import { hasPermission, PERMISSIONS } from '@mnm/shared-types';
 import { z } from 'zod';
@@ -65,6 +66,7 @@ export class PlayersController {
     private readonly skins: SkinService,
     private readonly settings: SettingsService,
     private readonly geoip: GeoIpService,
+    private readonly luckperms: LuckPermsService,
   ) {}
 
   /** Search by current name, previous names or UUID (dashed or undashed). */
@@ -125,6 +127,8 @@ export class PlayersController {
       clientProtocol: player.clientProtocol,
       clientBrand: player.clientBrand,
       rank: player.rank,
+      /** LuckPerms rank from the proxy (null when not synchronised – never guessed). */
+      minecraftRank: await this.luckperms.rankFor(uuid),
       skinModel: player.skinModel,
       // Not collected yet (requires AFK tracking on Paper, Phase 5): null means "not recorded".
       activePlaytimeSeconds: player.activePlaytimeSeconds === null ? null : Number(player.activePlaytimeSeconds),

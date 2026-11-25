@@ -10,6 +10,7 @@ import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
 import { UpdatesService } from '../updates/updates.service';
 import { PresetsService } from '../presets/presets.service';
+import { LuckPermsService } from '../luckperms/luckperms.service';
 import { type PluginRequest, PluginAuthGuard, type PluginServer } from './plugin-auth.guard';
 import { eventBatchSchema, type HeartbeatInput, heartbeatSchema, type PluginEvent, syncSchema, type SyncInput } from './plugin-events';
 import { PlayerTrackingService } from './player-tracking.service';
@@ -36,6 +37,7 @@ export class PluginApiController {
     private readonly settings: SettingsService,
     private readonly updates: UpdatesService,
     private readonly presets: PresetsService,
+    private readonly luckperms: LuckPermsService,
   ) {}
 
   /** Lets a plugin verify its credentials and clock. */
@@ -83,7 +85,7 @@ export class PluginApiController {
     this.realtime.publish({ type: 'server.updated', serverId: server.id });
     // Cached release information (never a GitHub request): lets the plugins notify staff about updates.
     const update = await this.updates.pluginInfo(body.pluginVersion).catch(() => null);
-    return { serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS, configRevision: await this.settings.pluginSettingsRevision(), moderationRevision: await this.presets.revision(), update };
+    return { serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS, configRevision: await this.settings.pluginSettingsRevision(), moderationRevision: await this.presets.revision(), update, ...(server.type === ServerType.VELOCITY ? { permissionResync: await this.luckperms.takeResync() } : {}) };
   }
 
   /** Ordered batch of player events from the proxy (join, server switch, client brand, leave). */

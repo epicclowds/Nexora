@@ -6,10 +6,12 @@ Every backend route and what it requires. Permissions are checked on the server 
 "session" = any signed-in dashboard user; "plugin signature" = HMAC-signed request from a registered Minecraft server.
 The `owner` role holds every permission (`*`).
 
-Routes: 124 · public: 10 · plugin: 18 · session only: 13 · checked in handler: 2 · permission-protected: 81
+Routes: 139 · public: 12 · plugin: 20 · session only: 15 · checked in handler: 2 · permission-protected: 90
 
 | Method | Path | Requires |
 | --- | --- | --- |
+| GET | `/api/account/minecraft-link` | session |
+| POST | `/api/account/minecraft-link` | session |
 | GET | `/api/anticheat/events` | `anticheat.view` |
 | GET | `/api/anticheat/settings` | `anticheat.view` |
 | PUT | `/api/anticheat/settings` | `anticheat.manage` |
@@ -27,6 +29,8 @@ Routes: 124 · public: 10 · plugin: 18 · session only: 13 · checked in handle
 | POST | `/api/auth/me/2fa/setup` | session |
 | POST | `/api/auth/me/password` | session |
 | POST | `/api/auth/refresh` | public |
+| POST | `/api/auth/register-linked` | public |
+| GET | `/api/auth/registration` | public |
 | GET | `/api/dashboard/summary` | session |
 | GET | `/api/events` | session |
 | GET | `/api/health/live` | public |
@@ -40,6 +44,11 @@ Routes: 124 · public: 10 · plugin: 18 · session only: 13 · checked in handle
 | PATCH | `/api/i18n/languages/:locale` | `translations.manage` |
 | GET | `/api/i18n/languages/:locale/missing` | `translations.manage` |
 | GET | `/api/i18n/messages/:locale` | public |
+| GET | `/api/integrations/luckperms` | `integrations.manage` |
+| POST | `/api/integrations/luckperms/mappings` | `integrations.manage` |
+| DELETE | `/api/integrations/luckperms/mappings/:id` | `integrations.manage` |
+| PUT | `/api/integrations/luckperms/mappings/:id` | `integrations.manage` |
+| PUT | `/api/integrations/luckperms/settings` | `integrations.manage` |
 | GET | `/api/moderation/command-mode` | `punishments.history` |
 | PUT | `/api/moderation/command-mode` | `punishments.presets.manage` |
 | GET | `/api/moderation/presets` | `punishments.presets.manage` |
@@ -75,6 +84,8 @@ Routes: 124 · public: 10 · plugin: 18 · session only: 13 · checked in handle
 | POST | `/api/plugin/v1/inventories` | plugin signature |
 | GET | `/api/plugin/v1/inventories/pending` | plugin signature |
 | POST | `/api/plugin/v1/inventories/revisions/:id/result` | plugin signature |
+| POST | `/api/plugin/v1/link-codes` | plugin signature |
+| POST | `/api/plugin/v1/luckperms/sync` | plugin signature |
 | GET | `/api/plugin/v1/moderation` | plugin signature |
 | GET | `/api/plugin/v1/ping` | plugin signature |
 | GET | `/api/plugin/v1/players/lookup` | plugin signature |
@@ -134,3 +145,7 @@ Routes: 124 · public: 10 · plugin: 18 · session only: 13 · checked in handle
 | GET | `/api/users` | `users.view` |
 | POST | `/api/users` | `users.manage` |
 | PATCH | `/api/users/:id` | `users.manage` |
+| DELETE | `/api/users/:id/minecraft-link` | `users.manage` |
+| GET | `/api/users/:id/staff` | `users.view` |
+| POST | `/api/users/:id/staff/recheck` | `users.manage` |
+| POST | `/api/users/:id/staff/revoke-sessions` | `users.manage` |

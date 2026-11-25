@@ -4,9 +4,9 @@
 // Minecraft UUID (dashed, lowercase, CHAR(36)) as stable player identity.
 
 generator client {
-  provider     = "prisma-client"
-  output       = "../src/generated/prisma"
-  moduleFormat = "cjs"
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  moduleFormat        = "cjs"
   importFileExtension = "js"
 }
 
@@ -17,29 +17,29 @@ datasource db {
 // ───────────────────────────── Players ─────────────────────────────
 
 model Player {
-  uuid                  String    @id @db.Char(36)
-  username              String    @db.VarChar(16)
-  firstSeenAt           DateTime  @map("first_seen_at") @db.DateTime(3)
-  lastSeenAt            DateTime  @map("last_seen_at") @db.DateTime(3)
-  online                Boolean   @default(false)
-  currentServerId       String?   @map("current_server_id") @db.VarChar(32)
+  uuid                  String   @id @db.Char(36)
+  username              String   @db.VarChar(16)
+  firstSeenAt           DateTime @map("first_seen_at") @db.DateTime(3)
+  lastSeenAt            DateTime @map("last_seen_at") @db.DateTime(3)
+  online                Boolean  @default(false)
+  currentServerId       String?  @map("current_server_id") @db.VarChar(32)
   /// Seconds connected to the network; null until the proxy reports sessions.
-  totalPlaytimeSeconds  BigInt    @default(0) @map("total_playtime_seconds")
-  activePlaytimeSeconds BigInt?   @map("active_playtime_seconds")
-  afkSeconds            BigInt?   @map("afk_seconds")
-  connectionCount       Int       @default(0) @map("connection_count")
-  rank                  String?   @db.VarChar(64)
-  gamemode              String?   @db.VarChar(16)
-  clientProtocol        Int?      @map("client_protocol")
-  clientVersion         String?   @map("client_version") @db.VarChar(32)
-  clientBrand           String?   @map("client_brand") @db.VarChar(128)
-  locale                String?   @db.VarChar(16)
+  totalPlaytimeSeconds  BigInt   @default(0) @map("total_playtime_seconds")
+  activePlaytimeSeconds BigInt?  @map("active_playtime_seconds")
+  afkSeconds            BigInt?  @map("afk_seconds")
+  connectionCount       Int      @default(0) @map("connection_count")
+  rank                  String?  @db.VarChar(64)
+  gamemode              String?  @db.VarChar(16)
+  clientProtocol        Int?     @map("client_protocol")
+  clientVersion         String?  @map("client_version") @db.VarChar(32)
+  clientBrand           String?  @map("client_brand") @db.VarChar(128)
+  locale                String?  @db.VarChar(16)
   /// Skin texture reported by the proxy (only textures.minecraft.net URLs are accepted).
-  skinTextureUrl        String?   @map("skin_texture_url") @db.VarChar(255)
+  skinTextureUrl        String?  @map("skin_texture_url") @db.VarChar(255)
   /// "classic" or "slim" arm model.
-  skinModel             String?   @map("skin_model") @db.VarChar(8)
-  createdAt             DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt             DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  skinModel             String?  @map("skin_model") @db.VarChar(8)
+  createdAt             DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt             DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
   currentServer      Server?                   @relation("PlayerCurrentServer", fields: [currentServerId], references: [id], onDelete: SetNull)
   names              PlayerName[]
@@ -422,18 +422,18 @@ enum PunishmentHistoryAction {
 
 /// Immutable change history of a punishment (one row per changed aspect).
 model PunishmentHistory {
-  id            String                  @id @default(cuid()) @db.VarChar(32)
-  punishmentId  String                  @map("punishment_id") @db.VarChar(32)
-  action        PunishmentHistoryAction
-  previousValues Json?                  @map("previous_values")
-  newValues     Json?                   @map("new_values")
-  actorType     ActorType               @map("actor_type")
-  actorUserId   String?                 @map("actor_user_id") @db.VarChar(32)
-  actorUuid     String?                 @map("actor_uuid") @db.Char(36)
-  actorName     String                  @map("actor_name") @db.VarChar(64)
+  id             String                  @id @default(cuid()) @db.VarChar(32)
+  punishmentId   String                  @map("punishment_id") @db.VarChar(32)
+  action         PunishmentHistoryAction
+  previousValues Json?                   @map("previous_values")
+  newValues      Json?                   @map("new_values")
+  actorType      ActorType               @map("actor_type")
+  actorUserId    String?                 @map("actor_user_id") @db.VarChar(32)
+  actorUuid      String?                 @map("actor_uuid") @db.Char(36)
+  actorName      String                  @map("actor_name") @db.VarChar(64)
   /// Optional explanation entered with the change.
-  note          String?                 @db.VarChar(1000)
-  createdAt     DateTime                @default(now()) @map("created_at") @db.DateTime(3)
+  note           String?                 @db.VarChar(1000)
+  createdAt      DateTime                @default(now()) @map("created_at") @db.DateTime(3)
 
   punishment Punishment @relation(fields: [punishmentId], references: [id], onDelete: Cascade)
 
@@ -554,36 +554,42 @@ model RegistrationToken {
 // ───────────────────────── Dashboard / RBAC ─────────────────────────
 
 model DashboardUser {
-  id               String    @id @default(cuid()) @db.VarChar(32)
-  username         String    @unique @db.VarChar(32)
-  email            String    @unique @db.VarChar(254)
-  passwordHash     String    @map("password_hash") @db.VarChar(255)
-  roleId           String    @map("role_id") @db.VarChar(32)
-  locale           String?   @db.VarChar(16)
-  theme            String?   @db.VarChar(16)
-  timezone         String?   @db.VarChar(64)
-  disabled         Boolean   @default(false)
+  id                     String         @id @default(cuid()) @db.VarChar(32)
+  username               String         @unique @db.VarChar(32)
+  email                  String         @unique @db.VarChar(254)
+  passwordHash           String         @map("password_hash") @db.VarChar(255)
+  roleId                 String         @map("role_id") @db.VarChar(32)
+  locale                 String?        @db.VarChar(16)
+  theme                  String?        @db.VarChar(16)
+  timezone               String?        @db.VarChar(64)
+  disabled               Boolean        @default(false)
   /// TOTP secret, AES-256-GCM sealed (see src/auth/totp.ts).
-  twoFactorSecret  String?   @map("two_factor_secret") @db.VarChar(255)
-  twoFactorEnabled Boolean   @default(false) @map("two_factor_enabled")
+  twoFactorSecret        String?        @map("two_factor_secret") @db.VarChar(255)
+  twoFactorEnabled       Boolean        @default(false) @map("two_factor_enabled")
   /// SHA-256 hashes of unused recovery codes.
-  twoFactorRecoveryCodes Json? @map("two_factor_recovery_codes")
+  twoFactorRecoveryCodes Json?          @map("two_factor_recovery_codes")
   /// Last accepted TOTP time step (replay protection).
-  twoFactorLastStep Int?     @map("two_factor_last_step")
+  twoFactorLastStep      Int?           @map("two_factor_last_step")
   /// Newest Nexora version whose update notification this user dismissed.
-  dismissedUpdateVersion String? @map("dismissed_update_version") @db.VarChar(64)
-  lastLoginAt      DateTime? @map("last_login_at") @db.DateTime(3)
-  createdAt        DateTime  @default(now()) @map("created_at") @db.DateTime(3)
-  updatedAt        DateTime  @updatedAt @map("updated_at") @db.DateTime(3)
+  dismissedUpdateVersion String?        @map("dismissed_update_version") @db.VarChar(64)
+  /// LUCKPERMS: role and access follow the LuckPerms group mapping (accounts created by account linking).
+  managedBy              AccountManager @default(NONE) @map("managed_by")
+  /// Set when the LuckPerms synchronisation disabled the account (it may re-enable it; manual disables stay).
+  disabledByLuckPerms    Boolean        @default(false) @map("disabled_by_luckperms")
+  lastLoginAt            DateTime?      @map("last_login_at") @db.DateTime(3)
+  createdAt              DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt              DateTime       @updatedAt @map("updated_at") @db.DateTime(3)
 
-  role                DashboardRole       @relation(fields: [roleId], references: [id])
-  sessions            DashboardSession[]
-  issuedPunishments   Punishment[]        @relation("PunishmentIssuer")
-  revokedPunishments  Punishment[]        @relation("PunishmentRevoker")
-  notes               PlayerNote[]
-  inventoryRevisions  InventoryRevision[]
-  registrationTokens  RegistrationToken[]
-  auditLogs           AuditLog[]
+  role               DashboardRole               @relation(fields: [roleId], references: [id])
+  sessions           DashboardSession[]
+  issuedPunishments  Punishment[]                @relation("PunishmentIssuer")
+  revokedPunishments Punishment[]                @relation("PunishmentRevoker")
+  notes              PlayerNote[]
+  inventoryRevisions InventoryRevision[]
+  registrationTokens RegistrationToken[]
+  auditLogs          AuditLog[]
+  minecraftLink      LinkedMinecraftAccount?
+  statusHistory      StaffAccountStatusHistory[]
 
   @@index([roleId])
   @@map("dashboard_users")
@@ -599,8 +605,9 @@ model DashboardRole {
   createdAt   DateTime @default(now()) @map("created_at") @db.DateTime(3)
   updatedAt   DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
-  users       DashboardUser[]
-  permissions DashboardRolePermission[]
+  users             DashboardUser[]
+  permissions       DashboardRolePermission[]
+  luckPermsMappings LuckPermsGroupMapping[]
 
   @@map("dashboard_roles")
 }
@@ -735,4 +742,96 @@ model PunishmentPreset {
   @@unique([category, numericId])
   @@index([category, enabled, archivedAt, sortOrder])
   @@map("punishment_presets")
+}
+
+enum AccountManager {
+  NONE
+  LUCKPERMS
+}
+
+/// Minecraft account proven by /nexora link (an authenticated game session) and linked to a dashboard user.
+model LinkedMinecraftAccount {
+  id                String    @id @default(cuid()) @db.VarChar(32)
+  dashboardUserId   String    @unique @map("dashboard_user_id") @db.VarChar(32)
+  minecraftUuid     String    @unique @map("minecraft_uuid") @db.Char(36)
+  minecraftUsername String    @map("minecraft_username") @db.VarChar(16)
+  linkedAt          DateTime  @default(now()) @map("linked_at") @db.DateTime(3)
+  lastVerifiedAt    DateTime? @map("last_verified_at") @db.DateTime(3)
+
+  user DashboardUser @relation(fields: [dashboardUserId], references: [id], onDelete: Cascade)
+
+  @@map("linked_minecraft_accounts")
+}
+
+/// One-time code from /nexora link. Only the SHA-256 hash is stored; valid for minutes, single use.
+model AccountLinkToken {
+  id                 String    @id @default(cuid()) @db.VarChar(32)
+  minecraftUuid      String    @map("minecraft_uuid") @db.Char(36)
+  minecraftUsername  String    @map("minecraft_username") @db.VarChar(16)
+  tokenHash          String    @unique @map("token_hash") @db.Char(64)
+  /// The player held nexora.dashboard.register in-game when the code was created.
+  registerPermission Boolean   @default(false) @map("register_permission")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.DateTime(3)
+  expiresAt          DateTime  @map("expires_at") @db.DateTime(3)
+  consumedAt         DateTime? @map("consumed_at") @db.DateTime(3)
+
+  @@index([minecraftUuid, consumedAt])
+  @@index([expiresAt])
+  @@map("account_link_tokens")
+}
+
+/// LuckPerms group → Nexora dashboard role. deny = members of this group never get dashboard access.
+model LuckPermsGroupMapping {
+  id              String   @id @default(cuid()) @db.VarChar(32)
+  groupName       String   @unique @map("group_name") @db.VarChar(64)
+  roleId          String?  @map("role_id") @db.VarChar(32)
+  dashboardAccess Boolean  @default(true) @map("dashboard_access")
+  deny            Boolean  @default(false)
+  priority        Int      @default(0)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  role DashboardRole? @relation(fields: [roleId], references: [id], onDelete: SetNull)
+
+  @@index([roleId])
+  @@map("luckperms_group_mappings")
+}
+
+/// Latest LuckPerms snapshot of a player (from the Velocity proxy): groups, rank and the canonical permissions.
+model PermissionSyncState {
+  minecraftUuid  String    @id @map("minecraft_uuid") @db.Char(36)
+  username       String?   @db.VarChar(16)
+  primaryGroup   String?   @map("primary_group") @db.VarChar(64)
+  groupDisplay   String?   @map("group_display") @db.VarChar(64)
+  groups         Json
+  prefix         String?   @db.VarChar(255)
+  suffix         String?   @db.VarChar(255)
+  weight         Int?
+  /// permission → true/false (explicit denials stay false; undefined permissions are absent).
+  permissions    Json
+  source         String    @default("LUCKPERMS") @db.VarChar(16)
+  /// Earliest expiry of a temporary group/permission (the snapshot is stale after it).
+  expiresAt      DateTime? @map("expires_at") @db.DateTime(3)
+  revision       Int       @default(1)
+  synchronizedAt DateTime  @map("synchronized_at") @db.DateTime(3)
+  serverId       String?   @map("server_id") @db.VarChar(32)
+
+  @@index([synchronizedAt])
+  @@map("permission_sync_states")
+}
+
+/// Status changes of staff accounts (linking, LuckPerms role changes, deactivation, reactivation).
+model StaffAccountStatusHistory {
+  id              String   @id @default(cuid()) @db.VarChar(32)
+  dashboardUserId String   @map("dashboard_user_id") @db.VarChar(32)
+  previousStatus  String?  @map("previous_status") @db.VarChar(32)
+  newStatus       String   @map("new_status") @db.VarChar(32)
+  reason          String   @db.VarChar(255)
+  source          String   @db.VarChar(16)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+
+  user DashboardUser @relation(fields: [dashboardUserId], references: [id], onDelete: Cascade)
+
+  @@index([dashboardUserId, createdAt])
+  @@map("staff_account_status_history")
 }

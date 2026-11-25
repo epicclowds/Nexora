@@ -42,7 +42,10 @@ const userSelect = {
   lastLoginAt: true,
   createdAt: true,
   twoFactorEnabled: true,
+  managedBy: true,
+  disabledByLuckPerms: true,
   role: { select: { id: true, key: true, name: true, priority: true } },
+  minecraftLink: { select: { minecraftUuid: true, minecraftUsername: true, lastVerifiedAt: true } },
 } as const;
 
 @ApiTags('users')

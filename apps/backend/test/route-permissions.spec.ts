@@ -27,6 +27,9 @@ const SESSION_ONLY_ALLOWLIST = new Set([
   'POST /api/auth/me/2fa/disable',
   'POST /api/auth/me/2fa/recovery-codes',
   'POST /api/auth/logout',
+  // Every signed-in user links their own Minecraft account.
+  'GET /api/account/minecraft-link',
+  'POST /api/account/minecraft-link',
   'GET /api/dashboard/summary',
   'GET /api/settings/network',
   'GET /api/settings/moderation',
@@ -51,6 +54,9 @@ const PUBLIC_ALLOWLIST = new Set([
   'GET /api/i18n/languages',
   'GET /api/i18n/messages/:locale',
   'POST /api/plugin/v1/register',
+  // Staff self-registration: needs a single-use code from /nexora link, rate-limited, off by default.
+  'GET /api/auth/registration',
+  'POST /api/auth/register-linked',
 ]);
 
 interface Route {

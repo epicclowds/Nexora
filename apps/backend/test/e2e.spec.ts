@@ -755,6 +755,88 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect((await call('PUT', '/api/moderation/command-mode', { mode: 'FREE_TEXT' })).status).toBe(200);
   });
 
+  // ── 1.3: LuckPerms integration, account linking, managed staff accounts ──
+
+  it('links staff through /nexora link, applies LuckPerms permissions and revokes access when the group is removed', async () => {
+    const alex = 'ec561538-f3fd-461d-aff5-086b22154bce';
+    const tokenRes = await call('POST', '/api/servers/registration-tokens', { type: 'VELOCITY', name: 'proxy-lp' });
+    const reg = await call('POST', '/api/plugin/v1/register', { token: tokenRes.body.token, pluginVersion: '1.3.0' }, { 'x-mnm-csrf': '' });
+    const lpProxy = { keyId: reg.body.keyId, secret: reg.body.secret };
+    const roles = await call('GET', '/api/roles');
+    const roleId = (key: string) => roles.body.find((r: { key: string }) => r.key === key).id as string;
+    const snapshot = (groups: string[], permissions: Record<string, boolean>) =>
+      signed(lpProxy, 'POST', '/api/plugin/v1/luckperms/sync', { luckPermsVersion: '5.4.150', snapshots: [{ uuid: alex, username: 'Alex', primaryGroup: groups[groups.length - 1], groupDisplay: 'Moderator', groups, prefix: '&c[Mod] ', permissions }] });
+
+    // Disabled by default: no codes; only the Owner may configure the integration.
+    expect((await signed(lpProxy, 'POST', '/api/plugin/v1/link-codes', { uuid: alex, username: 'Alex' })).body.code).toBe('LINKING_DISABLED');
+    expect((await call('PUT', '/api/integrations/luckperms/settings', { mode: 'MANAGED', staleAfterMinutes: 30, linking: { enabled: true, allowRegistration: true } })).status).toBe(200);
+    expect((await call('POST', '/api/integrations/luckperms/mappings', { groupName: 'moderator', roleId: roleId('moderator'), priority: 50 })).status).toBe(201);
+    expect((await call('POST', '/api/integrations/luckperms/mappings', { groupName: 'retired', deny: true })).status).toBe(201);
+    expect((await call('POST', '/api/integrations/luckperms/mappings', { groupName: 'owners', roleId: roleId('owner') })).body.code).toBe('OWNER_NOT_MAPPABLE');
+    expect((await call('PUT', '/api/moderation/command-mode', { mode: 'HYBRID' })).status).toBe(200);
+
+    // The proxy reports Alex's LuckPerms data; Paper servers may not.
+    expect((await signed(paper, 'POST', '/api/plugin/v1/luckperms/sync', { snapshots: [] })).status).toBe(403);
+    const sync = await snapshot(['default', 'moderator'], { 'nexora.punishment.ban.1': true, 'nexora.punishment.ban.2': false, 'nexora.punishment.custom': false });
+    expect(sync.status).toBe(200);
+    expect(sync.body.trackedPermissions).toEqual(expect.arrayContaining(['nexora.punishment.ban.1', 'nexora.punishment.custom', 'nexora.dashboard.register']));
+    expect((await call('GET', `/api/players/${alex}`)).body.minecraftRank).toMatchObject({ primaryGroup: 'moderator', displayName: 'Moderator', prefix: '[Mod]', color: '#FF5555' });
+
+    // /nexora link → one-time code → staff registration (eligible through the group mapping).
+    const code = await signed(lpProxy, 'POST', '/api/plugin/v1/link-codes', { uuid: alex, username: 'Alex' });
+    expect(code.status).toBe(201);
+    expect(code.body.code).toMatch(/^[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+    expect((await call('GET', '/api/auth/registration')).body).toEqual({ enabled: true });
+    const registered = await call('POST', '/api/auth/register-linked', { code: code.body.code, username: 'alexmod', email: 'alex@example.test', password: 'alex-password-123' });
+    expect(registered.status).toBe(201);
+    expect((await call('POST', '/api/auth/register-linked', { code: code.body.code, username: 'other', email: 'other@example.test', password: 'other-password-123' })).body.code).toBe('INVALID_LINK_CODE');
+    expect((await call('POST', '/api/auth/register-linked', { code: 'ZZZZ-ZZZZ', username: 'x2', email: 'x2@example.test', password: 'x-password-1234' })).body.code).toBe('INVALID_LINK_CODE');
+
+    const staff = await call('GET', `/api/users/${registered.body.id}/staff`);
+    expect(staff.body).toMatchObject({ managedBy: 'LUCKPERMS', status: 'ACTIVE', role: { key: 'moderator' }, permissionSource: 'LUCKPERMS', link: { minecraftUsername: 'Alex' } });
+    expect(staff.body.reasons.filter((r: { allowed: boolean }) => r.allowed).map((r: { category: string; numericId: number }) => `${r.category}:${r.numericId}`)).toEqual(['BAN:1']);
+
+    // The same permissions apply in the dashboard as in-game.
+    const login = async (identifier: string, password: string) => {
+      await call('POST', '/api/auth/logout');
+      jar.clear();
+      return call('POST', '/api/auth/login', { identifier, password });
+    };
+    expect((await login('alexmod', 'alex-password-123')).status).toBe(200);
+    const usable = await call('GET', '/api/moderation/presets/usable');
+    expect(usable.body).toMatchObject({ permissionSource: 'LUCKPERMS', customReasons: false });
+    expect(usable.body.presets.map((p: { numericId: number; category: string }) => `${p.category}:${p.numericId}`)).toEqual(['BAN:1']);
+    expect((await call('POST', '/api/punishments', { type: 'BAN', target: 'Steve', presetNumericId: 2 })).body.code).toBe('PRESET_FORBIDDEN');
+    expect((await call('POST', '/api/punishments', { type: 'BAN', target: 'Steve', reason: 'Typed' })).body.code).toBe('CUSTOM_REASON_FORBIDDEN');
+    const banned = await call('POST', '/api/punishments', { type: 'BAN', target: 'Steve', presetNumericId: 1 });
+    expect(banned.status).toBe(201);
+    await call('POST', `/api/punishments/${banned.body.id}/revoke`, {});
+
+    // Losing the qualifying group disables the account and revokes its sessions immediately.
+    await snapshot(['default'], { 'nexora.punishment.ban.1': false });
+    expect((await call('GET', '/api/auth/me')).status).toBe(401);
+    expect((await login('alexmod', 'alex-password-123')).status).toBe(403);
+
+    // Eligible again → reactivated; the old session stays revoked, a fresh sign-in works.
+    await snapshot(['default', 'moderator'], { 'nexora.punishment.ban.1': true });
+    expect((await login('alexmod', 'alex-password-123')).status).toBe(200);
+    // A denied group wins over the moderator group.
+    expect((await login('owner', 'correct-horse-battery')).status).toBe(200);
+    await snapshot(['default', 'moderator', 'retired'], { 'nexora.punishment.ban.1': true });
+    const history = await call('GET', `/api/users/${registered.body.id}/staff`);
+    expect(history.body.status).toBe('DISABLED');
+    expect(history.body.history.map((h: { newStatus: string }) => h.newStatus)).toEqual(['DISABLED', 'ACTIVE', 'DISABLED', 'ACTIVE']);
+
+    // The protected Owner is never affected by LuckPerms.
+    expect((await call('GET', '/api/auth/me')).body.roleKey).toBe('owner');
+    const audit = await call('GET', '/api/audit-logs?action=users.');
+    expect(audit.body.items.map((e: { action: string }) => e.action)).toEqual(expect.arrayContaining(['users.registered_by_link', 'users.disabled_by_luckperms', 'users.reactivated_by_luckperms']));
+
+    // Restore the defaults for the following tests.
+    expect((await call('PUT', '/api/integrations/luckperms/settings', { mode: 'DISABLED', staleAfterMinutes: 30, linking: { enabled: true, allowRegistration: false } })).status).toBe(200);
+    expect((await call('PUT', '/api/moderation/command-mode', { mode: 'FREE_TEXT' })).status).toBe(200);
+  });
+
   // ── Phase 5: statistics ────────────────────────────────────────
 
   it('ingests statistics from Paper and serves totals, ranges, series and leaderboards', async () => {
@@ -927,6 +1009,9 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
       ['PATCH', '/api/punishments/any-id/evidence/e', { version: 1, title: 'x' }],
       ['DELETE', '/api/punishments/any-id/evidence/e', { version: 1 }],
       ['GET', '/api/moderation/presets'],
+      ['GET', '/api/integrations/luckperms'],
+      ['PUT', '/api/integrations/luckperms/settings', { mode: 'MANAGED' }],
+      ['POST', '/api/integrations/luckperms/mappings', { groupName: 'x' }],
       ['POST', '/api/moderation/presets', { category: 'BAN', numericId: 99, name: 'x', reason: 'x' }],
       ['PUT', '/api/moderation/command-mode', { mode: 'PRESET_ONLY' }],
       ['GET', '/api/updates'],
