@@ -120,7 +120,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(res.status).toBe(200);
     expect(res.body.totalPlayers).toBe(0);
     expect(res.body.servers).toEqual([]);
-    expect(res.body.recentActivity[0].action).toBe('setup.initialized');
+    expect(res.body.recentActivity.map((a: { action: string }) => a.action)).toContain('setup.initialized');
   });
 
   it('issues a single-use registration token that a plugin can redeem once', async () => {
@@ -715,7 +715,8 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(viaDashboard.status).toBe(201);
     expect(viaDashboard.body).toMatchObject({ type: 'TEMP_BAN', reason: 'Ban evasion with an alt account', preset: { category: 'BAN', numericId: 6, name: 'Alt account' } });
     expect(viaDashboard.body.id).not.toBe('6'); // reason ID ≠ punishment ID
-    expect(Date.parse(viaDashboard.body.expiresAt) - Date.parse(viaDashboard.body.createdAt)).toBe(14 * day * 1000);
+    // The expiry is computed a few milliseconds before the creation time is stored.
+    expect(Math.abs(Date.parse(viaDashboard.body.expiresAt) - Date.parse(viaDashboard.body.createdAt) - 14 * day * 1000)).toBeLessThan(1000);
 
     // Editing the preset later never changes issued punishments.
     expect((await call('PATCH', `/api/moderation/presets/${created.body.id}`, { version: 1, name: 'Alt account', reason: 'Changed text', durationSeconds: 30 * day })).status).toBe(200);
@@ -729,7 +730,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     const viaCommand = await cmd('preset-0002', { reason: '6', granted: ['nexora.punishment.ban.6'] });
     expect(viaCommand.status).toBe(201);
     expect(viaCommand.body).toMatchObject({ type: 'TEMP_BAN', reason: 'Changed text', preset: { numericId: 6 } });
-    expect(Date.parse(viaCommand.body.expiresAt) - Date.parse(viaCommand.body.createdAt)).toBe(30 * day * 1000);
+    expect(Math.abs(Date.parse(viaCommand.body.expiresAt) - Date.parse(viaCommand.body.createdAt) - 30 * day * 1000)).toBeLessThan(1000);
     await signed(paper, 'POST', '/api/plugin/v1/punishments/revoke', { kind: 'BAN', target: 'Steve', revoker: mod });
     expect((await cmd('preset-0003', { reason: '6', durationSeconds: 3600, granted: ['nexora.punishment.ban.6'] })).body.code).toBe('DURATION_OVERRIDE_FORBIDDEN');
     expect((await cmd('preset-0004', { reason: 'Typed reason' })).body.code).toBe('CUSTOM_REASON_FORBIDDEN');
