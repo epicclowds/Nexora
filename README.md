@@ -2,7 +2,7 @@
 
 **Nexora – Minecraft Network Manager** is a self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring, update notifications and a multilingual web dashboard. It runs with Docker Compose from prebuilt images – nothing is compiled on your server.
 
-> **Status: v1.3.1 – stable.** Backend and dashboard are published as Docker images on GitHub Container Registry, the Minecraft plugins as jars on the [Releases page](https://github.com/epicclowds/Nexora/releases). See the [changelog](CHANGELOG.md).
+> **Status: v1.3.2 – stable.** Backend and dashboard are published as Docker images on GitHub Container Registry, the Minecraft plugins as jars on the [Releases page](https://github.com/epicclowds/Nexora/releases). See the [changelog](CHANGELOG.md).
 
 ## Features
 
@@ -200,6 +200,7 @@ docs/               Architecture, installation, API and development docs
 | v1.2.1 | Update checker: rate-limit recovery at reset time, Redis cache and lock, optional GITHUB_TOKEN, clear verification status | ✅ released |
 | v1.3.0 | Punishment reason presets and command modes, optional LuckPerms integration, account linking, managed staff accounts, Nexora branding, System theme and refreshed design | ✅ released |
 | v1.3.1 | Minecraft player heads as account avatars, linked-account status, sidebar layout fixes | ✅ released |
+| v1.3.2 | Punishment reason list on /ban and /mute, paginated /nexora reasons | ✅ released |
 
 ## Contributing
 

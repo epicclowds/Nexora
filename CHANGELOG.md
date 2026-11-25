@@ -2,6 +2,15 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.3.2] – 2026-11-25
+
+### Added
+- **Reason list in commands:** `/ban` and `/mute` without a reason (`/ban`, `/ban Steve`) show the usage and the ban or mute reasons the moderator may use – ID, name, readable duration or *Permanent* – following the global command mode (hybrid mode mentions typed reasons to moderators allowed to use them; typed-reasons-only mode shows the usage only). Restricted reasons are never listed, and the permission is checked again when a reason is used.
+- `/nexora reasons <ban|mute|kick|warn> [page]` with pages of 8 reasons; `/nexora reasons` shows the first page per category with a pointer to the rest. Tab completion for the category.
+
+### Changed
+- Reason entries read `1 - Hacking (30 days)` with translated duration units (English and German).
+
 ## [1.3.1] – 2026-11-25
 
 Sidebar polish and Minecraft player heads as account avatars.
@@ -196,6 +205,7 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.3.2]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.2
 [1.3.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.1
 [1.3.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.3.0
 [1.2.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.1

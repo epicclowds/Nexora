@@ -99,7 +99,7 @@ The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`,
 
 ## Punishment reasons, LuckPerms and account linking
 
-- **Reason IDs:** `/ban Steve 1` uses ban reason 1 from **Settings → Moderation → Punishment reasons**; `/nexora reasons` lists the reasons you may use. Whether typed reasons are allowed is decided by the network-wide command mode. Details and permissions: [Punishments](../architecture/punishments.md#reason-presets-and-the-command-mode).
+- **Reason IDs:** `/ban Steve 1` uses ban reason 1 from **Settings → Moderation → Punishment reasons**; `/ban` or `/mute` without a reason – and `/nexora reasons [category] [page]` – list the reasons you may use. Whether typed reasons are allowed is decided by the network-wide command mode. Details and permissions: [Punishments](../architecture/punishments.md#reason-presets-and-the-command-mode).
 - **LuckPerms (optional):** install LuckPerms on the Velocity proxy (shared storage recommended when Paper servers run it too). The Nexora plugin detects it, synchronises staff permissions and ranks, and the dashboard can use them – see [LuckPerms](../architecture/luckperms.md).
 - **Account linking:** staff run `/nexora link` and enter the code in the dashboard (Settings → General → Minecraft account, or /register when staff registration is enabled).
 

@@ -52,9 +52,19 @@ Blacklist entries include an IP address, which is personal data. It is only sent
 | `/warn <player> <reason-id or reason>` | `networkmanager.command.warn` + reason permission |
 | `/history <player>` | `networkmanager.command.history` |
 | `/check <player>` | `networkmanager.command.check` |
-| `/nexora reasons` | `nexora.command.reasons` – lists the reasons you may use |
+| `/nexora reasons [ban\|mute\|kick\|warn] [page]` | `nexora.command.reasons` – lists the reasons you may use (paginated when a category is given) |
 | `/editban <player\|#id> <duration\|permanent\|keep> [reason]` | `networkmanager.command.editban` (+ `.permanent` to switch between permanent and temporary) |
 | `/editmute <player\|#id> <duration\|permanent\|keep> [reason]` | `networkmanager.command.editmute` (+ `.permanent`) |
+
+**Reason list:** `/ban` or `/mute` without a reason (`/ban`, `/ban Steve`) shows the usage and the ban or mute reasons **you** may use – ID, name and duration or *Permanent* – in pages of 8 (`/nexora reasons ban 2` shows the next page). Reasons you lack the permission for are never listed; using a reason checks the permission again, and the backend decides. In *hybrid* mode, moderators with `nexora.punishment.custom` are reminded that they may type their own reason; in *typed reasons only* mode only the usage is shown. Changes to reasons or the mode appear without a restart.
+
+```
+[Nexora] Available ban reasons
+Usage: /ban <player> <reason-id>
+ 1 - Hacking (30 days)
+ 2 - Griefing (7 days)
+ 5 - Severe Cheating (Permanent)
+```
 
 `/editban` and `/editmute` change the existing active punishment in place instead of creating a second one. Examples: `/editban Steve 30d Repeated cheating`, `/editban #clx0abcd1234 permanent`, `/editmute Steve keep Spamming links` (reason only). Durations are counted from the **original creation time**: `/editban Steve 30d` on a ban issued 10 days ago leaves 20 days. A duration that has already elapsed is rejected – use `/unban` instead. Tab completion offers players and common durations.
 
