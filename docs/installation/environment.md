@@ -37,6 +37,7 @@ If one is missing, `docker compose` (and Portainer/Arcane) refuses to deploy wit
 | `GEOIP_DIR` | internal volume | Host folder with MaxMind GeoLite2 files, mounted read-only at `/geoip` (e.g. `/opt/nexora/geoip`) – [IP geolocation](../architecture/player-profiles.md#ip-geolocation-optional) |
 | `GEOIP_CITY_DB`, `GEOIP_ASN_DB` | empty | Paths inside the container, e.g. `/geoip/GeoLite2-City.mmdb`. Empty = geolocation off |
 | `DASHBOARD_DOMAIN`, `ACME_EMAIL` | empty | Built-in HTTPS (Caddy, profile `https`) – [HTTPS](https.md) |
+| `GITHUB_TOKEN` | empty | Optional GitHub token for the [update check](../architecture/updates.md). Without it GitHub allows 60 requests per hour per public IP address – shared with every other program on the same network, so the check can hit the limit. A fine-grained personal access token with **no permissions** (public repositories only) raises it to 5000 per hour. Only sent to `api.github.com`; never shown in the dashboard or logs |
 | `NEXORA_IMAGE_PREFIX` | `ghcr.io/epicclowds/nexora` | Registry/namespace of the images (mirrors) |
 | `NEXORA_VOLUME_PREFIX` | `minecraft-network-manager` | Prefix of the data volume names – see below |
 
