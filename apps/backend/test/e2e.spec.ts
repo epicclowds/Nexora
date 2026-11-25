@@ -255,6 +255,7 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
 
     const profile = await call('GET', `/api/players/${steve.uuid}`);
     expect(profile.body.clientBrand).toBe('vanilla');
+    expect(profile.body.client).toMatchObject({ name: 'vanilla', status: 'DETECTED', source: 'BRAND', brand: 'vanilla' });
     expect(profile.body.sessions[0].servers[0].server.name).toBe('lobby');
     expect(profile.body.sessions[0].connection.ipAddress).toBe('203.0.113.7'); // owner has players.view.ip
 
@@ -270,6 +271,62 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(after.body.totalPlaytimeSeconds).toBe(60);
     expect(after.body.sessions[0].durationSeconds).toBe(60);
     expect(after.body.sessions[0].servers[0].leftAt).not.toBeNull();
+  });
+
+  it('records the client brand per session, also when it repeats or arrives early', async () => {
+    const at = Date.now() - 50 * 60_000;
+    const keys = ['44444444-0000-4000-8000-000000000001', '44444444-0000-4000-8000-000000000002', '44444444-0000-4000-8000-000000000003', '44444444-0000-4000-8000-000000000004'];
+    // Session 1: NoRisk brand after login. Session 2: the same brand again (was lost before 1.4.0).
+    const first = await signed(proxy, 'POST', '/api/plugin/v1/events', {
+      events: [
+        { type: 'player.join', sessionKey: keys[0], uuid: steve.uuid, username: steve.username, at, protocol: 777 },
+        { type: 'player.brand', sessionKey: keys[0], uuid: steve.uuid, brand: 'NoRisk Client' },
+        { type: 'player.leave', sessionKey: keys[0], uuid: steve.uuid, at: at + 60_000 },
+        { type: 'player.join', sessionKey: keys[1], uuid: steve.uuid, username: steve.username, at: at + 120_000, protocol: 777 },
+        { type: 'player.brand', sessionKey: keys[1], uuid: steve.uuid, brand: 'NoRisk Client' },
+        // Empty brand later: must not erase the recorded one.
+        { type: 'player.brand', sessionKey: keys[1], uuid: steve.uuid, brand: '' },
+        // Duplicate brand event (server switch / retry): no change.
+        { type: 'player.brand', sessionKey: keys[1], uuid: steve.uuid, brand: 'NoRisk Client' },
+        { type: 'player.leave', sessionKey: keys[1], uuid: steve.uuid, at: at + 180_000 },
+        // Session 3: brand reported before login completed (carried by the join). Session 4: no brand at all.
+        { type: 'player.join', sessionKey: keys[2], uuid: steve.uuid, username: steve.username, at: at + 240_000, protocol: 777, brand: 'fabric' },
+        { type: 'player.leave', sessionKey: keys[2], uuid: steve.uuid, at: at + 300_000 },
+        { type: 'player.join', sessionKey: keys[3], uuid: steve.uuid, username: steve.username, at: at + 360_000, protocol: 777 },
+        // Explicit integration signal for session 4 only.
+        { type: 'player.client', sessionKey: keys[3], uuid: steve.uuid, client: 'norisk', source: 'INTEGRATION', at: at + 361_000 },
+        { type: 'player.leave', sessionKey: keys[3], uuid: steve.uuid, at: at + 420_000 },
+        // A brand for a session the backend does not know is dropped, never applied to another session.
+        { type: 'player.brand', sessionKey: '44444444-0000-4000-8000-0000000000ff', uuid: steve.uuid, brand: 'lunarclient:1' },
+      ],
+    });
+    expect(first.status).toBe(200);
+    expect(first.body.skipped).toBe(3); // empty brand, duplicate brand, unknown session
+
+    const history = await call('GET', `/api/players/${steve.uuid}/connections?pageSize=10`);
+    const byTime = [...history.body.items].sort((a: { connectedAt: string }, b: { connectedAt: string }) => a.connectedAt.localeCompare(b.connectedAt));
+    const recent = byTime.filter((c: { clientProtocol: number }) => c.clientProtocol === 777).map((c: { client: unknown; clientProtocol: number }) => ({ client: c.client, protocol: c.clientProtocol }));
+    expect(recent).toHaveLength(4);
+    expect(recent[0]).toMatchObject({ protocol: 777, client: { name: 'norisk', source: 'BRAND', brand: 'NoRisk Client' } });
+    expect(recent[1]).toMatchObject({ client: { name: 'norisk', source: 'BRAND', brand: 'NoRisk Client' } });
+    expect(recent[2]).toMatchObject({ client: { name: 'fabric', source: 'BRAND', brand: 'fabric' } });
+    expect(recent[3]).toMatchObject({ client: { name: 'norisk', source: 'INTEGRATION', brand: null } });
+    expect(history.body.canViewRawBrand).toBe(true); // owner (servers.manage)
+
+    // Detection can be switched off; brands are then not recorded.
+    expect((await call('PUT', '/api/settings/client-detection', { enabled: false, debug: true, norisk: false, showRawBrand: false })).status).toBe(200);
+    const off = await signed(proxy, 'POST', '/api/plugin/v1/events', {
+      events: [
+        { type: 'player.join', sessionKey: '44444444-0000-4000-8000-000000000005', uuid: steve.uuid, username: steve.username, at: at + 480_000, protocol: 776, brand: 'vanilla' },
+        { type: 'player.leave', sessionKey: '44444444-0000-4000-8000-000000000005', uuid: steve.uuid, at: at + 540_000 },
+      ],
+    });
+    expect(off.body.applied).toBe(2);
+    const heartbeat = await signed(proxy, 'POST', '/api/plugin/v1/heartbeat', { pluginVersion: '1.4.0', onlinePlayers: 0 });
+    expect(heartbeat.body.clientDetection).toEqual({ enabled: false, debug: true, norisk: false, showRawBrand: false });
+    const latest = await call('GET', `/api/players/${steve.uuid}/connections?pageSize=20`);
+    expect(latest.body.items.find((c: { clientProtocol: number }) => c.clientProtocol === 776).client).toMatchObject({ name: null, status: 'NONE' });
+    expect((await call('PUT', '/api/settings/client-detection', { enabled: true, debug: false, norisk: true, showRawBrand: false })).status).toBe(200);
   });
 
   // ── Phase 4: player profiles ───────────────────────────────────

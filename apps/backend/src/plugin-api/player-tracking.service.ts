@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { clientDetectionStatus, type KnownClient, normalizeClientBrand } from '@mnm/shared-types';
 import type { Prisma } from '../generated/prisma/client';
 import { GeoIpService } from '../players/geoip.service';
 import { parseTexturesProperty } from '../players/skins';
 import { PrismaService } from '../prisma/prisma.service';
 import { RealtimeService } from '../realtime/realtime.service';
-import { SETTING_KEYS, SettingsService } from '../settings/settings.service';
+import { type ClientDetectionSettings, SETTING_KEYS, SettingsService } from '../settings/settings.service';
 import type { JoinEvent, PluginEvent, SyncInput } from './plugin-events';
 
 type Tx = Prisma.TransactionClient;
@@ -29,15 +30,18 @@ export class PlayerTrackingService {
   async applyEvents(proxyId: string, events: PluginEvent[]): Promise<{ applied: number; skipped: number }> {
     let applied = 0;
     let joined = false;
+    const detection = await this.settings.getClientDetection();
     for (const event of events) {
       const changed = await this.prisma.$transaction(async (tx) => {
         switch (event.type) {
           case 'player.join':
-            return this.join(tx, proxyId, event);
+            return this.join(tx, proxyId, event, detection);
           case 'player.switch':
             return this.switchServer(tx, event.sessionKey, event.uuid, event.server, event.at);
           case 'player.brand':
-            return this.brand(tx, event.uuid, event.brand);
+            return this.brand(tx, event.sessionKey, event.uuid, event.brand, detection);
+          case 'player.client':
+            return this.integrationClient(tx, event.sessionKey, event.client, event.at, detection);
           case 'player.leave':
             return this.leave(tx, event.sessionKey, event.at);
         }
@@ -54,12 +58,15 @@ export class PlayerTrackingService {
     return { applied, skipped: events.length - applied };
   }
 
-  private async join(tx: Tx, proxyId: string, e: JoinEvent): Promise<boolean> {
+  private async join(tx: Tx, proxyId: string, e: JoinEvent, detection: ClientDetectionSettings): Promise<boolean> {
     if (await tx.playerSession.findUnique({ where: { sessionKey: e.sessionKey }, select: { id: true } })) return false;
 
     const skin = parseTexturesProperty(e.textures);
     const skinData = skin ? { skinTextureUrl: skin.url, skinModel: skin.model } : {};
     const geo = this.geoip.lookup(e.ip);
+    // The brand can arrive before login completes; then it comes with the join (never from an earlier session).
+    const brand = detection.enabled ? e.brand?.trim() || null : null;
+    const brandData = brand ? { clientBrand: brand } : {};
 
     await tx.player.upsert({
       where: { uuid: e.uuid },
@@ -73,6 +80,7 @@ export class PlayerTrackingService {
         clientProtocol: e.protocol,
         clientVersion: e.clientVersion,
         ...skinData,
+        ...brandData,
       },
       update: {
         username: e.username,
@@ -82,6 +90,7 @@ export class PlayerTrackingService {
         clientProtocol: e.protocol,
         clientVersion: e.clientVersion,
         ...skinData,
+        ...brandData,
       },
     });
     await tx.playerName.upsert({
@@ -99,6 +108,7 @@ export class PlayerTrackingService {
         ipAddress: e.ip ?? null,
         virtualHost: e.virtualHost ?? null,
         clientProtocol: e.protocol ?? null,
+        ...(brand ? { clientBrand: brand, clientName: normalizeClientBrand(brand), clientSource: 'BRAND', clientDetectedAt: e.at } : {}),
         connectedAt: e.at,
         // Approximate, IP-derived location (only when a GeoIP database is configured).
         countryCode: geo?.countryCode ?? null,
@@ -108,6 +118,7 @@ export class PlayerTrackingService {
         isp: geo?.isp ?? null,
       },
     });
+    if (detection.debug) this.logger.log(`Client detection: session ${short(e.sessionKey)} joined, ${brand ? `brand "${brand}" → ${describe(brand)}` : 'no brand yet'}`);
     return true;
   }
 
@@ -130,17 +141,57 @@ export class PlayerTrackingService {
     return true;
   }
 
-  private async brand(tx: Tx, uuid: string, brand: string): Promise<boolean> {
-    // Only a real change counts, so retried batches are reported as skipped.
-    const result = await tx.player.updateMany({
-      where: { uuid, OR: [{ clientBrand: null }, { clientBrand: { not: brand } }] },
-      data: { clientBrand: brand },
-    });
-    if (result.count) {
-      const connection = await tx.playerConnection.findFirst({ where: { playerUuid: uuid }, orderBy: { connectedAt: 'desc' }, select: { id: true } });
-      if (connection) await tx.playerConnection.update({ where: { id: connection.id }, data: { clientBrand: brand } });
+  /**
+   * Stores the brand of exactly the session that reported it. Empty brands never
+   * overwrite a recorded one, and a repeated brand (retried batch, server switch)
+   * is a no-op.
+   */
+  private async brand(tx: Tx, sessionKey: string, uuid: string, raw: string, detection: ClientDetectionSettings): Promise<boolean> {
+    if (!detection.enabled) return false;
+    const brand = raw.trim();
+    if (!brand) {
+      if (detection.debug) this.logger.log(`Client detection: session ${short(sessionKey)} reported an empty brand (ignored)`);
+      return false;
     }
-    return result.count > 0;
+    const session = await tx.playerSession.findUnique({ where: { sessionKey }, select: { id: true, connection: { select: { id: true, clientBrand: true, clientSource: true } } } });
+    if (!session?.connection) {
+      if (detection.debug) this.logger.log(`Client detection: brand for unknown session ${short(sessionKey)} dropped`);
+      return false;
+    }
+    const connection = session.connection;
+    if (connection.clientBrand === brand) return false;
+    const integration = connection.clientSource === 'INTEGRATION';
+    try {
+      await tx.playerConnection.update({
+        where: { id: connection.id },
+        data: {
+          clientBrand: brand,
+          // An explicit integration signal outranks the self-reported brand.
+          ...(integration ? {} : { clientName: normalizeClientBrand(brand), clientSource: 'BRAND', clientDetectedAt: new Date() }),
+        },
+      });
+      await tx.player.updateMany({ where: { uuid }, data: { clientBrand: brand } });
+    } catch (err) {
+      this.logger.warn(`Client detection: storing the brand of session ${short(sessionKey)} failed: ${(err as Error).message}`);
+      throw err;
+    }
+    if (detection.debug) this.logger.log(`Client detection: session ${short(sessionKey)} brand "${brand}" → ${describe(brand)}`);
+    return true;
+  }
+
+  /** A client confirmed by its own server API (higher priority than the brand). */
+  private async integrationClient(tx: Tx, sessionKey: string, client: KnownClient, at: Date, detection: ClientDetectionSettings): Promise<boolean> {
+    if (!detection.enabled) return false;
+    const session = await tx.playerSession.findUnique({ where: { sessionKey }, select: { connection: { select: { id: true, clientName: true, clientSource: true } } } });
+    const connection = session?.connection;
+    if (!connection) {
+      if (detection.debug) this.logger.log(`Client detection: integration signal for unknown session ${short(sessionKey)} dropped`);
+      return false;
+    }
+    if (connection.clientName === client && connection.clientSource === 'INTEGRATION') return false;
+    await tx.playerConnection.update({ where: { id: connection.id }, data: { clientName: client, clientSource: 'INTEGRATION', clientDetectedAt: at } });
+    if (detection.debug) this.logger.log(`Client detection: session ${short(sessionKey)} confirmed as ${client} by the client's server API`);
+    return true;
   }
 
   private async leave(tx: Tx, sessionKey: string, at: Date): Promise<boolean> {
@@ -189,10 +240,11 @@ export class PlayerTrackingService {
     }
 
     const known = new Set(open.map((s) => s.sessionKey));
+    const detection = await this.settings.getClientDetection();
     for (const s of input.sessions) {
       if (!known.has(s.sessionKey)) {
         const created = await this.prisma.$transaction((tx) =>
-          this.join(tx, proxyId, { type: 'player.join', sessionKey: s.sessionKey, uuid: s.uuid, username: s.username, at: now }),
+          this.join(tx, proxyId, { type: 'player.join', sessionKey: s.sessionKey, uuid: s.uuid, username: s.username, at: now, brand: s.brand }, detection),
         );
         if (created) {
           opened++;
@@ -234,4 +286,14 @@ export class PlayerTrackingService {
       await this.settings.set(SETTING_KEYS.PLAYER_RECORD, { count: online, at: new Date().toISOString() }, null);
     }
   }
+}
+
+/** Session keys are random; the first 8 characters are enough to follow a session in the logs. */
+function short(sessionKey: string): string {
+  return sessionKey.slice(0, 8);
+}
+
+function describe(brand: string): string {
+  const status = clientDetectionStatus(brand);
+  return status === 'DETECTED' ? (normalizeClientBrand(brand) as string) : 'not a known client (stored as reported)';
 }

@@ -3,8 +3,9 @@
 import Link from 'next/link';
 import { useFormatter, useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { api, type Page } from '@/lib/api';
+import { api, type ClientInfo, type Page } from '@/lib/api';
 import { useDuration } from '@/lib/format';
+import { ClientLabel } from './client-label';
 import { PlayerHead } from './player-skin';
 import { Alert, Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Skeleton, StatusDot } from './ui/primitives';
 import { TBody, TD, TH, THead, TR, Table } from './ui/table';
@@ -24,13 +25,14 @@ interface ConnectionsResponse extends Page<{
   durationSeconds: number | null;
   proxy: string | null;
   clientProtocol: number | null;
-  clientBrand: string | null;
+  client: ClientInfo;
   ipAddress?: string | null;
   virtualHost?: string | null;
   location?: Location;
 }> {
   canViewIp: boolean;
   canViewLocation: boolean;
+  clientDetectionEnabled?: boolean;
   geoipEnabled: boolean;
   ipSummary?: { ipAddress: string; connections: number; firstSeenAt: string; lastSeenAt: string; location?: Location }[];
   relatedAccounts?: { uuid: string; username: string; online: boolean; connections: number; lastSeenAt: string }[];
@@ -71,6 +73,7 @@ export function PlayerConnections({ uuid, locale }: { uuid: string; locale: stri
 
   return (
     <div className="grid gap-6 [&>*]:min-w-0">
+      {data.clientDetectionEnabled === false && <Alert>{t('clients.unavailable')}</Alert>}
       {!data.canViewIp && <Alert>{t('connections.ipPermission')}</Alert>}
       {data.canViewIp && !data.canViewLocation && <Alert>{t('connections.locationPermission')}</Alert>}
       {data.canViewLocation && !data.geoipEnabled && <Alert>{t('connections.geoipDisabled')}</Alert>}
@@ -162,8 +165,8 @@ export function PlayerConnections({ uuid, locale }: { uuid: string; locale: stri
                   <TD className="whitespace-nowrap tabular-nums">{c.endedAt ? duration(c.durationSeconds ?? 0) : t('profile.ongoing')}</TD>
                   <TD>{c.proxy ?? '–'}</TD>
                   <TD className="whitespace-nowrap text-xs">
-                    {c.clientBrand ?? '–'}
-                    {c.clientProtocol !== null && <span className="block text-muted-foreground">protocol {c.clientProtocol}</span>}
+                    <ClientLabel client={c.client} details />
+                    {c.clientProtocol !== null && <span className="block text-muted-foreground">{t('clients.protocol', { protocol: c.clientProtocol })}</span>}
                   </TD>
                   {data.canViewIp && <TD className="font-mono text-xs">{c.ipAddress ?? <span className="text-muted-foreground">{t('connections.anonymised')}</span>}</TD>}
                   {data.canViewIp && <TD className="text-xs">{c.virtualHost ?? '–'}</TD>}

@@ -85,7 +85,7 @@ export class PluginApiController {
     this.realtime.publish({ type: 'server.updated', serverId: server.id });
     // Cached release information (never a GitHub request): lets the plugins notify staff about updates.
     const update = await this.updates.pluginInfo(body.pluginVersion).catch(() => null);
-    return { serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS, configRevision: await this.settings.pluginSettingsRevision(), moderationRevision: await this.presets.revision(), update, ...(server.type === ServerType.VELOCITY ? { permissionResync: await this.luckperms.takeResync() } : {}) };
+    return { serverTime: Date.now(), heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS, configRevision: await this.settings.pluginSettingsRevision(), moderationRevision: await this.presets.revision(), update, ...(server.type === ServerType.VELOCITY ? { permissionResync: await this.luckperms.takeResync(), clientDetection: await this.settings.getClientDetection() } : {}) };
   }
 
   /** Ordered batch of player events from the proxy (join, server switch, client brand, leave). */

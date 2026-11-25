@@ -37,12 +37,38 @@ export const SETTING_KEYS = {
   PRIVACY: 'privacy',
   PLUGINS: 'plugins.managed',
   MODERATION: 'moderation',
+  CLIENT_DETECTION: 'clientDetection',
 } as const;
 
 const DEFAULT_NETWORK: NetworkSettings = networkSettingsSchema.parse({ name: 'Minecraft Network' });
 
+/** Settings → Minecraft integration → Client detection. */
+export const clientDetectionSettingsSchema = z
+  .object({
+    /** Record the client brand players report. */
+    enabled: z.boolean().default(true),
+    /** Extra proxy and backend log lines that explain each detection step (no IP addresses). */
+    debug: z.boolean().default(false),
+    /** Ask the NoRisk Client server API (separate server plugin) when it is installed on the proxy. */
+    norisk: z.boolean().default(true),
+    /** Show the raw reported brand next to the client name to everyone who can view the player (administrators always see it). */
+    showRawBrand: z.boolean().default(false),
+  })
+  .strict();
+export type ClientDetectionSettings = z.infer<typeof clientDetectionSettingsSchema>;
+
 @Injectable()
 export class SettingsService {
+  private clientDetectionCache: { value: ClientDetectionSettings; at: number } | null = null;
+
+  async getClientDetection(): Promise<ClientDetectionSettings> {
+    if (this.clientDetectionCache && Date.now() - this.clientDetectionCache.at < 10_000) return this.clientDetectionCache.value;
+    const parsed = clientDetectionSettingsSchema.safeParse((await this.get<unknown>(SETTING_KEYS.CLIENT_DETECTION)) ?? {});
+    const value = parsed.success ? parsed.data : clientDetectionSettingsSchema.parse({});
+    this.clientDetectionCache = { value, at: Date.now() };
+    return value;
+  }
+
   constructor(private readonly prisma: PrismaService) {}
 
   async get<T>(key: string, tx?: Prisma.TransactionClient): Promise<T | null> {
@@ -58,6 +84,7 @@ export class SettingsService {
       update: { value, updatedByUserId: userId },
     });
     if (key === SETTING_KEYS.PLUGINS) this.revisionCache = null;
+    if (key === SETTING_KEYS.CLIENT_DETECTION) this.clientDetectionCache = null;
   }
 
   async getPrivacy(): Promise<PrivacySettings> {

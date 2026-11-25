@@ -27,6 +27,8 @@ export const joinEventSchema = z.object({
   clientVersion: z.string().max(32).optional(),
   /** Base64 'textures' game-profile property (skin). */
   textures: z.string().max(8192).optional(),
+  /** Client brand if the proxy already received it before login completed (minecraft:brand). */
+  brand: z.string().max(128).optional(),
 });
 
 export const switchEventSchema = z.object({
@@ -44,6 +46,16 @@ export const brandEventSchema = z.object({
   brand: z.string().max(128),
 });
 
+/** A client identified through a client's own server API (e.g. the NoRisk Client server plugin). */
+export const clientEventSchema = z.object({
+  type: z.literal('player.client'),
+  sessionKey: uuidSchema,
+  uuid: uuidSchema,
+  client: z.enum(['norisk']),
+  source: z.literal('INTEGRATION'),
+  at: instantSchema,
+});
+
 export const leaveEventSchema = z.object({
   type: z.literal('player.leave'),
   sessionKey: uuidSchema,
@@ -51,7 +63,7 @@ export const leaveEventSchema = z.object({
   at: instantSchema,
 });
 
-export const pluginEventSchema = z.discriminatedUnion('type', [joinEventSchema, switchEventSchema, brandEventSchema, leaveEventSchema]);
+export const pluginEventSchema = z.discriminatedUnion('type', [joinEventSchema, switchEventSchema, brandEventSchema, clientEventSchema, leaveEventSchema]);
 export type PluginEvent = z.infer<typeof pluginEventSchema>;
 export type JoinEvent = z.infer<typeof joinEventSchema>;
 
@@ -65,6 +77,7 @@ export const syncSchema = z.object({
         uuid: uuidSchema,
         username: usernameSchema,
         server: serverNameSchema.optional(),
+        brand: z.string().max(128).optional(),
       }),
     )
     .max(100_000),

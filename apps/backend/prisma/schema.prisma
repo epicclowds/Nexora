@@ -101,21 +101,27 @@ model PlayerSession {
 /// Connection metadata. IP data is personal data: access requires players.view.ip
 /// and rows are subject to the configured retention period.
 model PlayerConnection {
-  id             BigInt   @id @default(autoincrement())
-  playerUuid     String   @map("player_uuid") @db.Char(36)
-  sessionId      BigInt?  @unique @map("session_id")
-  ipAddress      String?  @map("ip_address") @db.VarChar(45)
+  id               BigInt    @id @default(autoincrement())
+  playerUuid       String    @map("player_uuid") @db.Char(36)
+  sessionId        BigInt?   @unique @map("session_id")
+  ipAddress        String?   @map("ip_address") @db.VarChar(45)
   /// Approximate, IP-derived. Never an exact location.
-  countryCode    String?  @map("country_code") @db.Char(2)
-  region         String?  @db.VarChar(128)
-  city           String?  @db.VarChar(128)
-  isp            String?  @db.VarChar(255)
+  countryCode      String?   @map("country_code") @db.Char(2)
+  region           String?   @db.VarChar(128)
+  city             String?   @db.VarChar(128)
+  isp              String?   @db.VarChar(255)
   /// Autonomous system number of the IP (approximate network operator).
-  asn            Int?
-  virtualHost    String?  @map("virtual_host") @db.VarChar(255)
-  clientProtocol Int?     @map("client_protocol")
-  clientBrand    String?  @map("client_brand") @db.VarChar(128)
-  connectedAt    DateTime @map("connected_at") @db.DateTime(3)
+  asn              Int?
+  virtualHost      String?   @map("virtual_host") @db.VarChar(255)
+  clientProtocol   Int?      @map("client_protocol")
+  /// Raw brand reported by the client (minecraft:brand) – self-reported, not verified.
+  clientBrand      String?   @map("client_brand") @db.VarChar(128)
+  /// Normalised client key (vanilla, fabric, norisk, …); null = Unknown.
+  clientName       String?   @map("client_name") @db.VarChar(32)
+  /// BRAND (reported brand) or INTEGRATION (a client's server API, e.g. NoRisk).
+  clientSource     String?   @map("client_source") @db.VarChar(16)
+  clientDetectedAt DateTime? @map("client_detected_at") @db.DateTime(3)
+  connectedAt      DateTime  @map("connected_at") @db.DateTime(3)
 
   player  Player         @relation(fields: [playerUuid], references: [uuid], onDelete: Cascade)
   session PlayerSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
@@ -834,4 +840,30 @@ model StaffAccountStatusHistory {
 
   @@index([dashboardUserId, createdAt])
   @@map("staff_account_status_history")
+}
+
+/// How a LuckPerms group looks in the dashboard. Appearance only – never used
+/// for permission decisions.
+model RankDisplay {
+  id              String   @id @default(cuid()) @db.VarChar(32)
+  groupName       String   @unique @map("group_name") @db.VarChar(64)
+  enabled         Boolean  @default(true)
+  /// CUSTOM, LUCKPERMS_PREFIX, LUCKPERMS_DISPLAY_NAME or GROUP_NAME.
+  displaySource   String   @default("CUSTOM") @map("display_source") @db.VarChar(32)
+  displayName     String?  @map("display_name") @db.VarChar(64)
+  textColor       String?  @map("text_color") @db.Char(7)
+  backgroundColor String?  @map("background_color") @db.Char(7)
+  bold            Boolean  @default(false)
+  /// Unicode text shown before the name (e.g. an emoji or symbol).
+  iconText        String?  @map("icon_text") @db.VarChar(16)
+  /// Uploaded raster icon (PNG, WebP, GIF or JPEG – never SVG), validated by content.
+  iconImage       Bytes?   @map("icon_image") @db.MediumBlob
+  iconMimeType    String?  @map("icon_mime_type") @db.VarChar(32)
+  /// Shown when the icon image cannot be loaded (e.g. a resource-pack glyph).
+  fallbackText    String?  @map("fallback_text") @db.VarChar(64)
+  tooltip         String?  @db.VarChar(200)
+  createdAt       DateTime @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
+
+  @@map("rank_displays")
 }

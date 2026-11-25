@@ -8,7 +8,7 @@ import { ZodBody } from '../common/zod';
 import { AuditService, userActor } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { managedPluginSettingsSchema, moderationSettingsSchema, normalizePluginSettings, pluginCatalogs, validatePluginMessages } from './plugin-settings';
-import { networkSettingsSchema, privacySettingsSchema, SETTING_KEYS, SettingsService } from './settings.service';
+import { clientDetectionSettingsSchema, networkSettingsSchema, privacySettingsSchema, SETTING_KEYS, SettingsService } from './settings.service';
 
 const updateNetworkSchema = networkSettingsSchema.partial().strict();
 // Partial update: fields that are not sent keep their stored value.
@@ -66,6 +66,25 @@ export class SettingsController {
       await this.audit.record({ actor: userActor(actor), action: 'settings.network_updated', targetType: 'setting', targetId: SETTING_KEYS.NETWORK, metadata: { before: current, after: next }, ipAddress: clientIp(req) }, tx);
     });
     return next;
+  }
+
+  /** Client detection (proxy brand capture, optional NoRisk integration, debug logging). */
+  @Get('client-detection')
+  @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
+  clientDetection() {
+    return this.settings.getClientDetection();
+  }
+
+  @Put('client-detection')
+  @RequirePermissions(PERMISSIONS.SERVERS_MANAGE)
+  @ZodBody(clientDetectionSettingsSchema)
+  async updateClientDetection(@CurrentUser() actor: AuthenticatedUser, @Body() body: z.infer<typeof clientDetectionSettingsSchema>, @Req() req: Request) {
+    const before = await this.settings.getClientDetection();
+    await this.prisma.$transaction(async (tx) => {
+      await this.settings.set(SETTING_KEYS.CLIENT_DETECTION, body, actor.id, tx);
+      await this.audit.record({ actor: userActor(actor), action: 'settings.client_detection_updated', targetType: 'setting', targetId: SETTING_KEYS.CLIENT_DETECTION, metadata: { before, after: body }, ipAddress: clientIp(req) }, tx);
+    });
+    return body;
   }
 
   /** Settings pushed to connected plugins (live, within one heartbeat). */

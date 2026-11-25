@@ -7,6 +7,7 @@ import { type FormEvent, Suspense, useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
 import { useAuth } from '@/components/auth-provider';
 import { LanguagesManager } from '@/components/languages-manager';
+import { ClientDetectionSettings } from '@/components/client-detection-settings';
 import { MinecraftIntegration } from '@/components/minecraft-integration';
 import { ModerationSettings } from '@/components/punishment-reasons';
 import { PluginSettingsEditor } from '@/components/plugin-settings-editor';
@@ -78,7 +79,12 @@ function Settings() {
             {can(PERMISSIONS.SETTINGS_MANAGE) && <NetworkCard />}
           </>
         )}
-        {section === 'minecraft' && <MinecraftIntegration />}
+        {section === 'minecraft' && (
+          <>
+            <MinecraftIntegration />
+            <ClientDetectionSettings />
+          </>
+        )}
         {section === 'plugins' && <PluginSettingsEditor />}
         {section === 'moderation' && <ModerationSettings />}
         {section === 'languages' && <LanguagesManager />}

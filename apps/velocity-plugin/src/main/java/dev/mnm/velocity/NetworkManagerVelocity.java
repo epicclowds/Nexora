@@ -12,6 +12,7 @@ import dev.mnm.plugin.ManagedSettings;
 import dev.mnm.plugin.Messages;
 import dev.mnm.plugin.PluginConfig;
 import dev.mnm.plugin.UpdateNotifier;
+import dev.mnm.plugin.client.ClientDetection;
 import dev.mnm.plugin.punish.ModerationClient;
 import dev.mnm.plugin.punish.PunishmentCache;
 import dev.mnm.plugin.punish.PunishmentFeed;
@@ -60,7 +61,10 @@ public final class NetworkManagerVelocity {
         SessionRegistry sessions = new SessionRegistry();
         connector = new BackendConnector(dataDirectory, config, new VelocityPlatform(proxy, sessions), BuildInfo.VERSION, logger);
         connector.useManagedSettings(managed);
-        proxy.getEventManager().register(this, new PlayerListener(connector, sessions, config.collectIpAddresses()));
+        // Client brands (and NoRisk Client via its optional server API), configured in the dashboard.
+        ClientDetection clients = new ClientDetection(logger);
+        connector.onHeartbeatResponse(clients::accept);
+        proxy.getEventManager().register(this, new PlayerListener(connector, sessions, config.collectIpAddresses(), clients, proxy, this, NoRiskBridge.detect(proxy, logger)));
         // Update notifications: cached release info from the backend's heartbeat responses.
         UpdateNotifier updates = new UpdateNotifier(messages, BuildInfo.VERSION, config.updateNotifications(), true);
         connector.onHeartbeatResponse(updates::accept);

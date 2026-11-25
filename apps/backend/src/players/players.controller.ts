@@ -1,7 +1,8 @@
 import { Controller, Get, NotFoundException, Param, Query, Res } from '@nestjs/common';
 import { LuckPermsService } from '../luckperms/luckperms.service';
+import { RankDisplayService } from '../luckperms/rank-display.service';
 import { ApiTags } from '@nestjs/swagger';
-import { hasPermission, PERMISSIONS } from '@mnm/shared-types';
+import { hasPermission, normalizeClientBrand, PERMISSIONS } from '@mnm/shared-types';
 import { z } from 'zod';
 import { type AuthenticatedUser, CurrentUser, RequirePermissions } from '../common/auth-context';
 import { paginationSchema, ZodQuery } from '../common/zod';
@@ -44,6 +45,22 @@ const listSelect = {
 
 type ListRow = Prisma.PlayerGetPayload<{ select: typeof listSelect }>;
 
+/**
+ * Client of a connection. name is a known client key (vanilla, fabric, norisk, …)
+ * or null (Unknown). Older connections stored only the raw brand: they are
+ * normalised on read with the same rules.
+ */
+export function clientInfo(c: { clientBrand: string | null; clientName: string | null; clientSource: string | null; clientDetectedAt: Date | null }, includeRaw: boolean) {
+  const name = c.clientName ?? normalizeClientBrand(c.clientBrand);
+  return {
+    name,
+    status: name ? 'DETECTED' : c.clientBrand?.trim() ? 'UNRECOGNIZED' : 'NONE',
+    source: c.clientSource ?? (c.clientBrand ? 'BRAND' : null),
+    detectedAt: c.clientDetectedAt?.toISOString() ?? null,
+    ...(includeRaw ? { brand: c.clientBrand } : {}),
+  };
+}
+
 /** Adds the running session to the stored playtime so online players show live totals. */
 function serializeListRow(p: ListRow, openSessionStart?: Date) {
   const running = p.online && openSessionStart ? Math.max(0, Math.floor((Date.now() - openSessionStart.getTime()) / 1000)) : 0;
@@ -68,6 +85,7 @@ export class PlayersController {
     private readonly settings: SettingsService,
     private readonly geoip: GeoIpService,
     private readonly luckperms: LuckPermsService,
+    private readonly ranks: RankDisplayService,
   ) {}
 
   /** Search by current name, previous names or UUID (dashed or undashed). */
@@ -90,8 +108,8 @@ export class PlayersController {
       this.prisma.player.count({ where }),
       this.prisma.player.findMany({ where, select: listSelect, orderBy, skip: (q.page - 1) * q.pageSize, take: q.pageSize }),
     ]);
-    const starts = await this.openSessionStarts(rows.filter((r) => r.online).map((r) => r.uuid));
-    return { total, page: q.page, pageSize: q.pageSize, items: rows.map((r) => serializeListRow(r, starts.get(r.uuid))) };
+    const [starts, ranks] = await Promise.all([this.openSessionStarts(rows.filter((r) => r.online).map((r) => r.uuid)), this.ranks.ranksFor(rows.map((r) => r.uuid))]);
+    return { total, page: q.page, pageSize: q.pageSize, items: rows.map((r) => ({ ...serializeListRow(r, starts.get(r.uuid)), minecraftRank: ranks.get(r.uuid) ?? null })) };
   }
 
   @Get(':uuid')
@@ -120,13 +138,18 @@ export class PlayersController {
       },
     });
     const open = sessions.find((s) => !s.endedAt);
+    const rawBrand = await this.canSeeRawBrand(user);
+    const latest = (open ?? sessions[0])?.connection ?? null;
 
     return {
       ...serializeListRow(player, open?.startedAt),
       gamemode: player.gamemode,
       clientVersion: player.clientVersion,
       clientProtocol: player.clientProtocol,
-      clientBrand: player.clientBrand,
+      /** Client of the current (or latest) connection; Unknown when nothing reliable was reported. */
+      client: latest ? clientInfo(latest, rawBrand) : null,
+      /** Raw brand last reported (troubleshooting; see canSeeRawBrand). */
+      clientBrand: rawBrand ? player.clientBrand : null,
       rank: player.rank,
       /** LuckPerms rank from the proxy (null when not synchronised – never guessed). */
       minecraftRank: await this.luckperms.rankFor(uuid),
@@ -146,7 +169,7 @@ export class PlayersController {
         connection: s.connection
           ? {
               clientProtocol: s.connection.clientProtocol,
-              clientBrand: s.connection.clientBrand,
+              client: clientInfo(s.connection, rawBrand),
               // Personal data: only with players.view.ip.
               ...(canSeeIp ? { ipAddress: s.connection.ipAddress, virtualHost: s.connection.virtualHost } : {}),
             }
@@ -193,6 +216,7 @@ export class PlayersController {
     if (!uuid || !(await this.prisma.player.findUnique({ where: { uuid }, select: { uuid: true } }))) throw new NotFoundException();
     const canIp = hasPermission(user.permissions, PERMISSIONS.PLAYERS_VIEW_IP);
     const canLocation = hasPermission(user.permissions, PERMISSIONS.PLAYERS_VIEW_LOCATION);
+    const rawBrand = await this.canSeeRawBrand(user);
 
     const [total, rows] = await this.prisma.$transaction([
       this.prisma.playerConnection.count({ where: { playerUuid: uuid } }),
@@ -214,7 +238,7 @@ export class PlayersController {
       durationSeconds: c.session?.durationSeconds ?? null,
       proxy: c.session?.proxyServer?.name ?? null,
       clientProtocol: c.clientProtocol,
-      clientBrand: c.clientBrand,
+      client: clientInfo(c, rawBrand),
       ...(canIp ? { ipAddress: c.ipAddress, virtualHost: c.virtualHost } : {}),
       ...(canLocation ? { location: location(c) } : {}),
     }));
@@ -264,7 +288,12 @@ export class PlayersController {
       }));
     }
 
-    return { total, page: q.page, pageSize: q.pageSize, items, canViewIp: canIp, canViewLocation: canLocation, geoipEnabled: this.geoip.enabled, ipSummary, relatedAccounts };
+    return { total, page: q.page, pageSize: q.pageSize, items, canViewRawBrand: rawBrand, clientDetectionEnabled: (await this.settings.getClientDetection()).enabled, canViewIp: canIp, canViewLocation: canLocation, geoipEnabled: this.geoip.enabled, ipSummary, relatedAccounts };
+  }
+
+  /** Raw brands help troubleshooting; administrators always see them, others when enabled in the client detection settings. */
+  private async canSeeRawBrand(user: AuthenticatedUser): Promise<boolean> {
+    return hasPermission(user.permissions, PERMISSIONS.SERVERS_MANAGE) || (await this.settings.getClientDetection()).showRawBrand;
   }
 
   private async openSessionStarts(uuids: string[]): Promise<Map<string, Date>> {

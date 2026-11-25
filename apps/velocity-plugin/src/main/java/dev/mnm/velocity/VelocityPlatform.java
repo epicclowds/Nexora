@@ -53,6 +53,8 @@ final class VelocityPlatform implements BackendConnector.Platform {
                 s.addProperty("uuid", player.getUniqueId().toString());
                 s.addProperty("username", player.getUsername());
                 player.getCurrentServer().ifPresent(server -> s.addProperty("server", server.getServerInfo().getName()));
+                String brand = dev.mnm.plugin.client.ClientDetection.clean(player.getClientBrand());
+                if (brand != null) s.addProperty("brand", brand);
                 list.add(s);
             });
         }
