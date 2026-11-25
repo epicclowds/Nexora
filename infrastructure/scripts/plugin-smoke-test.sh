@@ -42,6 +42,14 @@ echo "$sha  server.jar" | sha256sum -c --quiet -
 log "Server build $build_id downloaded and verified"
 
 cp "$jar" plugins/
+# WITH_LUCKPERMS=1 (Velocity): also install the current LuckPerms release, so the optional
+# integration is exercised against the real LuckPerms API.
+if [ "${WITH_LUCKPERMS:-0}" = 1 ] && [ "$platform" = velocity ]; then
+  lp_url=$(curl -fsSL --retry 3 --max-time 60 -H 'User-Agent: nexora-ci' https://metadata.luckperms.net/data/all | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).downloads.velocity))')
+  case "$lp_url" in https://download.luckperms.net/*) ;; *) echo "Unexpected LuckPerms download URL: $lp_url" >&2; exit 2 ;; esac
+  curl -fsSL --retry 3 --max-time 300 -H 'User-Agent: nexora-ci' -o plugins/LuckPerms-Velocity.jar "$lp_url"
+  log "LuckPerms downloaded: $(basename "$lp_url")"
+fi
 if [ -n "$backend" ]; then
   mkdir -p "$data_dir"
   printf 'backend-url=%s\nregistration-token=%s\n' "$backend" "$token" > "$data_dir/config.properties"
@@ -109,6 +117,10 @@ wait_for "the server to finish starting" 'Done \(' "$start_timeout"
 if [ -n "$backend" ]; then
   wait_for "registration with the backend" 'Registered with the backend as' "$register_timeout"
   wait_for "the first successful heartbeat" 'Connected to the backend' "$register_timeout"
+fi
+if [ "${WITH_LUCKPERMS:-0}" = 1 ] && [ "$platform" = velocity ]; then
+  wait_for "the LuckPerms integration" 'LuckPerms .* detected: synchronising' "$start_timeout"
+  if [ -n "$backend" ]; then wait_for "the first LuckPerms synchronisation" 'LuckPerms synchronisation active' "$register_timeout"; fi
 fi
 
 # Graceful stop also exercises the plugin's shutdown path (pending events, offline notice).

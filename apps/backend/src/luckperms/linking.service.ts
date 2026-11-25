@@ -8,6 +8,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { resolveRole } from './luckperms';
 import { LuckPermsService } from './luckperms.service';
+import { SettingsService } from '../settings/settings.service';
 
 /** Unambiguous alphabet (no 0/O, 1/I/L): 31 symbols, 8 characters ≈ 39.6 bits per code. */
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -47,6 +48,7 @@ export class LinkingService {
     private readonly passwords: PasswordService,
     private readonly redis: RedisService,
     private readonly luckperms: LuckPermsService,
+    private readonly settings: SettingsService,
   ) {}
 
   /** Called by the proxy for /nexora link. */
@@ -67,7 +69,8 @@ export class LinkingService {
       await tx.accountLinkToken.updateMany({ where: { minecraftUuid: uuid, consumedAt: null }, data: { consumedAt: new Date() } });
       await tx.accountLinkToken.create({ data: { minecraftUuid: uuid, minecraftUsername: input.username.slice(0, 16), tokenHash: hashCode(code), registerPermission: input.registerPermission, expiresAt } });
     });
-    return { code, expiresAt: expiresAt.toISOString(), ttlSeconds: CODE_TTL_MS / 1000 };
+    const dashboardUrl = (await this.settings.getNetwork()).dashboardUrl || null;
+    return { code, expiresAt: expiresAt.toISOString(), ttlSeconds: CODE_TTL_MS / 1000, dashboardUrl };
   }
 
   /** Eligible: nexora.dashboard.register in-game, a mapped staff group, or already linked. */

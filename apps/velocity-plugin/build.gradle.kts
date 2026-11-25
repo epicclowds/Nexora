@@ -12,6 +12,8 @@ java {
 dependencies {
     compileOnly("com.velocitypowered:velocity-api:${property("velocityApiVersion")}")
     annotationProcessor("com.velocitypowered:velocity-api:${property("velocityApiVersion")}")
+    // Optional integration: only used when LuckPerms is installed on the proxy (never bundled).
+    compileOnly("net.luckperms:api:5.4")
     implementation(project(":plugin-common"))
 }
 

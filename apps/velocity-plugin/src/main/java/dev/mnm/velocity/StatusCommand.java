@@ -22,7 +22,7 @@ import java.util.Locale;
 final class StatusCommand implements SimpleCommand {
     static final String PERMISSION = "networkmanager.admin";
     private static final List<String> UPDATE_ARGS = List.of("update", "version");
-    private static final List<String> SUBCOMMANDS = List.of("update", "version", "reasons");
+    private static final List<String> SUBCOMMANDS = List.of("update", "version", "reasons", "link");
     private static final List<String> CATEGORIES = List.of("BAN", "MUTE", "KICK", "WARN");
 
     private final BackendConnector connector;
@@ -30,8 +30,10 @@ final class StatusCommand implements SimpleCommand {
     private final String type;
     private final UpdateNotifier updates;
     private final ReasonCatalog reasons;
+    private final PermissionSyncBridge luckPerms;
 
-    StatusCommand(BackendConnector connector, Messages messages, String type, UpdateNotifier updates, ReasonCatalog reasons) {
+    StatusCommand(BackendConnector connector, Messages messages, String type, UpdateNotifier updates, ReasonCatalog reasons, PermissionSyncBridge luckPerms) {
+        this.luckPerms = luckPerms;
         this.connector = connector;
         this.messages = messages;
         this.type = type;
@@ -51,6 +53,10 @@ final class StatusCommand implements SimpleCommand {
             updates.infoLines(Instant.now()).forEach(source::sendMessage);
             return;
         }
+        if (args.length > 0 && args[0].equalsIgnoreCase("link")) {
+            link(source);
+            return;
+        }
         if (args.length > 0 && args[0].equalsIgnoreCase("reasons")) {
             if (!source.hasPermission(REASONS_PERMISSION) && !source.hasPermission(PERMISSION)) {
                 source.sendMessage(messages.prefixed("error.no-permission", java.util.Map.of()));
@@ -65,6 +71,50 @@ final class StatusCommand implements SimpleCommand {
         }
         StatusLines.render(messages, connector.status(), type).forEach(source::sendMessage);
     }
+
+    /**
+     * /nexora link: a one-time code for linking this Minecraft account to a
+     * dashboard account. The proxy vouches for the authenticated session; the
+     * backend decides eligibility (staff group mapping or nexora.dashboard.register).
+     * The code is only sent to this player, never to public chat.
+     */
+    private void link(CommandSource source) {
+        if (!(source instanceof com.velocitypowered.api.proxy.Player player)) {
+            source.sendMessage(messages.prefixed("link.players-only", java.util.Map.of()));
+            return;
+        }
+        java.util.concurrent.CompletableFuture<Void> fresh = luckPerms == null ? java.util.concurrent.CompletableFuture.completedFuture(null)
+                : luckPerms.syncNow(player.getUniqueId()).exceptionally(e -> null);
+        fresh.thenCompose(v -> {
+            com.google.gson.JsonObject body = new com.google.gson.JsonObject();
+            body.addProperty("uuid", player.getUniqueId().toString());
+            body.addProperty("username", player.getUsername());
+            body.addProperty("registerPermission", player.hasPermission(REGISTER_PERMISSION));
+            return connector.client().post("/api/plugin/v1/link-codes", body);
+        }).whenComplete((response, error) -> {
+            if (error != null) {
+                Throwable cause = error instanceof java.util.concurrent.CompletionException && error.getCause() != null ? error.getCause() : error;
+                String key = cause instanceof dev.mnm.plugin.BackendException e ? switch (e.code()) {
+                    case "LINKING_DISABLED" -> "link.disabled";
+                    case "NOT_ELIGIBLE" -> "link.not-eligible";
+                    case "TOO_MANY_CODES" -> "link.too-many";
+                    default -> "error.request-failed";
+                } : "error.backend-unavailable";
+                player.sendMessage(messages.prefixed(key, java.util.Map.of("reason", cause.getMessage() == null ? "" : cause.getMessage())));
+                return;
+            }
+            String code = response.get("code").getAsString();
+            long minutes = Math.max(1, response.get("ttlSeconds").getAsLong() / 60);
+            String url = response.has("dashboardUrl") && !response.get("dashboardUrl").isJsonNull() ? response.get("dashboardUrl").getAsString() : "";
+            player.sendMessage(messages.prefixed("link.title", java.util.Map.of()));
+            player.sendMessage(messages.render("link.code", java.util.Map.of("code", code))
+                    .clickEvent(net.kyori.adventure.text.event.ClickEvent.copyToClipboard(code)));
+            player.sendMessage(messages.render(url.isEmpty() ? "link.instructions" : "link.instructions-url", java.util.Map.of("url", url)));
+            player.sendMessage(messages.render("link.expires", java.util.Map.of("minutes", String.valueOf(minutes))));
+        });
+    }
+
+    static final String REGISTER_PERMISSION = "nexora.dashboard.register";
 
     /** /nexora reasons: the reasons the sender may use, per category (cached from the backend). */
     private void listReasons(CommandSource source) {
@@ -102,11 +152,14 @@ final class StatusCommand implements SimpleCommand {
         return SUBCOMMANDS.stream().filter(a -> a.startsWith(prefix)).toList();
     }
 
-    /** Visible to staff with any of the subcommand permissions; each subcommand checks its own. */
+    /**
+     * Players may always run the command (for /nexora link – eligibility is
+     * decided by the backend); every other subcommand checks its own permission.
+     */
     @Override
     public boolean hasPermission(Invocation invocation) {
         CommandSource source = invocation.source();
-        return source.hasPermission(PERMISSION) || source.hasPermission(UpdateNotifier.CHECK_PERMISSION) || source.hasPermission(REASONS_PERMISSION);
+        return source instanceof com.velocitypowered.api.proxy.Player || source.hasPermission(PERMISSION) || source.hasPermission(UpdateNotifier.CHECK_PERMISSION) || source.hasPermission(REASONS_PERMISSION);
     }
 
     /** Listing reasons (it only shows reasons the sender may use anyway). */

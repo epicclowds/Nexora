@@ -27,6 +27,7 @@ import org.slf4j.Logger;
         name = "Network Manager",
         version = BuildInfo.VERSION,
         description = "Connects the Velocity proxy to the Network Manager platform",
+        dependencies = {@com.velocitypowered.api.plugin.Dependency(id = "luckperms", optional = true)},
         authors = {"Network Manager contributors"})
 public final class NetworkManagerVelocity {
     private final ProxyServer proxy;
@@ -67,9 +68,15 @@ public final class NetworkManagerVelocity {
         // Punishment reasons and the global command mode (dashboard), refreshed via heartbeat revisions.
         ReasonCatalog reasons = new ReasonCatalog(connector.client(), logger);
         connector.onHeartbeatResponse(reasons::accept);
+        // Optional LuckPerms integration: staff permissions, ranks and account linking.
+        PermissionSyncBridge luckPerms = PermissionSyncBridge.startIfAvailable(proxy, this, connector.client(), logger);
+        if (luckPerms != null) {
+            connector.onHeartbeatResponse(luckPerms::accept);
+            proxy.getEventManager().register(this, com.velocitypowered.api.event.connection.PostLoginEvent.class, e -> luckPerms.onJoin(e.getPlayer()));
+        }
         proxy.getCommandManager().register(
                 proxy.getCommandManager().metaBuilder("networkmanager").aliases("nm", "nexora").plugin(this).build(),
-                new StatusCommand(connector, messages, "VELOCITY", updates, reasons));
+                new StatusCommand(connector, messages, "VELOCITY", updates, reasons, luckPerms));
         // Punishments: local cache (login checks), change feed (actions), commands.
         if (config.punishmentsEnabled()) {
             PunishmentCache cache = new PunishmentCache();

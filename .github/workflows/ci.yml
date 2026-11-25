@@ -165,7 +165,7 @@ jobs:
           node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugin-tokens
           velocity=$(node -p 'require("./infrastructure/compatibility.json").integration.velocity')
           paper=$(node -p 'require("./infrastructure/compatibility.json").integration.paper')
-          SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh velocity "$velocity" "apps/velocity-plugin/build/libs/Nexora-Velocity-$version.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").velocity')"
+          SMOKE_WORKDIR=$RUNNER_TEMP/smoke WITH_LUCKPERMS=1 bash infrastructure/scripts/plugin-smoke-test.sh velocity "$velocity" "apps/velocity-plugin/build/libs/Nexora-Velocity-$version.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").velocity')"
           SMOKE_WORKDIR=$RUNNER_TEMP/smoke bash infrastructure/scripts/plugin-smoke-test.sh paper "$paper" "apps/paper-plugin/build/libs/Nexora-Paper-$version.jar" http://127.0.0.1:3000 "$(node -p 'require("./.smoke-tokens.json").paper')"
           node infrastructure/scripts/verify-deployment.mjs http://127.0.0.1:3000 plugins-registered "$version"
       - name: Load test (latency thresholds)
