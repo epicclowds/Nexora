@@ -335,3 +335,62 @@ export interface PlayerNote {
   author: { id: string; username: string } | null;
   createdAt: string;
 }
+
+// ── Updates ─────────────────────────────────────────────────────────
+
+export type ComponentState = 'current' | 'outdated' | 'newer' | 'unknown';
+export type PluginCompatibilityState = 'compatible' | 'recommended' | 'incompatible' | 'unknown';
+
+export interface ReleaseAsset {
+  name: string;
+  size: number;
+  url: string;
+}
+
+export interface ReleaseInfo {
+  version: string;
+  tag: string;
+  name: string;
+  url: string;
+  publishedAt: string | null;
+  prerelease: boolean;
+  /** Markdown from GitHub – untrusted, rendered as text. */
+  notes: string;
+  assets: ReleaseAsset[];
+  pluginAssets: { velocity: ReleaseAsset | null; paper: ReleaseAsset | null };
+  compatibility: { minPluginVersion?: string; minUpgradeFrom?: string } | null;
+}
+
+export interface UpdateSettings {
+  enabled: boolean;
+  checkIntervalHours: number;
+  channel: 'stable' | 'prerelease';
+  dashboardNotifications: boolean;
+  minecraftNotifications: boolean;
+  notificationCooldownHours: number;
+  manualChecks: boolean;
+}
+
+export interface UpdateStatus {
+  settings: UpdateSettings;
+  installed: { backend: string };
+  latest: ReleaseInfo | null;
+  backend: { version: string; state: ComponentState };
+  updateAvailable: boolean;
+  lastAttemptAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: { code: 'NETWORK' | 'TIMEOUT' | 'RATE_LIMITED' | 'HTTP_ERROR' | 'INVALID_RESPONSE'; status?: number; at: string } | null;
+  rateLimitedUntil: string | null;
+  releasesPage: string;
+  servers: { id: string; name: string; type: 'VELOCITY' | 'PAPER'; status: string; pluginVersion: string | null; state: ComponentState; compatibility: PluginCompatibilityState }[];
+  warnings: { code: 'UPGRADE_PATH' | 'PLUGIN_INCOMPATIBLE' | 'PLUGIN_VERSION_UNKNOWN'; version?: string; server?: string }[];
+}
+
+export interface UpdateNotification {
+  currentVersion: string;
+  latestVersion: string;
+  publishedAt: string | null;
+  url: string;
+  name: string;
+  notes: string;
+}

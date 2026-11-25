@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { PageHeader } from '@/components/app-shell';
 import { useLiveRefresh } from '@/components/realtime-provider';
 import { PluginVersionAlert } from '@/components/plugin-version';
+import { ServerUpdatesAlert } from '@/components/updates-panel';
 import { ServerCard } from '@/components/server-card';
 import { Alert, buttonVariants, Skeleton } from '@/components/ui/primitives';
 import { api, errorKey, type ServerInfo } from '@/lib/api';
@@ -49,6 +50,7 @@ export default function ServersPage() {
         </div>
       )}
       {servers && <PluginVersionAlert servers={servers} />}
+      <ServerUpdatesAlert />
       {servers && servers.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {servers.map((s) => (

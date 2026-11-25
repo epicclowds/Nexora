@@ -12,6 +12,7 @@ import { useAuth } from './auth-provider';
 import { Logo } from './logo';
 import { LanguageSwitcher, ThemeToggle } from './preference-controls';
 import { Button } from './ui/primitives';
+import { UpdateNotifier } from './update-notification';
 
 type NavKey = 'dashboard' | 'players' | 'onlinePlayers' | 'statistics' | 'moderation' | 'anticheat' | 'servers' | 'auditLogs' | 'users' | 'settings';
 
@@ -91,6 +92,7 @@ export function AppShell({ children, version }: { children: ReactNode; version: 
             <span className="sr-only">{t('nav.toggleSidebar')}</span>
           </Button>
           <div className="ml-auto flex items-center gap-2">
+            <UpdateNotifier />
             <LanguageSwitcher persist />
             <ThemeToggle persist />
           </div>

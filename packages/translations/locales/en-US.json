@@ -168,7 +168,8 @@
       "plugins": "Plugin settings",
       "moderation": "Moderation",
       "languages": "Languages",
-      "privacy": "Privacy"
+      "privacy": "Privacy",
+      "updates": "Updates"
     }
   },
   "setup": {
@@ -1006,6 +1007,92 @@
       "ALREADY_MUTED": "The player already has another active mute.",
       "NOT_REACTIVATABLE": "This punishment cannot be reactivated.",
       "FORBIDDEN": "You do not have permission for this change."
+    }
+  },
+  "updates": {
+    "title": "Updates",
+    "description": "Installed versions, the newest Nexora release and the plugins of your servers. Nexora never installs updates automatically.",
+    "notificationTitle": "Nexora update available",
+    "notificationText": "A new version of Nexora is available.",
+    "banner": "Nexora {version} is available.",
+    "details": "Details",
+    "currentVersion": "Current version",
+    "latestVersion": "Latest version",
+    "installedVersion": "Installed version",
+    "releaseDate": "Release date",
+    "lastChecked": "Last checked",
+    "never": "Never",
+    "dismiss": "Dismiss",
+    "openSettings": "Update overview",
+    "viewReleaseNotes": "Release notes",
+    "releaseNotesTitle": "Release notes – Nexora {version}",
+    "openReleases": "GitHub Releases",
+    "checkNow": "Check for updates",
+    "checkedRecently": "Checked less than a minute ago – showing the cached result.",
+    "tooManyChecks": "Too many checks. Try again in a minute.",
+    "manualDisabled": "Manual checks are disabled in the update settings.",
+    "updateAvailable": "Update available",
+    "upToDate": "Up to date",
+    "unknown": "Unknown",
+    "prerelease": "Pre-release",
+    "disabledHint": "Update checks are disabled. The information below may be out of date.",
+    "availableHint": "Nexora {version} is available. Update the server with \"docker compose pull && docker compose up -d\" (or re-pull in Portainer/Arcane) and replace the plugin jars.",
+    "lastKnown": "Showing the last known result from {time}.",
+    "retryAt": "Next request after {time}.",
+    "errors": {
+      "NETWORK": "GitHub could not be reached.",
+      "TIMEOUT": "GitHub did not answer in time.",
+      "RATE_LIMITED": "GitHub rate limit reached.",
+      "HTTP_ERROR": "GitHub returned an error.",
+      "INVALID_RESPONSE": "GitHub returned an unexpected response."
+    },
+    "warnings": {
+      "UPGRADE_PATH": "This release requires version {version} or newer to upgrade directly. Update to {version} first (read the release notes).",
+      "PLUGIN_INCOMPATIBLE": "Version mismatch: the plugin on {server} ({version}) does not match this backend. Install the plugin of the same release.",
+      "PLUGIN_VERSION_UNKNOWN": "{server} has not reported a plugin version yet."
+    },
+    "backend": "Backend",
+    "dashboard": "Dashboard",
+    "channel": "Release channel",
+    "channelHint": "Pre-releases are test versions; only use them on test networks.",
+    "channels": {
+      "stable": "Stable",
+      "prerelease": "Pre-release"
+    },
+    "pluginsTitle": "Minecraft plugins",
+    "pluginsDescription": "Plugin version reported by each server with its heartbeat.",
+    "downloadVelocity": "Velocity plugin",
+    "downloadPaper": "Paper plugin",
+    "assetMissing": "Not every plugin file is attached to this release; download it from the release page.",
+    "noServers": "No servers connected yet.",
+    "server": "Server",
+    "type": "Type",
+    "status": "Status",
+    "versionMismatch": "Version mismatch",
+    "outdatedPlugins": "{count, plural, one {# server runs an outdated plugin} other {# servers run outdated plugins}} (latest release: {version}).",
+    "states": {
+      "current": "Up to date",
+      "outdated": "Outdated",
+      "newer": "Newer than release",
+      "unknown": "Unknown"
+    },
+    "settingsTitle": "Update settings",
+    "settingsDescription": "How Nexora looks for new releases and who is notified.",
+    "settingsReadOnly": "Only users with permission to manage updates can change these settings.",
+    "noAutoInstall": "Nexora only reads release information from GitHub. Nothing is downloaded, installed or replaced automatically.",
+    "settings": {
+      "enabled": "Check for updates",
+      "enabledHint": "Ask GitHub for new releases regularly (read-only, no account needed).",
+      "manualChecks": "Manual checks",
+      "manualChecksHint": "Allow \"Check for updates\" in addition to the schedule.",
+      "dashboardNotifications": "Dashboard notifications",
+      "dashboardNotificationsHint": "Notify users with the updates.notify permission in the dashboard.",
+      "minecraftNotifications": "In-game notifications",
+      "minecraftNotificationsHint": "Notify staff with networkmanager.update.notify when they join the network.",
+      "checkIntervalHours": "Check every (hours)",
+      "notificationCooldownHours": "In-game reminder every (hours)",
+      "range": "{min}–{max}",
+      "cooldownHint": "At most one in-game notification per staff member in this period."
     }
   }
 }

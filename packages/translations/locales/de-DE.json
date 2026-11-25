@@ -168,7 +168,8 @@
       "plugins": "Plugin-Einstellungen",
       "moderation": "Moderation",
       "languages": "Sprachen",
-      "privacy": "Datenschutz"
+      "privacy": "Datenschutz",
+      "updates": "Updates"
     }
   },
   "setup": {
@@ -1006,6 +1007,92 @@
       "ALREADY_MUTED": "Der Spieler hat bereits einen anderen aktiven Mute.",
       "NOT_REACTIVATABLE": "Diese Strafe kann nicht reaktiviert werden.",
       "FORBIDDEN": "Du hast keine Berechtigung für diese Änderung."
+    }
+  },
+  "updates": {
+    "title": "Updates",
+    "description": "Installierte Versionen, das neueste Nexora-Release und die Plugins deiner Server. Nexora installiert Updates nie automatisch.",
+    "notificationTitle": "Nexora-Update verfügbar",
+    "notificationText": "Eine neue Version von Nexora ist verfügbar.",
+    "banner": "Nexora {version} ist verfügbar.",
+    "details": "Details",
+    "currentVersion": "Aktuelle Version",
+    "latestVersion": "Neueste Version",
+    "installedVersion": "Installierte Version",
+    "releaseDate": "Veröffentlicht am",
+    "lastChecked": "Zuletzt geprüft",
+    "never": "Nie",
+    "dismiss": "Ausblenden",
+    "openSettings": "Update-Übersicht",
+    "viewReleaseNotes": "Release Notes",
+    "releaseNotesTitle": "Release Notes – Nexora {version}",
+    "openReleases": "GitHub-Releases",
+    "checkNow": "Nach Updates suchen",
+    "checkedRecently": "Vor weniger als einer Minute geprüft – zeige das zwischengespeicherte Ergebnis.",
+    "tooManyChecks": "Zu viele Prüfungen. Versuche es in einer Minute erneut.",
+    "manualDisabled": "Manuelle Prüfungen sind in den Update-Einstellungen deaktiviert.",
+    "updateAvailable": "Update verfügbar",
+    "upToDate": "Aktuell",
+    "unknown": "Unbekannt",
+    "prerelease": "Vorabversion",
+    "disabledHint": "Die Update-Prüfung ist deaktiviert. Die Angaben unten sind möglicherweise veraltet.",
+    "availableHint": "Nexora {version} ist verfügbar. Aktualisiere den Server mit „docker compose pull && docker compose up -d“ (oder neu pullen in Portainer/Arcane) und ersetze die Plugin-Dateien.",
+    "lastKnown": "Angezeigt wird das letzte bekannte Ergebnis vom {time}.",
+    "retryAt": "Nächste Anfrage nach {time}.",
+    "errors": {
+      "NETWORK": "GitHub ist nicht erreichbar.",
+      "TIMEOUT": "GitHub hat nicht rechtzeitig geantwortet.",
+      "RATE_LIMITED": "GitHub-Anfragelimit erreicht.",
+      "HTTP_ERROR": "GitHub hat einen Fehler gemeldet.",
+      "INVALID_RESPONSE": "GitHub hat eine unerwartete Antwort geliefert."
+    },
+    "warnings": {
+      "UPGRADE_PATH": "Dieses Release setzt für ein direktes Update Version {version} oder neuer voraus. Aktualisiere zuerst auf {version} (siehe Release Notes).",
+      "PLUGIN_INCOMPATIBLE": "Versionskonflikt: Das Plugin auf {server} ({version}) passt nicht zu diesem Backend. Installiere das Plugin desselben Releases.",
+      "PLUGIN_VERSION_UNKNOWN": "{server} hat noch keine Plugin-Version gemeldet."
+    },
+    "backend": "Backend",
+    "dashboard": "Dashboard",
+    "channel": "Release-Kanal",
+    "channelHint": "Vorabversionen sind Testversionen; nur in Testnetzwerken verwenden.",
+    "channels": {
+      "stable": "Stabil",
+      "prerelease": "Vorabversion"
+    },
+    "pluginsTitle": "Minecraft-Plugins",
+    "pluginsDescription": "Plugin-Version, die jeder Server mit seinem Heartbeat meldet.",
+    "downloadVelocity": "Velocity-Plugin",
+    "downloadPaper": "Paper-Plugin",
+    "assetMissing": "Diesem Release sind nicht alle Plugin-Dateien angehängt; lade sie von der Release-Seite herunter.",
+    "noServers": "Noch keine Server verbunden.",
+    "server": "Server",
+    "type": "Typ",
+    "status": "Status",
+    "versionMismatch": "Versionskonflikt",
+    "outdatedPlugins": "{count, plural, one {# Server verwendet ein veraltetes Plugin} other {# Server verwenden veraltete Plugins}} (neuestes Release: {version}).",
+    "states": {
+      "current": "Aktuell",
+      "outdated": "Veraltet",
+      "newer": "Neuer als Release",
+      "unknown": "Unbekannt"
+    },
+    "settingsTitle": "Update-Einstellungen",
+    "settingsDescription": "Wie Nexora nach neuen Releases sucht und wer benachrichtigt wird.",
+    "settingsReadOnly": "Nur Benutzer mit der Berechtigung, Updates zu verwalten, können diese Einstellungen ändern.",
+    "noAutoInstall": "Nexora liest nur Release-Informationen von GitHub. Nichts wird automatisch heruntergeladen, installiert oder ersetzt.",
+    "settings": {
+      "enabled": "Nach Updates suchen",
+      "enabledHint": "Regelmäßig bei GitHub nach neuen Releases fragen (nur lesend, kein Konto nötig).",
+      "manualChecks": "Manuelle Prüfung",
+      "manualChecksHint": "„Nach Updates suchen“ zusätzlich zum Zeitplan erlauben.",
+      "dashboardNotifications": "Dashboard-Benachrichtigungen",
+      "dashboardNotificationsHint": "Benutzer mit der Berechtigung updates.notify im Dashboard benachrichtigen.",
+      "minecraftNotifications": "Ingame-Benachrichtigungen",
+      "minecraftNotificationsHint": "Teammitglieder mit networkmanager.update.notify beim Betreten des Netzwerks benachrichtigen.",
+      "checkIntervalHours": "Prüfen alle (Stunden)",
+      "notificationCooldownHours": "Ingame-Erinnerung alle (Stunden)",
+      "range": "{min}–{max}",
+      "cooldownHint": "Höchstens eine Ingame-Benachrichtigung pro Teammitglied in diesem Zeitraum."
     }
   }
 }
