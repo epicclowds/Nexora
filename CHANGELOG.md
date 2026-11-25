@@ -2,24 +2,33 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
-## [Unreleased]
+## [1.2.0] – 2026-11-25
 
-Standalone deployment: Nexora is installed from `docker-compose.yml` alone – no release package, repository checkout, build or script. No application images changed.
+Update notifications and a standalone Docker Compose installation.
 
 ### Added
-- Installation guides for Portainer and Arcane, an environment variable reference and a guide for moving existing installations (`docs/installation/`).
+- **Update notifications.** The backend checks the GitHub Releases API for new stable releases (read-only, no token, every 6 hours, conditional requests, rate-limit aware) and caches the result; if GitHub is unreachable the last known result is kept and shown with its time. Versions are compared by semantic-version precedence; pre-releases only on the optional pre-release channel.
+- **Settings → Updates** in the dashboard: installed backend and dashboard versions, latest release with date and release notes, last check, plugin version and status of every connected server, compatibility warnings, *Check for updates*, links to the release and to the plugin jars (only when the release has exactly these assets), and the update settings.
+- Dashboard notification for administrators (bell and banner) with *Dismiss*, remembered per user and version; a newer release notifies again. Outdated plugins are also summarised on the Servers page.
+- In-game: staff with `networkmanager.update.notify` are notified when they join the network (Velocity; at most once per configurable cooldown, not on server switches). `/nexora update` and `/nexora version` (`networkmanager.update.check`) show the installed and latest version, the status and the release link. Paper reports its version too and can notify networks without Velocity (`update-notifications=true`). Plugins never contact GitHub: the backend sends the cached data with each heartbeat response.
+- Compatibility rules: plugins from another major/minor release are flagged as a version mismatch; releases can publish `minPluginVersion` and `minUpgradeFrom` (upgrade path) in their release notes.
+- Permissions `updates.view`, `updates.notify`, `updates.check` (Owner, Administrator) and `updates.manage` (Owner).
+- **Standalone deployment:** `docker-compose.yml` is self-contained – install with the Compose CLI, Portainer or Arcane without a release package, repository checkout, build or script. New guides for Portainer, Arcane, environment variables and moving existing installations; backup and restore commands that need only Docker.
 - CI job *Standalone stack*: installs from nothing but `docker-compose.yml` and the published images, adopts an installation created with the v1.1.0 file, restarts, redeploys under another stack name with an env file (as Portainer/Arcane do), pins and unpins the version, diagnoses a wrong database password without logging secrets, and serves the built-in HTTPS profile.
-- Backup and restore commands that need only Docker (no helper scripts).
 
 ### Changed
-- `docker-compose.yml` defaults to `NEXORA_VERSION=latest` (newest verified stable release; `latest` is still only moved after a complete release run). Set e.g. `NEXORA_VERSION=1.1.0` to pin.
+- README: terminal-based quick start first; Portainer and Arcane are documented as alternative methods.
+- `docker-compose.yml` defaults to `NEXORA_VERSION=latest` (newest verified stable release; `latest` is only moved after a complete release run). Set e.g. `NEXORA_VERSION=1.2.0` to pin.
 - No host files are needed anymore: GeoIP files are optional via `GEOIP_DIR` (default: an internal volume, geolocation off), and the built-in Caddy HTTPS configuration is generated from `DASHBOARD_DOMAIN`/`ACME_EMAIL` (`infrastructure/docker/Caddyfile` was removed).
 - Data volumes have fixed names (`minecraft-network-manager_mysql-data`, …), identical to the volumes earlier versions created, so the data is found whatever the stack is called. `NEXORA_VOLUME_PREFIX` selects other volumes (second instance, custom project names).
-- Explicit health checks for backend and dashboard in the Compose file; the Redis health check now fails on a wrong password.
-- Clearer messages for missing required variables.
+- Explicit health checks for backend and dashboard in the Compose file; the Redis health check now fails on a wrong password; clearer messages for missing required variables.
+- `/networkmanager` has the additional alias `/nexora`.
 
-### Migration
-Existing installations keep their data: replace `docker-compose.yml` (or paste it into Portainer/Arcane) and keep the existing `.env` values. If you used `./geoip`, set `GEOIP_DIR=./geoip`. See [Moving an existing installation](docs/installation/migration.md).
+### Security
+- Release notes are untrusted: the dashboard renders them as text with a small Markdown subset (no HTML), and only `https://` links are clickable. Nothing is downloaded or installed automatically. Manual checks are rate-limited; settings changes and manual checks are audit-logged.
+
+### Migration from 1.1.0
+The database migration only adds a column (`dashboard_users.dismissed_update_version`) and the update permissions. Back up, then replace `docker-compose.yml` with the new standalone file (or paste it into Portainer/Arcane) and keep your `.env` values; if you used `./geoip`, set `GEOIP_DIR=./geoip`. Pull and restart (`docker compose pull && docker compose up -d`) and replace both plugin jars. Grant `networkmanager.update.notify` / `networkmanager.update.check` to your staff in your proxy permission plugin. See [Updating](docs/installation/updating.md) and [Moving an existing installation](docs/installation/migration.md).
 
 ## [1.1.0] – 2026-11-25
 
@@ -134,6 +143,7 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.2.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.0
 [1.1.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.1.0
 [1.0.3]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.3
 [1.0.2]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.2
