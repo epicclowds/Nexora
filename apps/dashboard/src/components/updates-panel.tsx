@@ -49,11 +49,13 @@ export function UpdatesPanel() {
   async function check() {
     setChecking(true);
     try {
-      const result = await api<{ refreshed: boolean; status: UpdateStatus }>('/updates/check', { method: 'POST' });
+      const result = await api<{ refreshed: boolean; outcome: 'checked' | 'recent' | 'rate-limited' | 'busy'; status: UpdateStatus }>('/updates/check', { method: 'POST' });
       setStatus(result.status);
-      if (!result.refreshed) toast(t('updates.checkedRecently'));
+      if (result.outcome === 'rate-limited') toast(t('updates.rateLimitedWait', { time: dateTime(result.status.rateLimitedUntil) }), 'error');
+      else if (result.outcome === 'busy') toast(t('updates.checkInProgress'));
+      else if (!result.refreshed) toast(t('updates.checkedRecently'));
       else if (result.status.lastError) toast(t(`updates.errors.${result.status.lastError.code}`), 'error');
-      else toast(result.status.updateAvailable ? t('updates.updateAvailable') : t('updates.upToDate'));
+      else toast(t(`updates.verification.${result.status.verification}`));
     } catch (err) {
       toast(err instanceof ApiError && err.code === 'MANUAL_CHECKS_DISABLED' ? t('updates.manualDisabled') : err instanceof ApiError && err.status === 429 ? t('updates.tooManyChecks') : t(`errors.${errorKey(err)}`), 'error');
     } finally {
@@ -61,11 +63,16 @@ export function UpdatesPanel() {
     }
   }
 
+  function dateTime(iso: string | null) {
+    return iso ? format.dateTime(new Date(iso), { dateStyle: 'medium', timeStyle: 'short' }) : t('updates.never');
+  }
+
   if (error) return <Alert variant="destructive">{error}</Alert>;
   if (!status) return <Skeleton className="h-64" />;
 
   const latest = status.latest;
-  const date = (iso: string | null) => (iso ? format.dateTime(new Date(iso), { dateStyle: 'medium', timeStyle: 'short' }) : t('updates.never'));
+  const date = dateTime;
+  const limited = Boolean(status.rateLimitedUntil && Date.parse(status.rateLimitedUntil) > now.getTime());
   const dashboardState = componentState(dashboardVersion, latest?.version);
   const releasesHref = safeHref(latest?.url ?? null) ?? safeHref(status.releasesPage);
   const lastError = status.lastError;
@@ -99,12 +106,22 @@ export function UpdatesPanel() {
         <CardContent className="grid gap-4">
           {!status.settings.enabled && <Alert>{t('updates.disabledHint')}</Alert>}
           {status.updateAvailable && latest && <Alert variant="success">{t('updates.availableHint', { version: latest.version })}</Alert>}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t('updates.statusLabel')}</span>
+            <Badge variant={status.verification === 'up-to-date' ? 'default' : status.verification === 'update-available' ? 'warning' : 'muted'}>{t(`updates.verification.${status.verification}`)}</Badge>
+          </div>
           {lastError && (
-            <Alert variant="destructive" className="flex items-start gap-2">
+            <Alert variant={status.lastSuccessAt ? 'default' : 'destructive'} className="flex items-start gap-2">
               <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
-              <span>
-                {t(`updates.errors.${lastError.code}`)} {t('updates.lastKnown', { time: date(status.lastSuccessAt) })}
-                {status.rateLimitedUntil && Date.parse(status.rateLimitedUntil) > now.getTime() && ` ${t('updates.retryAt', { time: date(status.rateLimitedUntil) })}`}
+              <span className="grid gap-1">
+                <span>
+                  {t(`updates.errors.${lastError.code}`)}{' '}
+                  {status.lastSuccessAt ? t('updates.lastKnown', { time: date(status.lastSuccessAt) }) : t('updates.noSuccessYet')}
+                </span>
+                {limited && <span>{t('updates.retryAt', { time: date(status.rateLimitedUntil) })}</span>}
+                {!limited && status.nextCheckAt && <span>{t('updates.nextAttempt', { time: date(status.nextCheckAt) })}</span>}
+                {lastError.code === 'RATE_LIMITED' && !status.authenticated && <span className="text-xs opacity-90">{t('updates.rateLimitHint')}</span>}
+                {lastError.code === 'TOKEN_INVALID' && <span className="text-xs opacity-90">{t('updates.tokenInvalidHint')}</span>}
               </span>
             </Alert>
           )}
@@ -122,11 +139,14 @@ export function UpdatesPanel() {
                   {latest.prerelease && <Badge variant="warning">{t('updates.prerelease')}</Badge>}
                 </span>
               ) : (
-                <span className="text-muted-foreground">{t('updates.unknown')}</span>
+                <span className="text-muted-foreground">{t('updates.notVerified')}</span>
               )}
             </Fact>
             <Fact label={t('updates.releaseDate')}>{latest?.publishedAt ? format.dateTime(new Date(latest.publishedAt), { dateStyle: 'long' }) : '–'}</Fact>
-            <Fact label={t('updates.lastChecked')}>{date(status.lastSuccessAt)}</Fact>
+            <Fact label={t('updates.lastChecked')}>{status.lastSuccessAt ? date(status.lastSuccessAt) : <span className="text-muted-foreground">{t('updates.noSuccessfulCheck')}</span>}</Fact>
+            <Fact label={t('updates.lastAttempt')}>{date(status.lastAttemptAt)}</Fact>
+            <Fact label={t('updates.nextCheck')}>{status.settings.enabled && status.nextCheckAt ? date(status.nextCheckAt) : '–'}</Fact>
+            <Fact label={t('updates.source')}>{status.authenticated ? t('updates.sourceToken') : t('updates.sourceAnonymous')}</Fact>
             <Fact label={t('updates.backend')}>
               <VersionState version={status.backend.version} state={status.backend.state} />
             </Fact>

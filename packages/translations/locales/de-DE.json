@@ -1037,14 +1037,15 @@
     "prerelease": "Vorabversion",
     "disabledHint": "Die Update-Prüfung ist deaktiviert. Die Angaben unten sind möglicherweise veraltet.",
     "availableHint": "Nexora {version} ist verfügbar. Aktualisiere den Server mit „docker compose pull && docker compose up -d“ (oder neu pullen in Portainer/Arcane) und ersetze die Plugin-Dateien.",
-    "lastKnown": "Angezeigt wird das letzte bekannte Ergebnis vom {time}.",
-    "retryAt": "Nächste Anfrage nach {time}.",
+    "lastKnown": "Angezeigt wird das zuletzt geprüfte Ergebnis vom {time}.",
+    "retryAt": "GitHub erlaubt die nächste Anfrage nach {time}; Nexora versucht es dann automatisch erneut.",
     "errors": {
       "NETWORK": "GitHub ist nicht erreichbar.",
       "TIMEOUT": "GitHub hat nicht rechtzeitig geantwortet.",
       "RATE_LIMITED": "GitHub-Anfragelimit erreicht.",
       "HTTP_ERROR": "GitHub hat einen Fehler gemeldet.",
-      "INVALID_RESPONSE": "GitHub hat eine unerwartete Antwort geliefert."
+      "INVALID_RESPONSE": "GitHub hat eine unerwartete Antwort geliefert.",
+      "TOKEN_INVALID": "GitHub hat das konfigurierte Token abgelehnt."
     },
     "warnings": {
       "UPGRADE_PATH": "Dieses Release setzt für ein direktes Update Version {version} oder neuer voraus. Aktualisiere zuerst auf {version} (siehe Release Notes).",
@@ -1093,6 +1094,25 @@
       "notificationCooldownHours": "Ingame-Erinnerung alle (Stunden)",
       "range": "{min}–{max}",
       "cooldownHint": "Höchstens eine Ingame-Benachrichtigung pro Teammitglied in diesem Zeitraum."
-    }
+    },
+    "statusLabel": "Status:",
+    "verification": {
+      "up-to-date": "Aktuell",
+      "update-available": "Update verfügbar",
+      "unable-to-verify": "Prüfung nicht möglich"
+    },
+    "notVerified": "Noch nicht geprüft",
+    "noSuccessfulCheck": "Noch keine erfolgreiche Prüfung",
+    "noSuccessYet": "Es wurden noch keine Release-Informationen abgerufen, daher kann die installierte Version nicht geprüft werden.",
+    "lastAttempt": "Letzter Versuch",
+    "nextCheck": "Nächste automatische Prüfung",
+    "nextAttempt": "Nächster automatischer Versuch: {time}.",
+    "rateLimitedWait": "GitHub-Anfragelimit erreicht. Nexora versucht es nach {time} automatisch erneut.",
+    "rateLimitHint": "Ohne Token erlaubt GitHub 60 Anfragen pro Stunde und öffentlicher IP-Adresse – geteilt mit allen anderen Programmen im selben Netzwerk. Setze GITHUB_TOKEN im Backend (ein Token ohne Berechtigungen genügt), um das Limit auf 5000 pro Stunde zu erhöhen.",
+    "tokenInvalidHint": "GitHub hat das konfigurierte GITHUB_TOKEN abgelehnt. Ersetze oder entferne es in der Backend-Umgebung und starte das Backend neu.",
+    "checkInProgress": "Gerade läuft bereits eine Prüfung – zeige deren Ergebnis.",
+    "source": "GitHub-Zugriff",
+    "sourceToken": "Mit Token",
+    "sourceAnonymous": "Ohne Token (60 Anfragen/Stunde pro IP)"
   }
 }

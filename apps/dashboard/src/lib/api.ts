@@ -379,8 +379,13 @@ export interface UpdateStatus {
   updateAvailable: boolean;
   lastAttemptAt: string | null;
   lastSuccessAt: string | null;
-  lastError: { code: 'NETWORK' | 'TIMEOUT' | 'RATE_LIMITED' | 'HTTP_ERROR' | 'INVALID_RESPONSE'; status?: number; at: string } | null;
+  verification: 'up-to-date' | 'update-available' | 'unable-to-verify';
+  lastError: { code: 'NETWORK' | 'TIMEOUT' | 'RATE_LIMITED' | 'TOKEN_INVALID' | 'HTTP_ERROR' | 'INVALID_RESPONSE'; status?: number; at: string } | null;
   rateLimitedUntil: string | null;
+  nextCheckAt: string | null;
+  rateLimit: { limit: number | null; remaining: number | null; resetAt: string | null; resource: string | null } | null;
+  /** A GitHub token is configured on the server (the token itself is never sent to the browser). */
+  authenticated: boolean;
   releasesPage: string;
   servers: { id: string; name: string; type: 'VELOCITY' | 'PAPER'; status: string; pluginVersion: string | null; state: ComponentState; compatibility: PluginCompatibilityState }[];
   warnings: { code: 'UPGRADE_PATH' | 'PLUGIN_INCOMPATIBLE' | 'PLUGIN_VERSION_UNKNOWN'; version?: string; server?: string }[];

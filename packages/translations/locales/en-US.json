@@ -1037,14 +1037,15 @@
     "prerelease": "Pre-release",
     "disabledHint": "Update checks are disabled. The information below may be out of date.",
     "availableHint": "Nexora {version} is available. Update the server with \"docker compose pull && docker compose up -d\" (or re-pull in Portainer/Arcane) and replace the plugin jars.",
-    "lastKnown": "Showing the last known result from {time}.",
-    "retryAt": "Next request after {time}.",
+    "lastKnown": "Showing the last verified result from {time}.",
+    "retryAt": "GitHub allows the next request after {time}; Nexora retries automatically then.",
     "errors": {
       "NETWORK": "GitHub could not be reached.",
       "TIMEOUT": "GitHub did not answer in time.",
       "RATE_LIMITED": "GitHub rate limit reached.",
       "HTTP_ERROR": "GitHub returned an error.",
-      "INVALID_RESPONSE": "GitHub returned an unexpected response."
+      "INVALID_RESPONSE": "GitHub returned an unexpected response.",
+      "TOKEN_INVALID": "GitHub rejected the configured token."
     },
     "warnings": {
       "UPGRADE_PATH": "This release requires version {version} or newer to upgrade directly. Update to {version} first (read the release notes).",
@@ -1093,6 +1094,25 @@
       "notificationCooldownHours": "In-game reminder every (hours)",
       "range": "{min}–{max}",
       "cooldownHint": "At most one in-game notification per staff member in this period."
-    }
+    },
+    "statusLabel": "Status:",
+    "verification": {
+      "up-to-date": "Up to date",
+      "update-available": "Update available",
+      "unable-to-verify": "Unable to verify"
+    },
+    "notVerified": "Not verified yet",
+    "noSuccessfulCheck": "No successful check yet",
+    "noSuccessYet": "No release information has been retrieved yet, so the installed version cannot be verified.",
+    "lastAttempt": "Last attempt",
+    "nextCheck": "Next automatic check",
+    "nextAttempt": "Next automatic attempt: {time}.",
+    "rateLimitedWait": "GitHub rate limit reached. Nexora retries automatically after {time}.",
+    "rateLimitHint": "Without a token, GitHub allows 60 requests per hour per public IP address, shared with every other program on the same network. Set GITHUB_TOKEN on the backend (a token without any permissions is enough) to raise the limit to 5000 per hour.",
+    "tokenInvalidHint": "GitHub rejected the configured GITHUB_TOKEN. Replace or remove it in the backend environment and restart the backend.",
+    "checkInProgress": "Another check is running right now – showing its result.",
+    "source": "GitHub access",
+    "sourceToken": "With token",
+    "sourceAnonymous": "Without token (60 requests/hour per IP)"
   }
 }
