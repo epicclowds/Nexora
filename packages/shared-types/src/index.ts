@@ -4,3 +4,6 @@ export * from './locales';
 export * from './punishments';
 export * from './health';
 export * from './stats';
+export * from './minecraft-text';
+export * from './clients';
+export * from './rank-display';
