@@ -49,7 +49,7 @@ export default function SetupPage() {
     dashboardUrl: '',
     defaultLocale: 'en-US',
     defaultTimezone: 'UTC',
-    defaultTheme: 'dark' as 'dark' | 'light' | 'system',
+    defaultTheme: 'system' as 'dark' | 'light' | 'system',
   });
   const [proxyName, setProxyName] = useState('proxy');
   const [token, setToken] = useState<RegistrationTokenResult | null>(null);

@@ -27,7 +27,7 @@ cd "$work"
 # Velocity rejects unknown options (e.g. Paper's --nogui) and exits immediately.
 case "$platform" in
   velocity) data_dir="plugins/networkmanager"; stop_cmd="shutdown"; server_args=() ;;
-  paper) data_dir="plugins/NetworkManager"; stop_cmd="stop"; server_args=(--nogui) ;;
+  paper) data_dir="plugins/Nexora"; stop_cmd="stop"; server_args=(--nogui) ;;
   *) echo "Unknown platform '$platform' (velocity|paper)" >&2; exit 2 ;;
 esac
 [ -s "$jar" ] || { echo "Plugin jar '$jar' is missing or empty" >&2; exit 2; }
@@ -50,6 +50,8 @@ if [ "${WITH_LUCKPERMS:-0}" = 1 ] && [ "$platform" = velocity ]; then
   curl -fsSL --retry 3 --max-time 300 -H 'User-Agent: nexora-ci' -o plugins/LuckPerms-Velocity.jar "$lp_url"
   log "LuckPerms downloaded: $(basename "$lp_url")"
 fi
+# Paper: start from the pre-1.3 folder name to exercise the automatic move to plugins/Nexora.
+if [ "$platform" = paper ] && [ -n "$backend" ]; then data_dir="plugins/NetworkManager"; fi
 if [ -n "$backend" ]; then
   mkdir -p "$data_dir"
   printf 'backend-url=%s\nregistration-token=%s\n' "$backend" "$token" > "$data_dir/config.properties"
@@ -87,7 +89,7 @@ fail() {
 }
 
 # Patterns that mean the plugin is broken – checked while waiting, not only at the end.
-PLUGIN_ERRORS='Error occurred while enabling NetworkManager|Could not load .*Nexora|(NoClassDefFoundError|ClassNotFoundException):? (dev[./]mnm|com[./]google[./]gson|org[./]yaml|net[./]kyori|org[./]slf4j)|at dev\.mnm\.|dev\.mnm\.[A-Za-z.]+(Exception|Error)'
+PLUGIN_ERRORS='Error occurred while enabling (Nexora|NetworkManager)|Could not load .*Nexora|(NoClassDefFoundError|ClassNotFoundException):? (dev[./]mnm|com[./]google[./]gson|org[./]yaml|net[./]kyori|org[./]slf4j)|at dev\.mnm\.|dev\.mnm\.[A-Za-z.]+(Exception|Error)'
 
 # wait_for <description> <regex> <timeout-seconds>
 wait_for() {
@@ -109,7 +111,7 @@ wait_for() {
 }
 
 if [ "$platform" = "paper" ]; then
-  wait_for "the plugin to be enabled" 'Enabling NetworkManager' "$start_timeout"
+  wait_for "the plugin to be enabled" 'Enabling Nexora' "$start_timeout"
 else
   wait_for "the plugin to be loaded" 'Loaded plugin networkmanager' "$start_timeout"
 fi
@@ -117,6 +119,12 @@ wait_for "the server to finish starting" 'Done \(' "$start_timeout"
 if [ -n "$backend" ]; then
   wait_for "registration with the backend" 'Registered with the backend as' "$register_timeout"
   wait_for "the first successful heartbeat" 'Connected to the backend' "$register_timeout"
+fi
+if [ "$platform" = paper ] && [ -n "$backend" ]; then
+  grep -q 'Moved plugins/NetworkManager to plugins/Nexora' server.log || fail "the plugin did not move plugins/NetworkManager to plugins/Nexora"
+  [ -f plugins/Nexora/credentials.properties ] || fail "credentials are missing in plugins/Nexora after the move"
+  [ ! -e plugins/NetworkManager ] || fail "plugins/NetworkManager still exists after the move"
+  log "OK: data folder migrated to plugins/Nexora"
 fi
 if [ "${WITH_LUCKPERMS:-0}" = 1 ] && [ "$platform" = velocity ]; then
   wait_for "the LuckPerms integration" 'LuckPerms .* detected: synchronising' "$start_timeout"

@@ -1,5 +1,5 @@
-# Minecraft Network Manager – plugin messages (de-DE)
-prefix: "<dark_gray>[<aqua>Netzwerk</aqua>]</dark_gray> "
+# Nexora – plugin messages (de-DE)
+prefix: "<dark_gray>[<aqua>Nexora</aqua>]</dark_gray> "
 
 error.no-permission: "<red>Du hast keine Berechtigung für diesen Befehl."
 error.player-not-found: "<red>Ein Spieler namens {player} wurde in diesem Netzwerk noch nicht gesehen."
@@ -37,7 +37,7 @@ notify.staff.anticheat: "<gray>[AntiCheat] <white>{player}</white> wurde wegen <
 time.permanent: "permanent"
 time.never: "nie"
 
-status.title: "<gold>Network-Manager-Status"
+status.title: "<gold>Nexora-Status"
 status.server: "<gray>Server: <white>{server}</white> <dark_gray>({type})"
 status.connected: "<gray>Backend: <green>verbunden</green> <dark_gray>(letzter Kontakt {time})"
 status.disconnected: "<gray>Backend: <red>nicht verbunden</red> <dark_gray>({error})"

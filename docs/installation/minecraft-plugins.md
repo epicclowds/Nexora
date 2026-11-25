@@ -41,7 +41,7 @@ Repeat for **each** Paper server:
 1. Stop the server and copy `Nexora-Paper-<version>.jar` into its `plugins/` folder.
 2. In the dashboard: **Add a server** → **Paper (game server)**. Use **exactly the server name from your `velocity.toml`** (e.g. `lobby`, `survival`) – otherwise player server switches cannot be linked.
 3. Adjust statistics, inventory and AntiCheat options if you like, then **Create token & configuration**.
-4. Save the downloaded file as `plugins/NetworkManager/config.properties` on that server.
+4. Save the downloaded file as `plugins/Nexora/config.properties` on that server (before 1.3: `plugins/NetworkManager/`, which 1.3 moves automatically).
 5. Start the server and wait for *Connected* in the dashboard.
 
 Tokens are single-use and expire after 30 minutes. If one expired, simply add the server again.
@@ -57,7 +57,7 @@ Tokens are single-use and expire after 30 minutes. If one expired, simply add th
 
 1. Update the Nexora installation first ([Updating](updating.md)).
 2. Download both jars of the **same** release, stop each server, delete the old `Nexora-*.jar` (or `NetworkManager-*.jar` from 1.0.0) and copy the new one into `plugins/`.
-3. Start the servers. Configuration and credentials are kept (`plugins/networkmanager/` and `plugins/NetworkManager/`).
+3. Start the servers. Configuration and credentials are kept (`plugins/networkmanager/` on Velocity; on Paper, 1.3 moves `plugins/NetworkManager/` to `plugins/Nexora/` once).
 
 The dashboard marks servers whose plugin belongs to a different release with **Update recommended** (same major.minor) or **Update required** (different major.minor).
 

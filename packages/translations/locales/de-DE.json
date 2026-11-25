@@ -5,7 +5,7 @@
     "nativeName": "Deutsch (Deutschland)"
   },
   "common": {
-    "appName": "Network Manager",
+    "appName": "Nexora",
     "loading": "Wird geladen…",
     "save": "Speichern",
     "saving": "Wird gespeichert…",
@@ -29,7 +29,8 @@
     "up": "Betriebsbereit",
     "down": "Nicht erreichbar",
     "previous": "Zurück",
-    "page": "Seite {page} von {pages}"
+    "page": "Seite {page} von {pages}",
+    "appSubtitle": "Minecraft-Netzwerkverwaltung"
   },
   "nav": {
     "dashboard": "Übersicht",

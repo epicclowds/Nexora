@@ -34,13 +34,14 @@ public final class NetworkManagerPaper extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        migrateDataFolder();
         PluginConfig config;
         Messages messages;
         try {
             config = PluginConfig.loadOrCreate(getDataFolder().toPath(), getClassLoader());
             messages = Messages.load(getClassLoader(), config.language());
         } catch (Exception e) {
-            getSLF4JLogger().error("Network Manager is disabled: {}", e.getMessage());
+            getSLF4JLogger().error("Nexora is disabled: {}", e.getMessage());
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -57,7 +58,7 @@ public final class NetworkManagerPaper extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new UpdateJoinListener(this, updates), this);
         getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, event -> event.registrar().register(
                 "networkmanager",
-                "Shows the Network Manager connection status (\"update\": update information)",
+                "Shows the Nexora connection status (\"update\": update information)",
                 List.of("nm", "nexora"),
                 new BasicCommand() {
                     @Override
@@ -131,5 +132,22 @@ public final class NetworkManagerPaper extends JavaPlugin {
     @Override
     public void onDisable() {
         if (connector != null) connector.stop(Duration.ofSeconds(5));
+    }
+
+    /**
+     * 1.3 renamed the plugin to Nexora, so Paper's data folder is plugins/Nexora.
+     * Moves plugins/NetworkManager (configuration, credentials, punishment cache)
+     * once, keeping the server's registration.
+     */
+    private void migrateDataFolder() {
+        java.nio.file.Path target = getDataFolder().toPath();
+        java.nio.file.Path legacy = target.resolveSibling("NetworkManager");
+        if (java.nio.file.Files.exists(target) || !java.nio.file.Files.isDirectory(legacy)) return;
+        try {
+            java.nio.file.Files.move(legacy, target);
+            getSLF4JLogger().info("Moved plugins/NetworkManager to plugins/Nexora – configuration and credentials are kept.");
+        } catch (java.io.IOException e) {
+            getSLF4JLogger().error("Could not move plugins/NetworkManager to plugins/Nexora ({}). Move the folder manually and restart.", e.getMessage());
+        }
     }
 }

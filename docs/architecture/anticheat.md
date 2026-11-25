@@ -38,7 +38,7 @@ Punishments are issued through the regular punishment service (source `ANTICHEAT
 
 ## For AntiCheat plugin developers
 
-Add the Paper plugin jar as a `compileOnly` dependency and declare a soft dependency on `NetworkManager` in your `plugin.yml`.
+Add the Paper plugin jar as a `compileOnly` dependency and declare a soft dependency on `Nexora` in your `plugin.yml` (`NetworkManager` keeps working: the plugin still provides that name).
 
 ```java
 AntiCheatApi api = Bukkit.getServicesManager().load(AntiCheatApi.class);
@@ -53,7 +53,7 @@ if (api != null && api.isAuthorized(this)) {
 ```
 
 - `report` is asynchronous and never blocks the calling thread.
-- The server owner must allow-list your plugin: `anticheat-integrations=YourPlugin` in `plugins/NetworkManager/config.properties`.
+- The server owner must allow-list your plugin: `anticheat-integrations=YourPlugin` in `plugins/Nexora/config.properties`.
 - Reports are rate limited per integration (`anticheat-max-reports-per-minute`, default 120).
 - Retries after network errors reuse the same event key, so a report never causes two punishments.
 

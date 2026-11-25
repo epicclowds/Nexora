@@ -80,7 +80,7 @@ public final class BackendConnector {
         this.logger = logger;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().name("mnm-scheduler").daemon().factory());
         this.io = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("mnm-io-", 0).factory());
-        this.client = new BackendClient(config.backendUrl(), "NetworkManager-" + platform.type() + "/" + pluginVersion, new Gson(), io);
+        this.client = new BackendClient(config.backendUrl(), "Nexora-" + platform.type() + "/" + pluginVersion, new Gson(), io);
         this.queue = new EventQueue(config.maxQueuedEvents());
     }
 

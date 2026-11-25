@@ -5,7 +5,7 @@
     "nativeName": "English (US)"
   },
   "common": {
-    "appName": "Network Manager",
+    "appName": "Nexora",
     "loading": "Loading…",
     "save": "Save",
     "saving": "Saving…",
@@ -29,7 +29,8 @@
     "up": "Operational",
     "down": "Unavailable",
     "previous": "Previous",
-    "page": "Page {page} of {pages}"
+    "page": "Page {page} of {pages}",
+    "appSubtitle": "Minecraft Network Management"
   },
   "nav": {
     "dashboard": "Dashboard",

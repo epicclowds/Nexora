@@ -24,11 +24,11 @@ import org.slf4j.Logger;
 /** Velocity proxy plugin: player sessions, server switches and proxy heartbeats. */
 @Plugin(
         id = "networkmanager",
-        name = "Network Manager",
+        name = "Nexora",
         version = BuildInfo.VERSION,
-        description = "Connects the Velocity proxy to the Network Manager platform",
+        description = "Connects the Velocity proxy to Nexora – Minecraft Network Management",
         dependencies = {@com.velocitypowered.api.plugin.Dependency(id = "luckperms", optional = true)},
-        authors = {"Network Manager contributors"})
+        authors = {"Nexora contributors"})
 public final class NetworkManagerVelocity {
     private final ProxyServer proxy;
     private final Logger logger;
@@ -51,7 +51,7 @@ public final class NetworkManagerVelocity {
             config = PluginConfig.loadOrCreate(dataDirectory, resources);
             messages = Messages.load(resources, config.language());
         } catch (Exception e) {
-            logger.error("Network Manager is disabled: {}", e.getMessage());
+            logger.error("Nexora is disabled: {}", e.getMessage());
             return;
         }
 

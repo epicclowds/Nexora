@@ -7,13 +7,18 @@ import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations('common');
-  return { title: { default: t('appName'), template: `%s · ${t('appName')}` }, robots: { index: false, follow: false } };
+  return {
+    title: { default: `${t('appName')} · ${t('appSubtitle')}`, template: `%s · ${t('appName')}` },
+    description: t('appSubtitle'),
+    applicationName: t('appName'),
+    robots: { index: false, follow: false },
+  };
 }
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: dark)', color: '#141a17' },
-    { media: '(prefers-color-scheme: light)', color: '#f7faf7' },
+    { media: '(prefers-color-scheme: dark)', color: '#16171b' },
+    { media: '(prefers-color-scheme: light)', color: '#fafafb' },
   ],
 };
 

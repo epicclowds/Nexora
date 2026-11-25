@@ -1,8 +1,11 @@
-name: NetworkManager
+# The data folder follows this name (plugins/Nexora); plugins/NetworkManager from 1.2 and older
+# is moved automatically on the first start. "provides" keeps dependencies on the old name working.
+name: Nexora
+provides: [NetworkManager]
 version: '${version}'
 main: dev.mnm.paper.NetworkManagerPaper
-description: Connects this Paper server to the Network Manager platform
-authors: [Network Manager contributors]
+description: Connects this Paper server to Nexora – Minecraft Network Management
+authors: [Nexora contributors]
 api-version: '26.1'
 permissions:
   networkmanager.admin:

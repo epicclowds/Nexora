@@ -10,7 +10,7 @@ Backup and restore are tested end to end in CI on every push (job *Deployment*):
 | `.env` / stack environment variables | Next to `docker-compose.yml`, or in Portainer/Arcane | Yes – database credentials and `JWT_SECRET` (also the key for stored 2FA secrets) |
 | GeoIP files | `GEOIP_DIR` | Optional – can be downloaded again |
 | Redis | Docker volume `minecraft-network-manager_redis-data` | No – rate limits, caches, nonces; rebuilt automatically |
-| Plugin folders on Minecraft servers | `plugins/networkmanager/`, `plugins/NetworkManager/` | Yes, for those servers – `credentials.properties`, `punishments-cache.json`, `managed-settings.json` |
+| Plugin folders on Minecraft servers | `plugins/networkmanager/` (Velocity), `plugins/Nexora/` (Paper; `plugins/NetworkManager/` before 1.3) | Yes, for those servers – `credentials.properties`, `punishments-cache.json`, `managed-settings.json` |
 
 Store `.env` separately from the database backups: together they give full access. Backups contain personal data (IP addresses): encrypt them and restrict access.
 

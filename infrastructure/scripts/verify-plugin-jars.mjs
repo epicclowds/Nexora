@@ -96,7 +96,7 @@ function verifyPaper(path) {
   const zip = readZip(path);
   const yml = zip.read('plugin.yml')?.toString('utf8') ?? '';
   const field = (key) => new RegExp(`^${key}:\\s*'?([^'\\n]+)'?\\s*$`, 'm').exec(yml)?.[1]?.trim();
-  check(field('name') === 'NetworkManager', `plugin.yml name "NetworkManager" (${field('name')})`);
+  check(field('name') === 'Nexora', `plugin.yml name "Nexora" (${field('name')})`);
   check(field('version') === version, `plugin.yml version ${version} (${field('version')})`);
   check(field('main') === 'dev.mnm.paper.NetworkManagerPaper', 'plugin.yml main class');
   check(Boolean(field('api-version')), `plugin.yml api-version ${field('api-version')}`);

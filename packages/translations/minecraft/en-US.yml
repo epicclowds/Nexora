@@ -1,7 +1,7 @@
-# Minecraft Network Manager – plugin messages (en-US, default)
+# Nexora – plugin messages (en-US, default)
 # Keys are flat and dot-separated. Placeholders use {name}. Colors use MiniMessage tags.
 # Copy this file to <locale>.yml (e.g. fr-FR.yml) to add a language.
-prefix: "<dark_gray>[<aqua>Network</aqua>]</dark_gray> "
+prefix: "<dark_gray>[<aqua>Nexora</aqua>]</dark_gray> "
 
 error.no-permission: "<red>You do not have permission to use this command."
 error.player-not-found: "<red>No player named {player} has been seen on this network."
@@ -39,7 +39,7 @@ notify.staff.anticheat: "<gray>[AntiCheat] <white>{player}</white> was punished 
 time.permanent: "permanent"
 time.never: "never"
 
-status.title: "<gold>Network Manager status"
+status.title: "<gold>Nexora status"
 status.server: "<gray>Server: <white>{server}</white> <dark_gray>({type})"
 status.connected: "<gray>Backend: <green>connected</green> <dark_gray>(last contact {time})"
 status.disconnected: "<gray>Backend: <red>not connected</red> <dark_gray>({error})"

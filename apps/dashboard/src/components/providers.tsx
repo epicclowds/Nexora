@@ -6,7 +6,7 @@ import { Toaster } from './toaster';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
-    <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
       <Toaster>{children}</Toaster>
     </ThemeProvider>
   );

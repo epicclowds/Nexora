@@ -44,7 +44,7 @@ public record Credentials(String keyId, String secret, String serverId, String s
         p.setProperty("server-id", serverId);
         p.setProperty("server-name", serverName);
         try (Writer writer = Files.newBufferedWriter(temp, StandardCharsets.UTF_8)) {
-            p.store(writer, "Network Manager backend credentials - keep secret, do not share");
+            p.store(writer, "Nexora backend credentials - keep secret, do not share");
         }
         Files.move(temp, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
     }

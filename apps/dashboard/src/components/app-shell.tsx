@@ -47,8 +47,8 @@ export function AppShell({ children, version }: { children: ReactNode; version: 
           onClick={() => setOpen(false)}
           aria-current={isActive(href) ? 'page' : undefined}
           className={cn(
-            'flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
-            isActive(href) && 'bg-accent font-medium text-accent-foreground',
+            'relative flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground',
+            isActive(href) && 'bg-accent font-medium text-foreground before:absolute before:inset-y-2 before:left-0 before:w-0.5 before:rounded-full before:bg-primary',
           )}
         >
           <Icon className="size-4" aria-hidden />
@@ -64,11 +64,18 @@ export function AppShell({ children, version }: { children: ReactNode; version: 
         <div className="flex h-16 items-center gap-3 border-b px-5">
           <Logo />
           <div className="leading-tight">
-            <div className="font-semibold">{t('common.appName')}</div>
-            <div className="text-xs text-muted-foreground">{t('common.version', { version })}</div>
+            <div className="font-semibold tracking-tight">{t('common.appName')}</div>
+            <div className="text-xs text-muted-foreground" title={t('common.version', { version })}>
+              {t('common.appSubtitle')}
+            </div>
           </div>
         </div>
         <div className="flex-1 overflow-y-auto">{nav}</div>
+        <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
+          <LanguageSwitcher persist />
+          <ThemeToggle persist />
+        </div>
+        <div className="px-4 pb-1 text-[11px] text-muted-foreground">{t('common.version', { version })}</div>
         <div className="flex items-center gap-3 border-t p-4">
           <div className="flex size-9 items-center justify-center rounded-md bg-primary/15 font-semibold text-primary" aria-hidden>
             {user.username.slice(0, 1).toUpperCase()}
@@ -93,8 +100,6 @@ export function AppShell({ children, version }: { children: ReactNode; version: 
           </Button>
           <div className="ml-auto flex items-center gap-2">
             <UpdateNotifier />
-            <LanguageSwitcher persist />
-            <ThemeToggle persist />
           </div>
         </header>
         <main className="flex-1 px-4 py-6 lg:px-8">{children}</main>

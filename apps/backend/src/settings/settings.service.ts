@@ -16,7 +16,7 @@ export const networkSettingsSchema = z.object({
     .default(''),
   dashboardUrl: z.union([z.literal(''), z.url({ protocol: /^https?$/ }).max(2048)]).default(''),
   defaultTimezone: timezoneSchema.default('UTC'),
-  defaultTheme: themeSchema.default('dark'),
+  defaultTheme: themeSchema.default('system'),
 });
 
 export type NetworkSettings = z.infer<typeof networkSettingsSchema>;
