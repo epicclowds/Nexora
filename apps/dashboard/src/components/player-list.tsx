@@ -8,6 +8,7 @@ import { useDuration } from '@/lib/format';
 import { api, errorKey, type Page, type PlayerListItem } from '@/lib/api';
 import { PageHeader } from './app-shell';
 import { PlayerHead } from './player-skin';
+import { RankBadge } from './rank-badge';
 import { useLiveRefresh } from './realtime-provider';
 import { Alert, Badge, Button, Card, Input, Select, Skeleton, StatusDot } from './ui/primitives';
 import { TBody, TD, TH, THead, TR, Table } from './ui/table';
@@ -115,7 +116,10 @@ export function PlayerList({ onlineOnly }: { onlineOnly: boolean }) {
                     <Link href={`/players/${p.uuid}`} className="flex items-center gap-3 hover:underline">
                       <PlayerHead uuid={p.uuid} username={p.username} />
                       <span className="min-w-0">
-                        <span className="block font-medium">{p.username}</span>
+                        <span className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium">{p.username}</span>
+                          <RankBadge rank={p.minecraftRank} />
+                        </span>
                         <span className="block truncate font-mono text-xs text-muted-foreground">{p.uuid}</span>
                       </span>
                     </Link>

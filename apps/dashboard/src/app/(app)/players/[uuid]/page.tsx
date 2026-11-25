@@ -13,7 +13,8 @@ import { PlayerActivity } from '@/components/player-activity';
 import { PlayerConnections } from '@/components/player-connections';
 import { PlayerModeration, PlayerNotes } from '@/components/player-moderation';
 import { PlayerStatistics } from '@/components/player-statistics';
-import { RankBadge } from '@/components/staff-accounts';
+import { ClientLabel } from '@/components/client-label';
+import { RankBadge } from '@/components/rank-badge';
 import { PlayerHead, SkinViewer } from '@/components/player-skin';
 import { useLiveRefresh } from '@/components/realtime-provider';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, StatusDot } from '@/components/ui/primitives';
@@ -151,7 +152,9 @@ function ProfileContent() {
                       {player.gamemode && GAMEMODES.includes(player.gamemode as Gamemode) ? t(`profile.gamemodes.${player.gamemode as Gamemode}`) : (player.gamemode ?? notCollected)}
                     </Fact>
                     <Fact label={t('profile.clientVersion')}>{player.clientVersion ?? notCollected}</Fact>
-                    <Fact label={t('profile.clientBrand')}>{player.clientBrand ?? notCollected}</Fact>
+                    <Fact label={t('profile.client')}>
+                      <ClientLabel client={player.client} details />
+                    </Fact>
                   </dl>
                 </CardContent>
               </Card>

@@ -14,6 +14,8 @@ import { api, errorKey, type Page } from '@/lib/api';
 import { useRoleName } from '@/lib/use-role-name';
 import { ConfirmDialog } from '@/components/confirm-dialog';
 import { AccountAvatar } from '@/components/account-avatar';
+import { RankBadge } from '@/components/rank-badge';
+import type { MinecraftRank } from '@/lib/rank';
 import { StaffDetailDialog } from '@/components/staff-accounts';
 
 interface UserRow {
@@ -28,6 +30,7 @@ interface UserRow {
   managedBy: 'NONE' | 'LUCKPERMS';
   disabledByLuckPerms: boolean;
   minecraftLink: { minecraftUuid: string; minecraftUsername: string; lastVerifiedAt: string | null } | null;
+  minecraftRank?: MinecraftRank | null;
 }
 
 interface Role {
@@ -189,7 +192,10 @@ export default function UsersPage() {
                     </TD>
                     <TD>
                       {u.minecraftLink ? (
-                        <span title={u.minecraftLink.minecraftUuid}>{u.minecraftLink.minecraftUsername}</span>
+                        <span className="inline-flex flex-wrap items-center gap-2">
+                          <span title={u.minecraftLink.minecraftUuid}>{u.minecraftLink.minecraftUsername}</span>
+                          <RankBadge rank={u.minecraftRank} />
+                        </span>
                       ) : (
                         <span className="text-muted-foreground">–</span>
                       )}

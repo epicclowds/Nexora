@@ -14,18 +14,13 @@ import { Switch } from '@/components/ui/switch';
 import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/table';
 import { api, ApiError, errorKey, type PunishmentPreset } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import type { MinecraftRank } from '@/lib/rank';
+import { RankBadge } from '@/components/rank-badge';
+import { RankDisplaySettings } from '@/components/rank-display-settings';
 
 // ── shared types ─────────────────────────────────────────────────────
 
-export interface MinecraftRank {
-  primaryGroup: string | null;
-  displayName: string | null;
-  prefix: string | null;
-  color: string | null;
-  groups: string[];
-  source: string;
-  synchronizedAt: string;
-}
+export type { MinecraftRank } from '@/lib/rank';
 
 type LuckPermsMode = 'DISABLED' | 'HYBRID' | 'MANAGED';
 interface LuckPermsSettings {
@@ -55,23 +50,7 @@ interface RoleOption {
   name: string;
 }
 
-const HEX = /^#[0-9A-F]{6}$/i;
-
-/** Minecraft rank badge. The colour is a validated hex value; the text is rendered as text. */
-export function RankBadge({ rank, className }: { rank: MinecraftRank | null; className?: string }) {
-  const t = useTranslations();
-  if (!rank || !(rank.displayName || rank.primaryGroup)) return null;
-  const color = rank.color && HEX.test(rank.color) ? rank.color : null;
-  return (
-    <span
-      className={cn('inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-xs font-medium', className)}
-      style={color ? { borderColor: `${color}66`, color, backgroundColor: `${color}14` } : undefined}
-      title={t('staff.rankTitle', { group: rank.primaryGroup ?? '–', groups: rank.groups.join(', ') || '–' })}
-    >
-      {rank.displayName ?? rank.primaryGroup}
-    </span>
-  );
-}
+export { RankBadge } from '@/components/rank-badge';
 
 // ── Settings → General: link your Minecraft account ─────────────────
 
@@ -284,6 +263,7 @@ export function LuckPermsIntegration() {
         </CardContent>
       </Card>
       <RoleMappings mappings={data.mappings} roles={roles} knownGroups={data.knownGroups} onChange={load} />
+      <RankDisplaySettings />
     </div>
   );
 }

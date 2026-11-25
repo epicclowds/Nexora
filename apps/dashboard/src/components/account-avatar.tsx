@@ -3,7 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useAuth } from '@/components/auth-provider';
 import { PlayerHead } from '@/components/player-skin';
-import type { MinecraftRank } from '@/components/staff-accounts';
+import type { MinecraftRank } from '@/lib/rank';
 import { api } from '@/lib/api';
 import { isMinecraftUuid } from '@/lib/player-head';
 import { cn } from '@/lib/utils';

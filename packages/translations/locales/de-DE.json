@@ -312,7 +312,8 @@
       "CREATIVE": "Kreativ",
       "ADVENTURE": "Abenteuer",
       "SPECTATOR": "Zuschauer"
-    }
+    },
+    "client": "Client"
   },
   "servers": {
     "title": "Server",
@@ -1350,5 +1351,88 @@
     "toLogin": "Zurück zur Anmeldung",
     "fromLogin": "Teammitglied ohne Konto? Registriere dich mit /nexora link",
     "done": "Konto erstellt. Du kannst dich jetzt anmelden."
+  },
+  "clients": {
+    "unknown": "Unbekannt",
+    "unavailable": "Die Client-Erkennung ist ausgeschaltet: Neue Verbindungen zeigen „Unbekannt“.",
+    "rawBrand": "Gemeldete Brand",
+    "rawBrandHint": "Vom Client selbst gesendet, nicht überprüft.",
+    "protocol": "Protokoll {protocol}",
+    "source": {
+      "BRAND": "Aus der gemeldeten Brand erkannt",
+      "INTEGRATION": "Von der Client-Integration bestätigt"
+    }
+  },
+  "clientDetection": {
+    "title": "Client-Erkennung",
+    "description": "Welchen Minecraft-Client Spieler nutzen – anhand der Brand, die ihr Client an den Proxy meldet. Änderungen erreichen den Proxy mit dem nächsten Heartbeat.",
+    "enabled": "Client-Erkennung aktivieren",
+    "enabledHint": "Speichert die Client-Brand neuer Verbindungen. Der bisherige Verlauf bleibt erhalten.",
+    "norisk": "NoRisk-Client-Integration",
+    "noriskHint": "Ist das offizielle NoRisk Client Server-API-Plugin auf dem Proxy installiert, wird es gefragt, ob ein Spieler NoRisk Client nutzt. Ohne dieses Plugin hat die Option keine Wirkung.",
+    "showRawBrand": "Rohe Client-Brand allen Teammitgliedern zeigen",
+    "showRawBrandHint": "Administratoren mit Serververwaltung sehen sie immer. Hilfreich bei der Fehlersuche.",
+    "debug": "Debug-Protokoll",
+    "debugHint": "Zusätzliche Proxy- und Backend-Logzeilen für jeden Erkennungsschritt (ohne IP-Adressen). Danach wieder ausschalten.",
+    "selfReported": "Client-Brands meldet der Client selbst; Spieler können sie verändern. Sie dienen der Anzeige, nicht für Sicherheitsentscheidungen."
+  },
+  "rankDisplay": {
+    "title": "Rang-Anzeige",
+    "description": "Wie LuckPerms-Gruppen im Dashboard aussehen. Nur Darstellung: Rechte und Zugriff ändern sich nicht.",
+    "groups": "Konfigurierte Gruppen",
+    "group": "LuckPerms-Gruppe",
+    "groupPlaceholder": "Gruppe, z. B. administrator",
+    "add": "Gruppe konfigurieren",
+    "none": "Noch keine eigenen Rang-Anzeigen. Ränge nutzen das LuckPerms-Präfix oder den Anzeigenamen.",
+    "select": "Wähle eine Gruppe oder gib einen LuckPerms-Gruppennamen ein, um einen eigenen Rang festzulegen.",
+    "disabled": "Aus",
+    "enabled": "Eigene Anzeige aktiv",
+    "source": "Anzeigequelle",
+    "sources": {
+      "CUSTOM": "Eigener Rang (überschreiben)",
+      "LUCKPERMS_PREFIX": "LuckPerms-Präfix verwenden",
+      "LUCKPERMS_DISPLAY_NAME": "LuckPerms-Anzeigenamen verwenden",
+      "GROUP_NAME": "Gruppennamen verwenden"
+    },
+    "sourceHint": {
+      "CUSTOM": "Zeigt statt des LuckPerms-Texts den Anzeigenamen unten.",
+      "LUCKPERMS_PREFIX": "Zeigt das formatierte LuckPerms-Präfix mit deinen Farben und deinem Symbol.",
+      "LUCKPERMS_DISPLAY_NAME": "Zeigt den formatierten LuckPerms-Anzeigenamen mit deinen Farben und deinem Symbol.",
+      "GROUP_NAME": "Zeigt den lesbaren Gruppennamen, z. B. „Senior Mod“."
+    },
+    "displayName": "Anzeigename",
+    "nameRequired": "Ein eigener Rang braucht einen Anzeigenamen.",
+    "textColor": "Textfarbe",
+    "backgroundColor": "Hintergrundfarbe",
+    "colorAuto": "Automatisch",
+    "invalidColor": "Nutze eine Farbe wie #AA0000.",
+    "bold": "Fett",
+    "iconSection": "Symbol",
+    "iconText": "Symboltext",
+    "iconTextHint": "Unicode-Symbol oder Emoji vor dem Namen, z. B. ★.",
+    "fallbackText": "Ersatztext",
+    "fallbackHint": "Wird gezeigt, wenn das Symbol nicht dargestellt werden kann, z. B. bei Resource-Pack-Zeichen.",
+    "tooltip": "Tooltip",
+    "customIcon": "Eigenes Symbol",
+    "uploadIcon": "Symbol hochladen",
+    "removeIcon": "Symbol entfernen",
+    "iconHint": "PNG, WebP, GIF oder JPEG, höchstens {kb} KB. Angezeigt in 14 px.",
+    "saveFirst": "Speichere zuerst die Rang-Anzeige und lade dann ein Symbol hoch.",
+    "iconType": "Symbole müssen PNG-, WebP-, GIF- oder JPEG-Bilder sein.",
+    "iconTooLarge": "Symbole dürfen höchstens {kb} KB groß sein.",
+    "iconUploaded": "Symbol hochgeladen",
+    "glyphWarning": "Dieses Symbol nutzt ein Zeichen aus einer Resource-Pack-Schrift (Private Use Area). Browser können es nicht darstellen, daher wird der Ersatztext oder ein hochgeladenes Symbol verwendet.",
+    "preview": "Rang-Vorschau",
+    "previewLight": "Helles Design",
+    "previewDark": "Dunkles Design",
+    "previewEmpty": "Nichts anzuzeigen: Die gewählte Quelle hat für diese Gruppe keinen Text.",
+    "noSample": "Noch kein Spieler dieser Gruppe wurde synchronisiert; die Vorschau nutzt den Gruppennamen.",
+    "lowContrast": "Geringer Kontrast ({ratio}:1). Wähle Farben mit mindestens 4,5:1, damit der Rang lesbar bleibt.",
+    "appearanceOnly": "Ändert nur das Aussehen des Rangs. Rechte kommen weiterhin aus LuckPerms.",
+    "remove": "Entfernen",
+    "removeTitle": "Rang-Anzeige von {group} entfernen?",
+    "removeDescription": "Die Gruppe erscheint dann wieder mit ihrem LuckPerms-Präfix oder Anzeigenamen.",
+    "saved": "Rang-Anzeige gespeichert",
+    "removed": "Rang-Anzeige entfernt"
   }
 }

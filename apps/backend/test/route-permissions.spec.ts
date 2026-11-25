@@ -35,6 +35,8 @@ const SESSION_ONLY_ALLOWLIST = new Set([
   'GET /api/settings/network',
   'GET /api/settings/moderation',
   'GET /api/events',
+  // Rank icons appear wherever ranks do (own link card, profiles, user lists): inert images only.
+  'GET /api/rank-icons/:id',
 ]);
 
 /** Session routes whose permission depends on the request and is checked inside the handler. */

@@ -11,6 +11,7 @@ import { emailSchema, passwordSchema, usernameSchema } from '../common/validatio
 import { paginationSchema, ZodBody, ZodQuery } from '../common/zod';
 import { AuditService, userActor } from '../audit/audit.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { RankDisplayService } from '../luckperms/rank-display.service';
 import { canManagePriority, OWNER_ROLE_KEY } from '../rbac/rbac.policy';
 
 const listQuery = paginationSchema.extend({ search: z.string().trim().max(64).optional() });
@@ -57,6 +58,7 @@ export class UsersController {
     private readonly auth: AuthService,
     private readonly audit: AuditService,
     private readonly twoFactor: TwoFactorService,
+    private readonly ranks: RankDisplayService,
   ) {}
 
   @Get()
@@ -74,7 +76,9 @@ export class UsersController {
         take: q.pageSize,
       }),
     ]);
-    return { total, page: q.page, pageSize: q.pageSize, items };
+    // LuckPerms rank of the linked player (appearance only).
+    const ranks = await this.ranks.ranksFor(items.flatMap((i) => (i.minecraftLink ? [i.minecraftLink.minecraftUuid] : [])));
+    return { total, page: q.page, pageSize: q.pageSize, items: items.map((i) => ({ ...i, minecraftRank: i.minecraftLink ? (ranks.get(i.minecraftLink.minecraftUuid) ?? null) : null })) };
   }
 
   @Post()

@@ -6,7 +6,7 @@ Every backend route and what it requires. Permissions are checked on the server 
 "session" = any signed-in dashboard user; "plugin signature" = HMAC-signed request from a registered Minecraft server.
 The `owner` role holds every permission (`*`).
 
-Routes: 141 · public: 12 · plugin: 20 · session only: 16 · checked in handler: 2 · permission-protected: 91
+Routes: 149 · public: 12 · plugin: 20 · session only: 17 · checked in handler: 2 · permission-protected: 98
 
 | Method | Path | Requires |
 | --- | --- | --- |
@@ -49,6 +49,11 @@ Routes: 141 · public: 12 · plugin: 20 · session only: 16 · checked in handle
 | POST | `/api/integrations/luckperms/mappings` | `integrations.manage` |
 | DELETE | `/api/integrations/luckperms/mappings/:id` | `integrations.manage` |
 | PUT | `/api/integrations/luckperms/mappings/:id` | `integrations.manage` |
+| GET | `/api/integrations/luckperms/rank-displays` | `integrations.manage` |
+| DELETE | `/api/integrations/luckperms/rank-displays/:group` | `integrations.manage` |
+| PUT | `/api/integrations/luckperms/rank-displays/:group` | `integrations.manage` |
+| DELETE | `/api/integrations/luckperms/rank-displays/:group/icon` | `integrations.manage` |
+| PUT | `/api/integrations/luckperms/rank-displays/:group/icon` | `integrations.manage` |
 | PUT | `/api/integrations/luckperms/settings` | `integrations.manage` |
 | GET | `/api/moderation/command-mode` | `punishments.history` |
 | PUT | `/api/moderation/command-mode` | `punishments.presets.manage` |
@@ -110,6 +115,7 @@ Routes: 141 · public: 12 · plugin: 20 · session only: 16 · checked in handle
 | GET | `/api/punishments/:id/history` | `punishments.history.view` |
 | POST | `/api/punishments/:id/reactivate` | `punishments.reactivate` |
 | POST | `/api/punishments/:id/revoke` | per punishment type, checked in handler (e.g. `punishments.unban`) |
+| GET | `/api/rank-icons/:id` | session |
 | GET | `/api/roles` | `users.view` |
 | POST | `/api/roles` | `roles.manage` |
 | DELETE | `/api/roles/:id` | `roles.manage` |
@@ -124,6 +130,8 @@ Routes: 141 · public: 12 · plugin: 20 · session only: 16 · checked in handle
 | POST | `/api/servers/registration-tokens` | `servers.manage` |
 | DELETE | `/api/servers/registration-tokens/:id` | `servers.manage` |
 | GET | `/api/servers/registration-tokens/:id` | `servers.manage` |
+| GET | `/api/settings/client-detection` | `servers.manage` |
+| PUT | `/api/settings/client-detection` | `servers.manage` |
 | GET | `/api/settings/moderation` | session |
 | PUT | `/api/settings/moderation` | `settings.manage` |
 | GET | `/api/settings/network` | session |

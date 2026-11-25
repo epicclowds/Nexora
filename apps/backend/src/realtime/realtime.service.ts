@@ -12,7 +12,9 @@ export type RealtimeEvent =
   | { type: 'player.updated'; uuid: string }
   | { type: 'punishment.changed'; uuid: string }
   | { type: 'anticheat.event'; uuid: string }
-  | { type: 'inventory.changed'; uuid: string };
+  | { type: 'inventory.changed'; uuid: string }
+  /** Rank display settings changed (no payload). */
+  | { type: 'ranks.updated' };
 
 /** Permission needed to receive each event type. */
 export const EVENT_PERMISSION: Record<RealtimeEvent['type'], string> = {
@@ -24,6 +26,7 @@ export const EVENT_PERMISSION: Record<RealtimeEvent['type'], string> = {
   'punishment.changed': PERMISSIONS.PUNISHMENTS_HISTORY,
   'anticheat.event': PERMISSIONS.ANTICHEAT_VIEW,
   'inventory.changed': PERMISSIONS.PLAYERS_VIEW_INVENTORY,
+  'ranks.updated': PERMISSIONS.PLAYERS_VIEW,
 };
 
 const CHANNEL = 'mnm:realtime';

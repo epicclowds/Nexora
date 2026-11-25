@@ -312,7 +312,8 @@
       "CREATIVE": "Creative",
       "ADVENTURE": "Adventure",
       "SPECTATOR": "Spectator"
-    }
+    },
+    "client": "Client"
   },
   "servers": {
     "title": "Servers",
@@ -1350,5 +1351,88 @@
     "toLogin": "Back to sign in",
     "fromLogin": "Staff member without an account? Register with /nexora link",
     "done": "Account created. You can sign in now."
+  },
+  "clients": {
+    "unknown": "Unknown",
+    "unavailable": "Client detection is turned off: new connections show Unknown.",
+    "rawBrand": "Reported brand",
+    "rawBrandHint": "Sent by the client itself; not verified.",
+    "protocol": "Protocol {protocol}",
+    "source": {
+      "BRAND": "Detected from the reported brand",
+      "INTEGRATION": "Confirmed by the client integration"
+    }
+  },
+  "clientDetection": {
+    "title": "Client detection",
+    "description": "Which Minecraft client players use, from the brand their client reports to the proxy. Changes reach the proxy within one heartbeat.",
+    "enabled": "Enable client detection",
+    "enabledHint": "Record the client brand of new connections. Existing history is kept.",
+    "norisk": "NoRisk Client integration",
+    "noriskHint": "When the official NoRisk Client server API plugin is installed on the proxy, ask it whether a player uses NoRisk Client. Without that plugin this has no effect.",
+    "showRawBrand": "Show the raw client brand to all staff",
+    "showRawBrandHint": "Administrators who manage servers always see it. Useful for troubleshooting.",
+    "debug": "Debug logging",
+    "debugHint": "Extra proxy and backend log lines for every detection step (no IP addresses). Turn off when done.",
+    "selfReported": "Client brands are reported by the client itself and can be changed by the player. They identify the client for display, not for security decisions."
+  },
+  "rankDisplay": {
+    "title": "Rank display",
+    "description": "How LuckPerms groups appear in the dashboard. Appearance only: permissions and access are not affected.",
+    "groups": "Configured groups",
+    "group": "LuckPerms group",
+    "groupPlaceholder": "Group, e.g. administrator",
+    "add": "Configure group",
+    "none": "No custom rank displays yet. Ranks use the LuckPerms prefix or display name.",
+    "select": "Choose a group, or enter a LuckPerms group name to configure a custom rank.",
+    "disabled": "Off",
+    "enabled": "Custom display enabled",
+    "source": "Display source",
+    "sources": {
+      "CUSTOM": "Custom rank (override)",
+      "LUCKPERMS_PREFIX": "Use LuckPerms prefix",
+      "LUCKPERMS_DISPLAY_NAME": "Use LuckPerms display name",
+      "GROUP_NAME": "Use the group name"
+    },
+    "sourceHint": {
+      "CUSTOM": "Shows the display name below instead of the LuckPerms text.",
+      "LUCKPERMS_PREFIX": "Shows the formatted LuckPerms prefix, with your colours and icon.",
+      "LUCKPERMS_DISPLAY_NAME": "Shows the formatted LuckPerms display name, with your colours and icon.",
+      "GROUP_NAME": "Shows the readable group name, e.g. \"Senior Mod\"."
+    },
+    "displayName": "Display name",
+    "nameRequired": "A custom rank needs a display name.",
+    "textColor": "Text colour",
+    "backgroundColor": "Background colour",
+    "colorAuto": "Automatic",
+    "invalidColor": "Use a colour like #AA0000.",
+    "bold": "Bold text",
+    "iconSection": "Icon",
+    "iconText": "Icon text",
+    "iconTextHint": "Unicode symbol or emoji shown before the name, e.g. ★.",
+    "fallbackText": "Fallback text",
+    "fallbackHint": "Shown when the icon cannot be displayed, e.g. for resource-pack glyphs.",
+    "tooltip": "Tooltip",
+    "customIcon": "Custom icon",
+    "uploadIcon": "Upload icon",
+    "removeIcon": "Remove icon",
+    "iconHint": "PNG, WebP, GIF or JPEG, at most {kb} KB. Shown at 14 px.",
+    "saveFirst": "Save the rank display first, then upload an icon.",
+    "iconType": "Icons must be PNG, WebP, GIF or JPEG images.",
+    "iconTooLarge": "Icons may be at most {kb} KB.",
+    "iconUploaded": "Icon uploaded",
+    "glyphWarning": "This icon uses a private-use character from a resource-pack font. Browsers cannot show it, so the fallback text or an uploaded icon is used instead.",
+    "preview": "Rank preview",
+    "previewLight": "Light theme",
+    "previewDark": "Dark theme",
+    "previewEmpty": "Nothing to show: the selected source has no text for this group.",
+    "noSample": "No player of this group has been synchronised yet; the preview falls back to the group name.",
+    "lowContrast": "Low contrast ({ratio}:1). Choose colours with at least 4.5:1 so the rank stays readable.",
+    "appearanceOnly": "Only changes how the rank looks. Permissions still come from LuckPerms.",
+    "remove": "Remove",
+    "removeTitle": "Remove the rank display of {group}?",
+    "removeDescription": "The group then appears with its LuckPerms prefix or display name again.",
+    "saved": "Rank display saved",
+    "removed": "Rank display removed"
   }
 }

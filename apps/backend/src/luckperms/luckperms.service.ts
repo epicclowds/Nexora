@@ -9,8 +9,10 @@ import { PresetsService } from '../presets/presets.service';
 import { type PermissionCheck, StaffPermissionsService } from '../presets/staff-permissions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { RealtimeService } from '../realtime/realtime.service';
 import { SettingsService } from '../settings/settings.service';
-import { freshness, type LuckPermsSettings, luckPermsSettingsSchema, type mappingSchema, parsePrefix, resolveRole, type Snapshot } from './luckperms';
+import { RankDisplayService } from './rank-display.service';
+import { freshness, type LuckPermsSettings, luckPermsSettingsSchema, type mappingSchema, resolveRole, type Snapshot } from './luckperms';
 
 const SETTINGS_KEY = 'integrations.luckperms';
 const STATUS_KEY = 'integrations.luckperms.status';
@@ -47,6 +49,8 @@ export class LuckPermsService implements OnModuleInit {
     private readonly redis: RedisService,
     private readonly presets: PresetsService,
     private readonly staff: StaffPermissionsService,
+    private readonly ranks: RankDisplayService,
+    private readonly realtime: RealtimeService,
   ) {}
 
   onModuleInit(): void {
@@ -162,7 +166,10 @@ export class LuckPermsService implements OnModuleInit {
         synchronizedAt: now,
         serverId: server.id,
       };
+      const before = await this.prisma.permissionSyncState.findUnique({ where: { minecraftUuid: uuid }, select: { primaryGroup: true, groupDisplay: true, prefix: true } });
       await this.prisma.permissionSyncState.upsert({ where: { minecraftUuid: uuid }, create: { minecraftUuid: uuid, ...data }, update: { ...data, revision: { increment: 1 } } });
+      // Rank changes reach open profiles and lists through the existing realtime stream.
+      if (!before || before.primaryGroup !== data.primaryGroup || before.groupDisplay !== data.groupDisplay || before.prefix !== data.prefix) this.realtime.publish({ type: 'player.updated', uuid });
     }
     const previous = await this.status();
     await this.settings.set(
@@ -259,19 +266,9 @@ export class LuckPermsService implements OnModuleInit {
     return { source: 'LUCKPERMS', can: (permission) => permissions[permission] === true };
   }
 
-  /** Rank shown on player profiles (null when unknown – never invented). */
-  async rankFor(uuid: string) {
-    const snapshot = await this.prisma.permissionSyncState.findUnique({ where: { minecraftUuid: uuid.toLowerCase() } });
-    if (!snapshot) return null;
-    const prefix = parsePrefix(snapshot.prefix);
-    return {
-      primaryGroup: snapshot.primaryGroup,
-      displayName: snapshot.groupDisplay || prefix?.text || snapshot.primaryGroup,
-      prefix: prefix?.text ?? null,
-      color: prefix?.color ?? null,
-      groups: (snapshot.groups as string[]) ?? [],
-      source: snapshot.source,
-      synchronizedAt: snapshot.synchronizedAt.toISOString(),
-    };
+  /** Rank shown on player profiles (null when unknown – never invented). See RankDisplayService. */
+  rankFor(uuid: string) {
+    return this.ranks.rankFor(uuid);
   }
+
 }

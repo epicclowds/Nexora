@@ -1,5 +1,8 @@
 /** Thin client for the backend API, reached through the same-origin /api proxy. */
 
+import type { KnownClient } from '@mnm/shared-types';
+import type { MinecraftRank } from './rank';
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -212,6 +215,18 @@ export interface PlayerListItem {
   lastSeenAt: string;
   totalPlaytimeSeconds: number;
   connectionCount: number;
+  /** LuckPerms rank (lists, 1.4.0+); null when not synchronised. */
+  minecraftRank?: MinecraftRank | null;
+}
+
+/** Detected client of a connection: name is a known client key or null (Unknown). */
+export interface ClientInfo {
+  name: KnownClient | null;
+  status: 'DETECTED' | 'UNRECOGNIZED' | 'NONE';
+  source: 'BRAND' | 'INTEGRATION' | null;
+  detectedAt: string | null;
+  /** Raw reported brand; only present for staff allowed to see it. */
+  brand?: string | null;
 }
 
 export interface PlayerSessionInfo {
@@ -221,17 +236,20 @@ export interface PlayerSessionInfo {
   endedAt: string | null;
   durationSeconds: number | null;
   servers: { server: { id: string; name: string }; joinedAt: string; leftAt: string | null }[];
-  connection: { clientProtocol: number | null; clientBrand: string | null; ipAddress?: string | null; virtualHost?: string | null } | null;
+  connection: { clientProtocol: number | null; client: ClientInfo; ipAddress?: string | null; virtualHost?: string | null } | null;
 }
 
 export interface PlayerProfile extends PlayerListItem {
   gamemode: string | null;
   clientVersion: string | null;
   clientProtocol: number | null;
+  /** Raw brand (only for staff allowed to see it). */
   clientBrand: string | null;
+  /** Client of the current or latest connection. */
+  client: ClientInfo | null;
   rank: string | null;
   /** LuckPerms rank from the proxy; null when not synchronised. */
-  minecraftRank: { primaryGroup: string | null; displayName: string | null; prefix: string | null; color: string | null; groups: string[]; source: string; synchronizedAt: string } | null;
+  minecraftRank: MinecraftRank | null;
   skinModel: string | null;
   activePlaytimeSeconds: number | null;
   afkSeconds: number | null;
