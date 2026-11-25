@@ -31,6 +31,8 @@ docker volume ls | grep mysql-data
    At least `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`, and – if you changed them – `MYSQL_DATABASE` and `MYSQL_USER` must be the old values.
 4. **Check:** sign in to the dashboard with your existing account. Your players, punishments and servers are there; the Minecraft plugins reconnect by themselves.
 
+When the stack starts on volumes created by an earlier installation, Docker Compose prints a warning such as `volume "minecraft-network-manager_mysql-data" already exists but was created for project "minecraft-network-manager" (expected "nexora")`. This is expected and harmless: it confirms that the existing data volume is used.
+
 ### Changes to note
 
 | Before | Standalone file |

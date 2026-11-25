@@ -54,3 +54,5 @@ The built-in Caddy service is behind the Compose profile `https`, which Portaine
 ## Moving an existing installation to Portainer
 
 Stop the old stack with `docker compose down` (**without** `-v`) in its folder, then create the Portainer stack on the **same Docker host** with the **same four secret values** from the old `.env`. The data volumes have the same names, so Nexora starts with all existing data. Details: [Moving an existing installation](migration.md).
+
+When the stack starts on volumes created by an earlier installation, Docker Compose prints a warning such as `volume "minecraft-network-manager_mysql-data" already exists but was created for project "minecraft-network-manager" (expected "nexora")`. This is expected and harmless: it confirms that the existing data volume is used.

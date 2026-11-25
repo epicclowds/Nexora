@@ -40,3 +40,5 @@ Point your existing reverse proxy at `http://<docker-host>:3000` ([HTTPS](https.
 ## Moving an existing installation to Arcane
 
 Stop the old installation with `docker compose down` (**without** `-v`) in its folder, then create the Arcane project on the **same Docker host** with the **same four secret values** from the old `.env` (or copy the whole old `.env` into Arcane's `.env` editor). The data volumes have the same names, so Nexora starts with all existing data. Details: [Moving an existing installation](migration.md).
+
+When the stack starts on volumes created by an earlier installation, Docker Compose prints a warning such as `volume "minecraft-network-manager_mysql-data" already exists but was created for project "minecraft-network-manager" (expected "nexora")`. This is expected and harmless: it confirms that the existing data volume is used.

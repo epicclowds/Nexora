@@ -121,7 +121,8 @@ if grep -qi 'data will be lost' up.txt; then fail "Compose wants to recreate a v
 verify check
 ok "existing data is still there"
 [ "$(docker volume ls --format '{{.Name}}' | grep -c 'mysql-data')" = 1 ] || fail "a second database volume was created: $(docker volume ls --format '{{.Name}}' | grep mysql-data | tr '\n' ' ')"
-ok "no new database volume (volumes: $(volumes))"
+before=$(volumes)   # now including the (empty) GeoIP volume of the new file
+ok "no new database volume (volumes: $before)"
 for port in 3306 6379 4000; do
   if (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then fail "port $port is reachable from the host"; fi
 done
