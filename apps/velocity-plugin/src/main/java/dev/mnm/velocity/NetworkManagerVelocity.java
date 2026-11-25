@@ -16,6 +16,7 @@ import dev.mnm.plugin.punish.ModerationClient;
 import dev.mnm.plugin.punish.PunishmentCache;
 import dev.mnm.plugin.punish.PunishmentFeed;
 import dev.mnm.plugin.punish.PunishmentTexts;
+import dev.mnm.plugin.punish.ReasonCatalog;
 import java.nio.file.Path;
 import java.time.Duration;
 import org.slf4j.Logger;
@@ -63,9 +64,12 @@ public final class NetworkManagerVelocity {
         UpdateNotifier updates = new UpdateNotifier(messages, BuildInfo.VERSION, config.updateNotifications(), true);
         connector.onHeartbeatResponse(updates::accept);
         proxy.getEventManager().register(this, new UpdateListener(proxy, this, updates));
+        // Punishment reasons and the global command mode (dashboard), refreshed via heartbeat revisions.
+        ReasonCatalog reasons = new ReasonCatalog(connector.client(), logger);
+        connector.onHeartbeatResponse(reasons::accept);
         proxy.getCommandManager().register(
                 proxy.getCommandManager().metaBuilder("networkmanager").aliases("nm", "nexora").plugin(this).build(),
-                new StatusCommand(connector, messages, "VELOCITY", updates));
+                new StatusCommand(connector, messages, "VELOCITY", updates, reasons));
         // Punishments: local cache (login checks), change feed (actions), commands.
         if (config.punishmentsEnabled()) {
             PunishmentCache cache = new PunishmentCache();
@@ -79,7 +83,7 @@ public final class NetworkManagerVelocity {
                 for (ModerationCommand.Kind kind : ModerationCommand.Kind.values()) {
                     proxy.getCommandManager().register(
                             proxy.getCommandManager().metaBuilder(kind.command()).plugin(this).build(),
-                            new ModerationCommand(kind, proxy, moderation, texts, enforcer));
+                            new ModerationCommand(kind, proxy, moderation, texts, enforcer, reasons));
                 }
             }
         } else {

@@ -13,6 +13,8 @@ import dev.mnm.plugin.punish.Durations;
 import dev.mnm.plugin.punish.EditArguments;
 import dev.mnm.plugin.punish.ModerationClient;
 import dev.mnm.plugin.punish.PunishmentTexts;
+import dev.mnm.plugin.punish.ReasonArguments;
+import dev.mnm.plugin.punish.ReasonCatalog;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Arrays;
@@ -27,18 +29,24 @@ import java.util.concurrent.CompletionException;
 /**
  * Network-wide moderation commands. Every punishment goes through the backend
  * (single source of truth); on success it is applied locally right away.
- * Permission: {@code networkmanager.command.<name>}.
+ * Permission: {@code networkmanager.command.<name>}. Reasons follow the global
+ * command mode (dashboard): a reason ID needs its preset permission
+ * ({@code nexora.punishment.ban.1}, …), a typed reason in hybrid mode
+ * {@code nexora.punishment.custom}, a duration override
+ * {@code nexora.punishment.duration-override}. The checks run here (LuckPerms
+ * via Velocity's permission API) and the results are sent to the backend,
+ * which applies the mode and the preset.
  */
 final class ModerationCommand implements SimpleCommand {
     enum Kind {
-        BAN("<player> <reason>", 2),
+        BAN("<player> <reason-id> [duration] | <player> <reason>", 2),
         TEMPBAN("<player> <duration> <reason>", 3),
         UNBAN("<player> [reason]", 1),
-        MUTE("<player> <reason>", 2),
+        MUTE("<player> <reason-id> [duration] | <player> <reason>", 2),
         TEMPMUTE("<player> <duration> <reason>", 3),
         UNMUTE("<player> [reason]", 1),
-        KICK("<player> <reason>", 2),
-        WARN("<player> <reason>", 2),
+        KICK("<player> <reason-id|reason>", 2),
+        WARN("<player> <reason-id|reason>", 2),
         HISTORY("<player>", 1),
         CHECK("<player>", 1),
         EDITBAN("<player|#id> <duration|permanent|keep> [reason]", 2),
@@ -65,14 +73,30 @@ final class ModerationCommand implements SimpleCommand {
     private final PunishmentTexts texts;
     private final Messages messages;
     private final Enforcer enforcer;
+    private final ReasonCatalog reasons;
 
-    ModerationCommand(Kind kind, ProxyServer proxy, ModerationClient client, PunishmentTexts texts, Enforcer enforcer) {
+    ModerationCommand(Kind kind, ProxyServer proxy, ModerationClient client, PunishmentTexts texts, Enforcer enforcer, ReasonCatalog reasons) {
         this.kind = kind;
         this.proxy = proxy;
         this.client = client;
         this.texts = texts;
         this.messages = texts.messages();
         this.enforcer = enforcer;
+        this.reasons = reasons;
+    }
+
+    static final String CUSTOM = "nexora.punishment.custom";
+    static final String DURATION_OVERRIDE = "nexora.punishment.duration-override";
+    static final String PERMANENT = "nexora.punishment.permanent";
+
+    private static String category(Kind kind) {
+        return switch (kind) {
+            case BAN -> "BAN";
+            case MUTE -> "MUTE";
+            case KICK -> "KICK";
+            case WARN -> "WARN";
+            default -> null;
+        };
     }
 
     @Override
@@ -86,6 +110,20 @@ final class ModerationCommand implements SimpleCommand {
         if (args.length == 2 && (kind == Kind.EDITBAN || kind == Kind.EDITMUTE)) {
             String partial = args[1].toLowerCase(Locale.ROOT);
             return EditArguments.DURATION_SUGGESTIONS.stream().filter(s -> s.startsWith(partial)).toList();
+        }
+        String category = category(kind);
+        if (category != null && args.length == 2) {
+            // Only reasons the sender may use (permission-aware).
+            String partial = args[1];
+            return reasons.usable(category, invocation.source()::hasPermission).stream()
+                    .map(p -> String.valueOf(p.numericId()))
+                    .filter(id -> id.startsWith(partial))
+                    .toList();
+        }
+        if (category != null && args.length == 3 && ReasonArguments.reference(args[1]) != null && (kind == Kind.BAN || kind == Kind.MUTE)
+                && invocation.source().hasPermission(DURATION_OVERRIDE)) {
+            String partial = args[2].toLowerCase(Locale.ROOT);
+            return EditArguments.DURATION_SUGGESTIONS.stream().filter(s -> !s.equals("keep") && s.startsWith(partial)).toList();
         }
         if (args.length > 1) return List.of();
         String prefix = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
@@ -104,10 +142,10 @@ final class ModerationCommand implements SimpleCommand {
         ModerationClient.Actor actor = source instanceof Player p ? new ModerationClient.Actor(p.getUniqueId(), p.getUsername()) : ModerationClient.Actor.console();
 
         switch (kind) {
-            case BAN -> punish(source, "BAN", target, join(args, 1), null);
-            case MUTE -> punish(source, "MUTE", target, join(args, 1), null);
-            case KICK -> punish(source, "KICK", target, join(args, 1), null);
-            case WARN -> punish(source, "WARNING", target, join(args, 1), null);
+            case BAN -> punishWithReason(source, "BAN", target, Arrays.copyOfRange(args, 1, args.length));
+            case MUTE -> punishWithReason(source, "MUTE", target, Arrays.copyOfRange(args, 1, args.length));
+            case KICK -> punishWithReason(source, "KICK", target, Arrays.copyOfRange(args, 1, args.length));
+            case WARN -> punishWithReason(source, "WARNING", target, Arrays.copyOfRange(args, 1, args.length));
             case TEMPBAN, TEMPMUTE -> {
                 Optional<Duration> duration = Durations.parse(args[1]);
                 if (duration.isEmpty()) {
@@ -127,9 +165,82 @@ final class ModerationCommand implements SimpleCommand {
         }
     }
 
+    /** /ban, /mute, /kick, /warn: a reason ID (preset) or a typed reason, depending on the global mode. */
+    private void punishWithReason(CommandSource source, String type, String target, String[] rest) {
+        String category = ReasonCatalog.categoryOf(type);
+        ReasonCatalog.Mode mode = reasons.mode();
+        ReasonArguments parsed = ReasonArguments.parse(rest, reasons.presetsAllowed());
+        if (!parsed.isPreset()) {
+            // Early, friendly errors; the backend decides as well.
+            if (mode == ReasonCatalog.Mode.PRESET_ONLY) {
+                source.sendMessage(messages.prefixed("error.reason-id-required", Map.of("usage", "/" + kind.command() + " <player> <reason-id>")));
+                return;
+            }
+            punish(source, type, target, parsed.reason(), null);
+            return;
+        }
+        int id = parsed.reasonId();
+        Optional<ReasonCatalog.Preset> preset = reasons.find(category, id);
+        String permission = preset.map(ReasonCatalog.Preset::permission).orElse("nexora.punishment." + category.toLowerCase(Locale.ROOT) + "." + id);
+        if (mode != null && preset.isEmpty()) {
+            source.sendMessage(messages.prefixed("error.reason-unknown", Map.of("id", String.valueOf(id))));
+            return;
+        }
+        if (!source.hasPermission(permission)) {
+            source.sendMessage(messages.prefixed("error.reason-forbidden", Map.of("id", String.valueOf(id))));
+            return;
+        }
+        List<String> granted = new java.util.ArrayList<>(List.of(permission));
+        ModerationClient.EditDuration override = null;
+        if (parsed.override()) {
+            if (!source.hasPermission(DURATION_OVERRIDE)) {
+                source.sendMessage(messages.prefixed("error.duration-override-forbidden", Map.of()));
+                return;
+            }
+            granted.add(DURATION_OVERRIDE);
+            if (parsed.permanentOverride()) {
+                if (!source.hasPermission(PERMANENT)) {
+                    source.sendMessage(messages.prefixed("error.permanent-forbidden", Map.of()));
+                    return;
+                }
+                granted.add(PERMANENT);
+                override = ModerationClient.EditDuration.permanent();
+            } else {
+                override = new ModerationClient.EditDuration(parsed.overrideSeconds());
+            }
+        }
+        ModerationClient.Actor actor = actor(source);
+        handle(source, target, client.punishWithPreset(type, target, id, override, actor, granted), response -> confirm(source, response, target));
+    }
+
+    private static ModerationClient.Actor actor(CommandSource source) {
+        return source instanceof Player p ? new ModerationClient.Actor(p.getUniqueId(), p.getUsername()) : ModerationClient.Actor.console();
+    }
+
+    /** Success message for any created punishment (type and duration from the backend's answer). */
+    private void confirm(CommandSource source, JsonObject response, String target) {
+        enforcer.apply(toCached(response));
+        String type = response.get("type").getAsString();
+        Duration duration = response.get("expiresAt").isJsonNull() ? null
+                : Duration.between(Instant.parse(response.get("createdAt").getAsString()), Instant.parse(response.get("expiresAt").getAsString()));
+        String key = switch (type) {
+            case "BAN" -> "command.ban.success";
+            case "TEMP_BAN" -> "command.tempban.success";
+            case "MUTE" -> "command.mute.success";
+            case "TEMP_MUTE" -> "command.tempmute.success";
+            case "KICK" -> "command.kick.success";
+            default -> "command.warn.success";
+        };
+        source.sendMessage(messages.prefixed(key, Map.of(
+                "player", targetName(response, target),
+                "id", response.get("id").getAsString(),
+                "duration", duration == null ? "" : Durations.format(duration))));
+    }
+
     private void punish(CommandSource source, String type, String target, String reason, Duration duration) {
-        ModerationClient.Actor actor = source instanceof Player p ? new ModerationClient.Actor(p.getUniqueId(), p.getUsername()) : ModerationClient.Actor.console();
-        CompletableFuture<JsonObject> request = client.punish(type, target, reason, duration == null ? null : duration.toSeconds(), actor);
+        ModerationClient.Actor actor = actor(source);
+        List<String> granted = source.hasPermission(CUSTOM) ? List.of(CUSTOM) : List.of();
+        CompletableFuture<JsonObject> request = client.punish(type, target, reason, duration == null ? null : duration.toSeconds(), actor, granted);
         handle(source, target, request, response -> {
             enforcer.apply(toCached(response));
             String key = switch (type) {
@@ -164,7 +275,8 @@ final class ModerationCommand implements SimpleCommand {
         String editKind = kind == Kind.EDITBAN ? "BAN" : "MUTE";
         boolean allowPermanent = source.hasPermission("networkmanager.command." + kind.command() + ".permanent");
         String shownTarget = a.id() != null ? "#" + a.id() : a.target();
-        handle(source, shownTarget, client.edit(new ModerationClient.Edit(editKind, a.target(), a.id(), a.duration(), a.reason()), allowPermanent, actor), response -> {
+        List<String> granted = source.hasPermission(CUSTOM) ? List.of(CUSTOM) : List.of();
+        handle(source, shownTarget, client.edit(new ModerationClient.Edit(editKind, a.target(), a.id(), a.duration(), a.reason()), allowPermanent, actor, granted), response -> {
             JsonObject punishment = response.getAsJsonObject("punishment");
             JsonObject previous = response.getAsJsonObject("previous");
             enforcer.refresh(toCached(punishment));
@@ -236,7 +348,7 @@ final class ModerationCommand implements SimpleCommand {
                 source.sendMessage(messages.prefixed("error.backend-unavailable", Map.of()));
                 return;
             }
-            Map<String, String> vars = Map.of("player", target, "reason", e.getMessage(), "input", target);
+            Map<String, String> vars = Map.of("player", target, "reason", e.getMessage(), "input", target, "id", e.detail("reasonId"), "usage", "/" + kind.command() + " <player> <reason-id>");
             String key = switch (e.code()) {
                 case "PLAYER_NOT_FOUND" -> "error.player-not-found";
                 case "ALREADY_BANNED" -> "error.already-banned";
@@ -250,6 +362,14 @@ final class ModerationCommand implements SimpleCommand {
                 case "PUNISHMENT_NOT_FOUND" -> "error.punishment-not-found";
                 case "PERMANENT_NOT_ALLOWED" -> "error.permanent-permission";
                 case "WRONG_PUNISHMENT_TYPE" -> "error.wrong-punishment-type";
+                case "UNKNOWN_PRESET" -> "error.reason-unknown";
+                case "PRESET_DISABLED" -> "error.reason-disabled";
+                case "PRESET_FORBIDDEN" -> "error.reason-forbidden";
+                case "PRESET_REQUIRED" -> "error.reason-id-required";
+                case "PRESETS_DISABLED" -> "error.reason-ids-disabled";
+                case "CUSTOM_REASON_FORBIDDEN" -> "error.custom-reason-forbidden";
+                case "DURATION_OVERRIDE_FORBIDDEN" -> "error.duration-override-forbidden";
+                case "PERMANENT_FORBIDDEN" -> "error.permanent-forbidden";
                 default -> "error.request-failed";
             };
             source.sendMessage(messages.prefixed(key, vars));

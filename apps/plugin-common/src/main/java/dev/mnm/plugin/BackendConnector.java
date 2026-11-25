@@ -62,7 +62,7 @@ public final class BackendConnector {
     private final AtomicBoolean flushing = new AtomicBoolean();
     private final List<Runnable> periodicTasks = new java.util.concurrent.CopyOnWriteArrayList<>();
     private volatile ManagedSettings managedSettings;
-    private volatile java.util.function.Consumer<JsonObject> heartbeatListener;
+    private final java.util.List<java.util.function.Consumer<JsonObject>> heartbeatListeners = new java.util.concurrent.CopyOnWriteArrayList<>();
     private final AtomicBoolean fetchingConfig = new AtomicBoolean();
     private volatile Credentials credentials;
     private volatile boolean connected;
@@ -153,7 +153,7 @@ public final class BackendConnector {
 
     /** Receives every successful heartbeat response (e.g. cached update information). */
     public void onHeartbeatResponse(java.util.function.Consumer<JsonObject> listener) {
-        this.heartbeatListener = listener;
+        heartbeatListeners.add(listener);
     }
 
     /** Receives centrally managed settings whenever their revision changes. */
@@ -201,12 +201,13 @@ public final class BackendConnector {
                     }
                     onSuccess();
                     if (response != null && response.has("configRevision")) checkConfig(response.get("configRevision").getAsLong());
-                    java.util.function.Consumer<JsonObject> listener = heartbeatListener;
-                    if (listener != null && response != null) {
-                        try {
-                            listener.accept(response);
-                        } catch (RuntimeException e) {
-                            logger.warn("Could not process the heartbeat response: {}", e.getMessage());
+                    if (response != null) {
+                        for (java.util.function.Consumer<JsonObject> listener : heartbeatListeners) {
+                            try {
+                                listener.accept(response);
+                            } catch (RuntimeException e) {
+                                logger.warn("Could not process the heartbeat response: {}", e.getMessage());
+                            }
                         }
                     }
                 });

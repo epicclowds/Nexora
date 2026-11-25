@@ -34,12 +34,40 @@ public final class ModerationClient {
      * request safe to retry without creating duplicates.
      */
     public CompletableFuture<JsonObject> punish(String type, String target, String reason, Long durationSeconds, Actor issuer) {
+        return punish(type, target, reason, durationSeconds, issuer, java.util.List.of());
+    }
+
+    /** Typed reason; {@code granted}: canonical permissions verified in-game (e.g. nexora.punishment.custom). */
+    public CompletableFuture<JsonObject> punish(String type, String target, String reason, Long durationSeconds, Actor issuer, java.util.Collection<String> granted) {
         JsonObject body = new JsonObject();
         body.addProperty("type", type);
         body.addProperty("target", target);
         body.addProperty("reason", reason);
         if (durationSeconds != null) body.addProperty("durationSeconds", durationSeconds);
+        return send(body, issuer, granted);
+    }
+
+    /**
+     * Reason ID (preset). {@code override}: null = the preset's duration, otherwise
+     * an {@link EditDuration} (seconds, or permanent).
+     */
+    public CompletableFuture<JsonObject> punishWithPreset(String type, String target, int reasonId, EditDuration override, Actor issuer, java.util.Collection<String> granted) {
+        JsonObject body = new JsonObject();
+        body.addProperty("type", type);
+        body.addProperty("target", target);
+        body.addProperty("presetNumericId", reasonId);
+        if (override != null) {
+            if (override.isPermanent()) body.add("durationSeconds", com.google.gson.JsonNull.INSTANCE);
+            else body.addProperty("durationSeconds", override.seconds());
+        }
+        return send(body, issuer, granted);
+    }
+
+    private CompletableFuture<JsonObject> send(JsonObject body, Actor issuer, java.util.Collection<String> granted) {
         body.add("issuer", issuer.toJson());
+        com.google.gson.JsonArray list = new com.google.gson.JsonArray();
+        granted.forEach(list::add);
+        body.add("granted", list);
         body.addProperty("idempotencyKey", UUID.randomUUID().toString());
         return client.post("/api/plugin/v1/punishments", body);
     }
@@ -74,6 +102,10 @@ public final class ModerationClient {
      * temporary ↔ permanent conversions (checked against the planned change).
      */
     public CompletableFuture<JsonObject> edit(Edit edit, boolean allowPermanentChange, Actor editor) {
+        return edit(edit, allowPermanentChange, editor, java.util.List.of());
+    }
+
+    public CompletableFuture<JsonObject> edit(Edit edit, boolean allowPermanentChange, Actor editor, java.util.Collection<String> granted) {
         JsonObject body = new JsonObject();
         body.addProperty("kind", edit.kind());
         if (edit.id() != null) body.addProperty("id", edit.id());
@@ -85,6 +117,9 @@ public final class ModerationClient {
         if (edit.reason() != null && !edit.reason().isBlank()) body.addProperty("reason", edit.reason());
         body.add("editor", editor.toJson());
         body.addProperty("allowPermanentChange", allowPermanentChange);
+        com.google.gson.JsonArray list = new com.google.gson.JsonArray();
+        granted.forEach(list::add);
+        body.add("granted", list);
         return client.post("/api/plugin/v1/punishments/edit", body);
     }
 

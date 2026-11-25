@@ -100,7 +100,11 @@ public final class BackendClient {
                     if (response.statusCode() / 100 != 2) {
                         String code = json.has("code") ? json.get("code").getAsString() : "HTTP_" + response.statusCode();
                         String message = json.has("message") ? json.get("message").getAsString() : "HTTP " + response.statusCode();
-                        throw new BackendException(response.statusCode(), code, message);
+                        java.util.Map<String, String> details = new java.util.HashMap<>();
+                        for (var entry : json.entrySet()) {
+                            if (entry.getValue().isJsonPrimitive() && !entry.getKey().equals("message")) details.put(entry.getKey(), entry.getValue().getAsString());
+                        }
+                        throw new BackendException(response.statusCode(), code, message, details);
                     }
                     return json;
                 });
