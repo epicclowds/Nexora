@@ -64,6 +64,7 @@ export function PunishmentTable({ items, showTarget, onChange }: { items: Punish
             )}
             <TD className="min-w-48 max-w-80">
               <span className="line-clamp-2">{p.reason}</span>
+              {p.preset && <span className="text-[10px] text-muted-foreground">{t('reasons.reference', { category: t(`reasons.categories.${p.preset.category}`), id: p.preset.numericId })}</span>}
               <span className="flex items-center gap-2 text-[10px] text-muted-foreground">
                 <Link href={`/moderation/${p.id}`} className="font-mono hover:text-foreground hover:underline" title={t('punishment.open')}>
                   #{p.id}

@@ -126,7 +126,10 @@
       "moderator": "Moderator",
       "supporter": "Supporter",
       "viewer": "Viewer"
-    }
+    },
+    "reasonPermissions": "Punishment reasons",
+    "reasonPermissionsHint": "Which reasons members of this role may use (in the dashboard; in-game the same permission nodes are checked by LuckPerms). Wildcards such as nexora.punishment.ban.* above cover a whole category.",
+    "viaWildcard": "via wildcard"
   },
   "audit": {
     "title": "Audit Logs",
@@ -1114,5 +1117,102 @@
     "source": "GitHub access",
     "sourceToken": "With token",
     "sourceAnonymous": "Without token (60 requests/hour per IP)"
+  },
+  "reasons": {
+    "title": "Punishment reasons",
+    "description": "Numbered ban, mute, kick and warning reasons with duration and permission. Staff use them in-game (/ban Steve 1) and in the dashboard.",
+    "add": "New reason",
+    "edit": "Edit",
+    "editTitle": "Edit reason {id}",
+    "created": "Reason created.",
+    "saved": "Reason saved.",
+    "duplicate": "Duplicate",
+    "duplicated": "Copy created (disabled until you enable it).",
+    "archive": "Archive",
+    "archived": "Reason archived.",
+    "restore": "Restore",
+    "restored": "Reason restored.",
+    "search": "Search reasons",
+    "category": "Category",
+    "allCategories": "All categories",
+    "categories": {
+      "BAN": "Ban",
+      "MUTE": "Mute",
+      "KICK": "Kick",
+      "WARN": "Warning"
+    },
+    "status": "Status",
+    "statusAll": "All",
+    "statuses": {
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "archived": "Archived"
+    },
+    "sort": "Sort",
+    "sortBy": {
+      "id": "Sort by ID",
+      "name": "Sort by name",
+      "duration": "Sort by duration"
+    },
+    "empty": "No reasons match.",
+    "id": "ID",
+    "reason": "Reason",
+    "duration": "Duration",
+    "permission": "Permission",
+    "enabled": "Enabled",
+    "idHint": "Reason IDs are separate per category (ban reason 1 ≠ mute reason 1) and are not punishment IDs. Archived reasons keep their ID so it is never reused.",
+    "idFieldHint": "Used in commands, e.g. /ban Steve 1",
+    "name": "Name",
+    "playerReason": "Player-facing reason",
+    "playerReasonHint": "Shown to the player (ban screen, chat) and stored on the punishment.",
+    "internalDescription": "Internal description",
+    "internalDescriptionHint": "Only for staff (optional).",
+    "permissionHint": "Leave empty for {permission}. The same permission is checked in-game (LuckPerms) and in the dashboard.",
+    "snapshotHint": "Changes only affect new punishments. Issued punishments keep the reason and duration they were created with.",
+    "modeTitle": "Command mode",
+    "modeDescription": "How staff specify reasons – network-wide, for all proxies, servers, staff members and the dashboard.",
+    "modeSaved": "Command mode saved. All servers apply it within a few seconds.",
+    "modeGlobal": "This is one setting for the whole network, not a personal preference. Only users who may manage punishment reasons can change it.",
+    "recommended": "Recommended",
+    "modes": {
+      "HYBRID": "Hybrid",
+      "PRESET_ONLY": "Reason IDs only",
+      "FREE_TEXT": "Typed reasons only"
+    },
+    "modeHints": {
+      "HYBRID": "Reason IDs and typed reasons. Typed reasons need nexora.punishment.custom.",
+      "PRESET_ONLY": "Only configured reasons with their duration. Typed reasons are rejected.",
+      "FREE_TEXT": "Only typed reasons (behaviour before reason presets). Reason IDs are disabled."
+    },
+    "modeExamples": {
+      "HYBRID": "/ban Steve 1 · /ban Steve Cheating",
+      "PRESET_ONLY": "/ban Steve 1",
+      "FREE_TEXT": "/ban Steve Cheating"
+    },
+    "selectLabel": "Reason",
+    "choose": "Choose a reason…",
+    "typedReason": "Typed reason",
+    "reference": "{category} reason {id}",
+    "noneUsable": "You may not use any configured reason.",
+    "presetOnlyHint": "The network uses reason IDs only.",
+    "hybridHint": "Choose a configured reason or type your own.",
+    "overrideDuration": "Change duration",
+    "typedNotAllowed": "You may only use configured reasons.",
+    "blocked": {
+      "STALE_PERMISSIONS": "Your Minecraft permissions have not been synchronised recently. Join the network or ask an administrator to recheck them.",
+      "NO_PERMISSION_DATA": "No Minecraft permissions have been synchronised for your linked account yet."
+    },
+    "errors": {
+      "DUPLICATE_PRESET_ID": "This reason ID is already used in this category (archived reasons keep their ID).",
+      "STALE_PRESET": "Someone else changed this reason in the meantime. Close the editor and try again.",
+      "PRESETS_DISABLED": "Reason IDs are disabled: the command mode only allows typed reasons.",
+      "PRESET_REQUIRED": "The command mode only allows reason IDs. Choose a reason.",
+      "UNKNOWN_PRESET": "Unknown punishment reason ID.",
+      "PRESET_DISABLED": "This punishment reason is disabled.",
+      "PRESET_FORBIDDEN": "You do not have permission to use this reason.",
+      "CUSTOM_REASON_FORBIDDEN": "You do not have permission to use custom reasons.",
+      "DURATION_OVERRIDE_FORBIDDEN": "You do not have permission to change the duration of a reason.",
+      "PERMANENT_FORBIDDEN": "You do not have permission to make this reason permanent."
+    }
   }
 }

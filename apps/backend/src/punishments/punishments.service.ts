@@ -1,4 +1,5 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import type { PresetCategory } from '@mnm/shared-types';
 import { ActorType, type Prisma, type Punishment, PunishmentChangeKind, PunishmentHistoryAction, type PunishmentSource, PunishmentStatus, PunishmentType } from '../generated/prisma/client';
 import { type AuditActor, AuditService } from '../audit/audit.service';
 import { normalizeUuid } from '../players/players.controller';
@@ -23,6 +24,8 @@ export interface CreatePunishmentInput {
   serverId?: string | null;
   idempotencyKey?: string;
   ipAddress?: string | null;
+  /** Reason preset used (snapshot; reason and duration above already come from it). */
+  preset?: { id: string; category: PresetCategory; numericId: number; name: string } | null;
 }
 
 export const withNames = {
@@ -52,6 +55,7 @@ export function serializePunishment(p: PunishmentWithNames, options: { includeIp
     version: p.version,
     updatedAt: p.updatedAt?.toISOString() ?? null,
     evidenceCount: p._count.evidence,
+    preset: p.presetCategory && p.presetNumericId !== null ? { category: p.presetCategory, numericId: p.presetNumericId, name: p.presetName } : null,
     ...(options.includeIp ? { targetIp: p.targetIp } : {}),
   };
 }
@@ -153,6 +157,10 @@ export class PunishmentsService {
           serverId: input.serverId ?? null,
           idempotencyKey: input.idempotencyKey ?? null,
           targetIp,
+          presetId: input.preset?.id ?? null,
+          presetCategory: input.preset?.category ?? null,
+          presetNumericId: input.preset?.numericId ?? null,
+          presetName: input.preset?.name.slice(0, 100) ?? null,
           // Kicks take effect once; they are recorded but never "active".
           status: input.type === PunishmentType.KICK ? PunishmentStatus.EXPIRED : PunishmentStatus.ACTIVE,
         },
@@ -163,7 +171,7 @@ export class PunishmentsService {
         data: {
           punishmentId: punishment.id,
           action: PunishmentHistoryAction.CREATED,
-          newValues: { type: input.type, reason: input.reason, expiresAt: expiry.expiresAt?.toISOString() ?? null },
+          newValues: { type: input.type, reason: input.reason, expiresAt: expiry.expiresAt?.toISOString() ?? null, ...(input.preset ? { preset: { category: input.preset.category, numericId: input.preset.numericId, name: input.preset.name } } : {}) },
           ...historyActor(input.issuer),
         },
       });

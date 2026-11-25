@@ -8,7 +8,7 @@ import { PageHeader } from '@/components/app-shell';
 import { useAuth } from '@/components/auth-provider';
 import { LanguagesManager } from '@/components/languages-manager';
 import { MinecraftIntegration } from '@/components/minecraft-integration';
-import { ModerationPresets } from '@/components/moderation-presets';
+import { ModerationSettings } from '@/components/punishment-reasons';
 import { PluginSettingsEditor } from '@/components/plugin-settings-editor';
 import { LanguageSwitcher, ThemeToggle } from '@/components/preference-controls';
 import { useToast } from '@/components/toaster';
@@ -23,7 +23,7 @@ const SECTIONS = [
   { key: 'general', permission: null },
   { key: 'minecraft', permission: PERMISSIONS.SERVERS_MANAGE },
   { key: 'plugins', permission: PERMISSIONS.SETTINGS_MANAGE },
-  { key: 'moderation', permission: PERMISSIONS.SETTINGS_MANAGE },
+  { key: 'moderation', permission: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.PUNISHMENT_PRESETS_MANAGE] },
   { key: 'languages', permission: PERMISSIONS.TRANSLATIONS_MANAGE },
   { key: 'privacy', permission: PERMISSIONS.SETTINGS_MANAGE },
   { key: 'updates', permission: PERMISSIONS.UPDATES_VIEW },
@@ -44,7 +44,7 @@ function Settings() {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
-  const visible = SECTIONS.filter((s) => s.permission === null || can(s.permission)).map((s) => s.key);
+  const visible = SECTIONS.filter((s) => s.permission === null || (Array.isArray(s.permission) ? s.permission.some((p) => can(p)) : can(s.permission as string))).map((s) => s.key);
   const requested = params.get('section') as Section | null;
   const section: Section = requested && visible.includes(requested) ? requested : 'general';
 
@@ -77,7 +77,7 @@ function Settings() {
         )}
         {section === 'minecraft' && <MinecraftIntegration />}
         {section === 'plugins' && <PluginSettingsEditor />}
-        {section === 'moderation' && <ModerationPresets />}
+        {section === 'moderation' && <ModerationSettings />}
         {section === 'languages' && <LanguagesManager />}
         {section === 'privacy' && <PrivacyCard />}
         {section === 'updates' && <UpdatesPanel />}

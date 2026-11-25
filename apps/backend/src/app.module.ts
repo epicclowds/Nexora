@@ -14,6 +14,7 @@ import { InventoryModule } from './inventory/inventory.module';
 import { MaintenanceModule } from './maintenance/maintenance.module';
 import { PlayersModule } from './players/players.module';
 import { PluginApiModule } from './plugin-api/plugin-api.module';
+import { PresetsModule } from './presets/presets.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { PunishmentsModule } from './punishments/punishments.module';
 import { RbacModule } from './rbac/rbac.module';
@@ -58,6 +59,7 @@ import { UsersModule } from './users/users.module';
     AntiCheatModule,
     InventoryModule,
     UpdatesModule,
+    PresetsModule,
   ],
   providers: [
     // Order matters: rate limiting → authentication/CSRF → authorization.

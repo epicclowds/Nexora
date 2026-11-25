@@ -11,6 +11,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { ISSUE_PERMISSION, MAX_DURATION_SECONDS, MIN_DURATION_SECONDS, REVOKE_PERMISSION } from './punishment-rules';
 import { createEvidenceSchema, updateEvidenceSchema } from './punishment-editing';
 import { PunishmentEditingService } from './punishment-editing.service';
+import { PresetsService } from '../presets/presets.service';
+import { reasonError } from '../presets/reason-errors';
+import { StaffPermissionsService } from '../presets/staff-permissions.service';
 import { type Issuer, PunishmentsService } from './punishments.service';
 
 export const reasonSchema = z.string().trim().min(1).max(500);
@@ -21,12 +24,17 @@ const listQuery = paginationSchema.extend({
   search: z.string().trim().max(64).optional(),
 });
 
-const createSchema = z.object({
-  type: z.enum(PunishmentType),
-  target: z.string().trim().min(1).max(36),
-  reason: reasonSchema,
-  durationSeconds: z.number().int().min(MIN_DURATION_SECONDS).max(MAX_DURATION_SECONDS).optional(),
-});
+const createSchema = z
+  .object({
+    type: z.enum(PunishmentType),
+    target: z.string().trim().min(1).max(36),
+    /** Numeric reason ID of a preset (not a punishment ID). */
+    presetNumericId: z.number().int().min(1).max(9999).optional(),
+    reason: reasonSchema.optional(),
+    /** Seconds; with a preset: override (null = permanent), omitted = the preset's duration. */
+    durationSeconds: z.number().int().min(MIN_DURATION_SECONDS).max(MAX_DURATION_SECONDS).nullable().optional(),
+  })
+  .refine((b) => b.presetNumericId !== undefined || Boolean(b.reason), { message: 'A reason or a reason ID is required', path: ['reason'] });
 
 const revokeSchema = z.object({ reason: z.string().trim().max(500).optional() });
 
@@ -56,6 +64,8 @@ export class PunishmentsController {
     private readonly punishments: PunishmentsService,
     private readonly prisma: PrismaService,
     private readonly editing: PunishmentEditingService,
+    private readonly presets: PresetsService,
+    private readonly staff: StaffPermissionsService,
   ) {}
 
   @Get()
@@ -70,15 +80,24 @@ export class PunishmentsController {
   @ZodBody(createSchema)
   async create(@CurrentUser() user: AuthenticatedUser, @Body() body: z.infer<typeof createSchema>, @Req() req: Request) {
     this.require(user, ISSUE_PERMISSION[body.type]);
+    // Same rules as in-game: global command mode + canonical nexora.punishment.* permissions.
+    const check = await this.staff.forUser(user);
+    const resolved = await this.presets.resolve(
+      { type: body.type, presetNumericId: body.presetNumericId, reason: body.reason, durationSeconds: body.durationSeconds },
+      check.blockedReason ? () => false : check.can,
+    );
+    if (!resolved.ok) throw reasonError(resolved.code, resolved.numericId);
+    this.require(user, ISSUE_PERMISSION[resolved.type]);
     const player = await this.punishments.resolvePlayer(body.target);
     return this.punishments.create({
-      type: body.type,
+      type: resolved.type,
       targetUuid: player.uuid,
-      reason: body.reason,
-      durationSeconds: body.durationSeconds,
+      reason: resolved.reason,
+      durationSeconds: resolved.durationSeconds,
       source: PunishmentSource.DASHBOARD,
       issuer: dashboardIssuer(user),
       ipAddress: clientIp(req),
+      preset: resolved.preset ? { id: resolved.preset.id, category: resolved.preset.category, numericId: resolved.preset.numericId, name: resolved.preset.name } : null,
     });
   }
 
@@ -108,6 +127,11 @@ export class PunishmentsController {
   @ZodBody(editSchema)
   async edit(@CurrentUser() user: AuthenticatedUser, @Param('id') id: string, @Body() body: z.infer<typeof editSchema>, @Req() req: Request) {
     const type = await this.typeOf(id);
+    // A typed reason replaces a preset reason only where typed reasons are allowed (same rule as issuing).
+    if (body.reason !== undefined && (await this.presets.mode()) !== 'FREE_TEXT') {
+      const check = await this.staff.forUser(user);
+      if (check.blockedReason || !check.can(PERMISSIONS.NEXORA_PUNISHMENT_CUSTOM)) throw reasonError('CUSTOM_REASON_FORBIDDEN');
+    }
     return this.editing.edit(
       id,
       { reason: body.reason, expiresAt: body.expiresAt === undefined ? undefined : body.expiresAt === null ? null : new Date(body.expiresAt), staffNote: body.staffNote },

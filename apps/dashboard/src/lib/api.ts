@@ -273,6 +273,8 @@ export interface Punishment {
   version: number;
   updatedAt: string | null;
   evidenceCount: number;
+  /** Reason preset used (snapshot at creation). */
+  preset: { category: PresetCategory; numericId: number; name: string | null } | null;
 }
 
 export interface PunishmentDetail extends Punishment {
@@ -398,4 +400,41 @@ export interface UpdateNotification {
   url: string;
   name: string;
   notes: string;
+}
+
+// ── Punishment reason presets ───────────────────────────────────────
+
+export type PresetCategory = 'BAN' | 'MUTE' | 'KICK' | 'WARN';
+export type CommandMode = 'PRESET_ONLY' | 'FREE_TEXT' | 'HYBRID';
+
+export interface PunishmentPreset {
+  id: string;
+  category: PresetCategory;
+  /** Reason ID used in commands (/ban Steve 1) – not a punishment ID. */
+  numericId: number;
+  name: string;
+  reason: string;
+  description: string | null;
+  durationSeconds: number | null;
+  permanent: boolean;
+  permission: string;
+  canonicalPermission: boolean;
+  enabled: boolean;
+  archived: boolean;
+  archivedAt: string | null;
+  sortOrder: number;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+  updatedBy: string | null;
+}
+
+export interface UsablePresets {
+  mode: CommandMode;
+  permissionSource: 'ROLE' | 'LUCKPERMS';
+  blockedReason: 'STALE_PERMISSIONS' | 'NO_PERMISSION_DATA' | null;
+  customReasons: boolean;
+  durationOverride: boolean;
+  permanentOverride: boolean;
+  presets: PunishmentPreset[];
 }

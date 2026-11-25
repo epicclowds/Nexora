@@ -1,6 +1,6 @@
 import { BadRequestException, Body, ConflictException, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Req } from '@nestjs/common';
 import { ApiTags } from '@nestjs/swagger';
-import { ALL_PERMISSIONS, isKnownPermission, PERMISSIONS } from '@mnm/shared-types';
+import { ALL_PERMISSIONS, isGrantablePermission, PERMISSIONS } from '@mnm/shared-types';
 import type { Request } from 'express';
 import { z } from 'zod';
 import { type AuthenticatedUser, clientIp, CurrentUser, RequirePermissions } from '../common/auth-context';
@@ -10,8 +10,9 @@ import { PrismaService } from '../prisma/prisma.service';
 import { canManagePriority, OWNER_ROLE_KEY, ungrantablePermissions } from './rbac.policy';
 
 const permissionList = z
-  .array(z.string().refine(isKnownPermission, 'Unknown permission'))
-  .max(ALL_PERMISSIONS.length)
+  // Catalogue permissions plus per-preset keys such as nexora.punishment.ban.1.
+  .array(z.string().refine(isGrantablePermission, 'Unknown permission'))
+  .max(ALL_PERMISSIONS.length + 400)
   .transform((list) => [...new Set(list)]);
 
 const createRoleSchema = z.object({

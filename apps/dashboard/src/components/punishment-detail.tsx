@@ -132,6 +132,14 @@ export function PunishmentDetailView({ id }: { id: string }) {
           <dl className="grid gap-x-6 gap-y-3 text-sm sm:grid-cols-2 lg:grid-cols-3">
             <Fact label={t('moderation.reason')}>
               <span className="whitespace-pre-wrap break-words">{p.reason}</span>
+              {p.preset && (
+                <span className="mt-1 block">
+                  <Badge variant="muted" title={t('reasons.snapshotHint')}>
+                    {t('reasons.reference', { category: t(`reasons.categories.${p.preset.category}`), id: p.preset.numericId })}
+                    {p.preset.name ? ` · ${p.preset.name}` : ''}
+                  </Badge>
+                </span>
+              )}
             </Fact>
             <Fact label={t('moderation.status')}>
               <Badge variant={p.status === 'ACTIVE' ? 'default' : 'muted'}>{t(`moderation.statuses.${p.status}`)}</Badge>

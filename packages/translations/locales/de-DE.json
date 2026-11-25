@@ -126,7 +126,10 @@
       "moderator": "Moderator",
       "supporter": "Supporter",
       "viewer": "Betrachter"
-    }
+    },
+    "reasonPermissions": "Strafgründe",
+    "reasonPermissionsHint": "Welche Gründe Mitglieder dieser Rolle verwenden dürfen (im Dashboard; ingame prüft LuckPerms dieselben Berechtigungen). Platzhalter wie nexora.punishment.ban.* oben decken eine ganze Kategorie ab.",
+    "viaWildcard": "per Platzhalter"
   },
   "audit": {
     "title": "Audit-Protokoll",
@@ -1114,5 +1117,102 @@
     "source": "GitHub-Zugriff",
     "sourceToken": "Mit Token",
     "sourceAnonymous": "Ohne Token (60 Anfragen/Stunde pro IP)"
+  },
+  "reasons": {
+    "title": "Strafgründe",
+    "description": "Nummerierte Gründe für Banns, Mutes, Kicks und Verwarnungen mit Dauer und Berechtigung. Das Team nutzt sie ingame (/ban Steve 1) und im Dashboard.",
+    "add": "Neuer Grund",
+    "edit": "Bearbeiten",
+    "editTitle": "Grund {id} bearbeiten",
+    "created": "Grund erstellt.",
+    "saved": "Grund gespeichert.",
+    "duplicate": "Duplizieren",
+    "duplicated": "Kopie erstellt (deaktiviert, bis du sie aktivierst).",
+    "archive": "Archivieren",
+    "archived": "Grund archiviert.",
+    "restore": "Wiederherstellen",
+    "restored": "Grund wiederhergestellt.",
+    "search": "Gründe durchsuchen",
+    "category": "Kategorie",
+    "allCategories": "Alle Kategorien",
+    "categories": {
+      "BAN": "Bann",
+      "MUTE": "Mute",
+      "KICK": "Kick",
+      "WARN": "Verwarnung"
+    },
+    "status": "Status",
+    "statusAll": "Alle",
+    "statuses": {
+      "enabled": "Aktiv",
+      "disabled": "Deaktiviert",
+      "archived": "Archiviert"
+    },
+    "sort": "Sortierung",
+    "sortBy": {
+      "id": "Nach ID",
+      "name": "Nach Name",
+      "duration": "Nach Dauer"
+    },
+    "empty": "Keine passenden Gründe.",
+    "id": "ID",
+    "reason": "Grund",
+    "duration": "Dauer",
+    "permission": "Berechtigung",
+    "enabled": "Aktiv",
+    "idHint": "Grund-IDs sind pro Kategorie getrennt (Bann-Grund 1 ≠ Mute-Grund 1) und keine Straf-IDs. Archivierte Gründe behalten ihre ID, damit sie nie wiederverwendet wird.",
+    "idFieldHint": "Wird in Befehlen verwendet, z. B. /ban Steve 1",
+    "name": "Name",
+    "playerReason": "Grund für den Spieler",
+    "playerReasonHint": "Wird dem Spieler angezeigt (Bann-Bildschirm, Chat) und an der Strafe gespeichert.",
+    "internalDescription": "Interne Beschreibung",
+    "internalDescriptionHint": "Nur für das Team (optional).",
+    "permissionHint": "Leer lassen für {permission}. Dieselbe Berechtigung wird ingame (LuckPerms) und im Dashboard geprüft.",
+    "snapshotHint": "Änderungen wirken nur auf neue Strafen. Bestehende Strafen behalten den Grund und die Dauer, mit denen sie erstellt wurden.",
+    "modeTitle": "Befehlsmodus",
+    "modeDescription": "Wie das Team Gründe angibt – netzwerkweit für alle Proxys, Server, Teammitglieder und das Dashboard.",
+    "modeSaved": "Befehlsmodus gespeichert. Alle Server übernehmen ihn innerhalb weniger Sekunden.",
+    "modeGlobal": "Dies ist eine Einstellung für das gesamte Netzwerk, keine persönliche Vorliebe. Nur Benutzer, die Strafgründe verwalten dürfen, können sie ändern.",
+    "recommended": "Empfohlen",
+    "modes": {
+      "HYBRID": "Hybrid",
+      "PRESET_ONLY": "Nur Grund-IDs",
+      "FREE_TEXT": "Nur eingegebene Gründe"
+    },
+    "modeHints": {
+      "HYBRID": "Grund-IDs und eingegebene Gründe. Eingegebene Gründe benötigen nexora.punishment.custom.",
+      "PRESET_ONLY": "Nur konfigurierte Gründe mit ihrer Dauer. Eingegebene Gründe werden abgelehnt.",
+      "FREE_TEXT": "Nur eingegebene Gründe (Verhalten vor den Strafgründen). Grund-IDs sind deaktiviert."
+    },
+    "modeExamples": {
+      "HYBRID": "/ban Steve 1 · /ban Steve Cheating",
+      "PRESET_ONLY": "/ban Steve 1",
+      "FREE_TEXT": "/ban Steve Cheating"
+    },
+    "selectLabel": "Grund",
+    "choose": "Grund wählen…",
+    "typedReason": "Eigener Grund",
+    "reference": "{category}-Grund {id}",
+    "noneUsable": "Du darfst keinen der konfigurierten Gründe verwenden.",
+    "presetOnlyHint": "Das Netzwerk verwendet nur Grund-IDs.",
+    "hybridHint": "Wähle einen konfigurierten Grund oder gib einen eigenen ein.",
+    "overrideDuration": "Dauer ändern",
+    "typedNotAllowed": "Du darfst nur konfigurierte Gründe verwenden.",
+    "blocked": {
+      "STALE_PERMISSIONS": "Deine Minecraft-Berechtigungen wurden zuletzt nicht synchronisiert. Betrete das Netzwerk oder bitte einen Administrator, sie erneut zu prüfen.",
+      "NO_PERMISSION_DATA": "Für dein verknüpftes Konto wurden noch keine Minecraft-Berechtigungen synchronisiert."
+    },
+    "errors": {
+      "DUPLICATE_PRESET_ID": "Diese Grund-ID wird in dieser Kategorie bereits verwendet (archivierte Gründe behalten ihre ID).",
+      "STALE_PRESET": "Jemand anderes hat diesen Grund inzwischen geändert. Schließe den Editor und versuche es erneut.",
+      "PRESETS_DISABLED": "Grund-IDs sind deaktiviert: Der Befehlsmodus erlaubt nur eingegebene Gründe.",
+      "PRESET_REQUIRED": "Der Befehlsmodus erlaubt nur Grund-IDs. Wähle einen Grund.",
+      "UNKNOWN_PRESET": "Unbekannte Grund-ID.",
+      "PRESET_DISABLED": "Dieser Strafgrund ist deaktiviert.",
+      "PRESET_FORBIDDEN": "Du hast keine Berechtigung, diesen Grund zu verwenden.",
+      "CUSTOM_REASON_FORBIDDEN": "Du hast keine Berechtigung für eigene Gründe.",
+      "DURATION_OVERRIDE_FORBIDDEN": "Du hast keine Berechtigung, die Dauer eines Grundes zu ändern.",
+      "PERMANENT_FORBIDDEN": "Du hast keine Berechtigung, diesen Grund permanent zu machen."
+    }
   }
 }

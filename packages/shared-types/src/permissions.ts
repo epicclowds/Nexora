@@ -50,6 +50,24 @@ export const PERMISSIONS = {
   UPDATES_NOTIFY: 'updates.notify',
   UPDATES_CHECK: 'updates.check',
   UPDATES_MANAGE: 'updates.manage',
+
+  /** Manage punishment reason presets and the global command mode. */
+  PUNISHMENT_PRESETS_MANAGE: 'punishments.presets.manage',
+  /** LuckPerms integration, role mappings and account-linking settings (Owner by default). */
+  INTEGRATIONS_MANAGE: 'integrations.manage',
+
+  // Canonical moderation permissions – the same keys are checked in Minecraft (LuckPerms) and the dashboard.
+  NEXORA_PUNISHMENT_ALL: 'nexora.punishment.*',
+  NEXORA_PUNISHMENT_BAN_ALL: 'nexora.punishment.ban.*',
+  NEXORA_PUNISHMENT_MUTE_ALL: 'nexora.punishment.mute.*',
+  NEXORA_PUNISHMENT_KICK_ALL: 'nexora.punishment.kick.*',
+  NEXORA_PUNISHMENT_WARN_ALL: 'nexora.punishment.warn.*',
+  /** Typed (free-text) reasons in hybrid mode. */
+  NEXORA_PUNISHMENT_CUSTOM: 'nexora.punishment.custom',
+  /** A different duration than the preset's. */
+  NEXORA_PUNISHMENT_DURATION_OVERRIDE: 'nexora.punishment.duration-override',
+  /** Making a temporary preset permanent through a duration override. */
+  NEXORA_PUNISHMENT_PERMANENT: 'nexora.punishment.permanent',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -61,6 +79,11 @@ export const WILDCARD_PERMISSION = '*';
 
 export function isKnownPermission(value: string): value is Permission {
   return (ALL_PERMISSIONS as readonly string[]).includes(value);
+}
+
+/** Catalogue permissions plus per-preset keys (nexora.punishment.ban.1, …) for roles. */
+export function isGrantablePermission(value: string): boolean {
+  return isKnownPermission(value) || /^nexora\.punishment\.(ban|mute|kick|warn)\.\d{1,4}$/.test(value);
 }
 
 /**

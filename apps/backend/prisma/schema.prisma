@@ -321,17 +321,25 @@ model Punishment {
   updatedAt       DateTime?        @map("updated_at") @db.DateTime(3)
   /// Internal staff note; never shown to players.
   staffNote       String?          @map("staff_note") @db.Text
+  /// Reason preset used to create the punishment (reason and duration above are a snapshot;
+  /// editing or archiving the preset later never changes this punishment).
+  presetId        String?          @map("preset_id") @db.VarChar(32)
+  presetCategory  PresetCategory?  @map("preset_category")
+  presetNumericId Int?             @map("preset_numeric_id")
+  presetName      String?          @map("preset_name") @db.VarChar(100)
 
   target          Player               @relation("PunishmentTarget", fields: [targetUuid], references: [uuid], onDelete: Cascade)
   issuerUser      DashboardUser?       @relation("PunishmentIssuer", fields: [issuerUserId], references: [id], onDelete: SetNull)
   revokedByUser   DashboardUser?       @relation("PunishmentRevoker", fields: [revokedByUserId], references: [id], onDelete: SetNull)
   server          Server?              @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  preset          PunishmentPreset?    @relation(fields: [presetId], references: [id], onDelete: SetNull)
   evidence        PunishmentEvidence[]
   changes         PunishmentChange[]
   history         PunishmentHistory[]
   antiCheatEvents AntiCheatEvent[]
 
   @@index([targetUuid, type, status])
+  @@index([presetId])
   @@index([targetIp, type, status])
   @@index([status, type, expiresAt])
   @@index([createdAt])
@@ -687,4 +695,44 @@ model TranslationCatalog {
   updatedAt       DateTime @updatedAt @map("updated_at") @db.DateTime(3)
 
   @@map("translation_catalogs")
+}
+
+/// Category of a punishment reason preset; each category has its own numeric ID namespace.
+enum PresetCategory {
+  BAN
+  MUTE
+  KICK
+  WARN
+}
+
+/// Configurable punishment reason ("/ban Steve 1"). numericId is the reason ID used in
+/// commands – not the ID of a punishment record. Archived presets keep their numeric ID
+/// reserved so it is never reused for a different reason.
+model PunishmentPreset {
+  id              String         @id @default(cuid()) @db.VarChar(32)
+  category        PresetCategory
+  numericId       Int            @map("numeric_id")
+  name            String         @db.VarChar(100)
+  /// Player-facing reason stored on the punishment.
+  reason          String         @db.VarChar(500)
+  description     String?        @db.VarChar(1000)
+  /// Null for permanent bans/mutes and for kicks/warnings.
+  durationSeconds Int?           @map("duration_seconds")
+  permanent       Boolean        @default(false)
+  /// Required permission (default nexora.punishment.<category>.<numericId>).
+  permission      String         @db.VarChar(100)
+  enabled         Boolean        @default(true)
+  archivedAt      DateTime?      @map("archived_at") @db.DateTime(3)
+  sortOrder       Int            @default(0) @map("sort_order")
+  version         Int            @default(1)
+  createdAt       DateTime       @default(now()) @map("created_at") @db.DateTime(3)
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.DateTime(3)
+  updatedByUserId String?        @map("updated_by_user_id") @db.VarChar(32)
+  updatedByName   String?        @map("updated_by_name") @db.VarChar(64)
+
+  punishments Punishment[]
+
+  @@unique([category, numericId])
+  @@index([category, enabled, archivedAt, sortOrder])
+  @@map("punishment_presets")
 }

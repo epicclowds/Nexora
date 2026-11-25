@@ -106,6 +106,15 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     expect(res.body.locale).toBe('en-US');
   });
 
+  it('starts fresh installations in hybrid mode with example reasons', async () => {
+    expect((await call('GET', '/api/moderation/command-mode')).body.mode).toBe('HYBRID');
+    const presets = await call('GET', '/api/moderation/presets');
+    expect(presets.body.map((p: { category: string; numericId: number }) => `${p.category}:${p.numericId}`)).toEqual(['BAN:1', 'BAN:2', 'BAN:3', 'BAN:4', 'BAN:5', 'MUTE:1', 'MUTE:2', 'MUTE:3']);
+    expect(presets.body[4]).toMatchObject({ name: 'Severe cheating', permanent: true, durationSeconds: null, permission: 'nexora.punishment.ban.5' });
+    // The flows below use typed reasons (the behaviour of upgraded installations); presets are tested further down.
+    expect((await call('PUT', '/api/moderation/command-mode', { mode: 'FREE_TEXT' })).status).toBe(200);
+  });
+
   it('serves the dashboard summary from real data', async () => {
     const res = await call('GET', '/api/dashboard/summary');
     expect(res.status).toBe(200);
@@ -676,6 +685,75 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
     );
   });
 
+  // ── 1.3: reason presets and the global command mode ─────────────
+
+  it('manages reason presets and the network-wide command mode with the same permissions in-game and in the dashboard', async () => {
+    const day = 86_400;
+    const mod = { uuid: '0f0e0d0c-0b0a-4908-8706-050403020100', name: 'Mod123' };
+    const revision0 = (await signed(paper, 'POST', '/api/plugin/v1/heartbeat', { pluginVersion: '1.3.0', platformVersion: 'Paper', onlinePlayers: 0 })).body.moderationRevision as number;
+
+    // Create, reject a duplicate reason ID, validate.
+    const created = await call('POST', '/api/moderation/presets', { category: 'BAN', numericId: 6, name: 'Alt account', reason: 'Ban evasion with an alt account', durationSeconds: 14 * day });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({ numericId: 6, permission: 'nexora.punishment.ban.6', canonicalPermission: true, enabled: true, version: 1 });
+    expect((await call('POST', '/api/moderation/presets', { category: 'BAN', numericId: 6, name: 'Other', reason: 'Other' })).body.code).toBe('DUPLICATE_PRESET_ID');
+    expect((await call('POST', '/api/moderation/presets', { category: 'MUTE', numericId: 6, name: 'Same ID, other category', reason: 'Spam', durationSeconds: 600 })).status).toBe(201);
+    expect((await call('POST', '/api/moderation/presets', { category: 'KICK', numericId: 1, name: 'x', reason: 'x', durationSeconds: 600 })).status).toBe(400);
+
+    // Global mode: the plugins see a new revision and the usable presets.
+    expect((await call('PUT', '/api/moderation/command-mode', { mode: 'HYBRID' })).status).toBe(200);
+    const revision1 = (await signed(paper, 'POST', '/api/plugin/v1/heartbeat', { pluginVersion: '1.3.0', platformVersion: 'Paper', onlinePlayers: 0 })).body.moderationRevision as number;
+    expect(revision1).toBeGreaterThan(revision0);
+    const catalog = await signed(paper, 'GET', '/api/plugin/v1/moderation');
+    expect(catalog.body.mode).toBe('HYBRID');
+    expect(catalog.body.presets).toContainEqual(expect.objectContaining({ category: 'BAN', numericId: 6, durationSeconds: 14 * day, permission: 'nexora.punishment.ban.6' }));
+
+    // Dashboard: reason ID → preset reason and duration, snapshot on the punishment.
+    const usable = await call('GET', '/api/moderation/presets/usable');
+    expect(usable.body).toMatchObject({ mode: 'HYBRID', permissionSource: 'ROLE', customReasons: true, durationOverride: true });
+    const viaDashboard = await call('POST', '/api/punishments', { type: 'BAN', target: 'Steve', presetNumericId: 6 });
+    expect(viaDashboard.status).toBe(201);
+    expect(viaDashboard.body).toMatchObject({ type: 'TEMP_BAN', reason: 'Ban evasion with an alt account', preset: { category: 'BAN', numericId: 6, name: 'Alt account' } });
+    expect(viaDashboard.body.id).not.toBe('6'); // reason ID ≠ punishment ID
+    expect(Date.parse(viaDashboard.body.expiresAt) - Date.parse(viaDashboard.body.createdAt)).toBe(14 * day * 1000);
+
+    // Editing the preset later never changes issued punishments.
+    expect((await call('PATCH', `/api/moderation/presets/${created.body.id}`, { version: 1, name: 'Alt account', reason: 'Changed text', durationSeconds: 30 * day })).status).toBe(200);
+    expect((await call('PATCH', `/api/moderation/presets/${created.body.id}`, { version: 1, name: 'x', reason: 'x' })).body.code).toBe('STALE_PRESET');
+    expect((await call('GET', `/api/punishments/${viaDashboard.body.id}`)).body).toMatchObject({ reason: 'Ban evasion with an alt account', preset: { numericId: 6 } });
+    await call('POST', `/api/punishments/${viaDashboard.body.id}/revoke`, {});
+
+    // In-game: the plugin reports the permissions it verified (LuckPerms on the proxy).
+    const cmd = (key: string, extra: Record<string, unknown>) => signed(paper, 'POST', '/api/plugin/v1/punishments', { type: 'BAN', target: 'Steve', issuer: mod, idempotencyKey: key, ...extra });
+    expect((await cmd('preset-0001', { reason: '6' })).body).toMatchObject({ code: 'PRESET_FORBIDDEN', reasonId: 6 });
+    const viaCommand = await cmd('preset-0002', { reason: '6', granted: ['nexora.punishment.ban.6'] });
+    expect(viaCommand.status).toBe(201);
+    expect(viaCommand.body).toMatchObject({ type: 'TEMP_BAN', reason: 'Changed text', preset: { numericId: 6 } });
+    expect(Date.parse(viaCommand.body.expiresAt) - Date.parse(viaCommand.body.createdAt)).toBe(30 * day * 1000);
+    await signed(paper, 'POST', '/api/plugin/v1/punishments/revoke', { kind: 'BAN', target: 'Steve', revoker: mod });
+    expect((await cmd('preset-0003', { reason: '6', durationSeconds: 3600, granted: ['nexora.punishment.ban.6'] })).body.code).toBe('DURATION_OVERRIDE_FORBIDDEN');
+    expect((await cmd('preset-0004', { reason: 'Typed reason' })).body.code).toBe('CUSTOM_REASON_FORBIDDEN');
+    expect((await cmd('preset-0005', { reason: '42', granted: ['nexora.punishment.custom'] })).body.code).toBe('UNKNOWN_PRESET');
+
+    // Preset only: typed reasons are rejected everywhere, also when editing.
+    expect((await call('PUT', '/api/moderation/command-mode', { mode: 'PRESET_ONLY' })).status).toBe(200);
+    expect((await call('POST', '/api/punishments', { type: 'WARNING', target: 'Steve', reason: 'Typed' })).body.code).toBe('PRESET_REQUIRED');
+    expect((await cmd('preset-0006', { reason: 'Typed', granted: ['nexora.punishment.custom'] })).body.code).toBe('PRESET_REQUIRED');
+
+    // Archived reasons disappear but keep their ID reserved.
+    expect((await call('POST', `/api/moderation/presets/${created.body.id}/archive`, { archived: true })).body).toMatchObject({ archived: true, enabled: false });
+    expect((await cmd('preset-0007', { reason: '6', granted: ['nexora.punishment.ban.6'] })).body.code).toBe('UNKNOWN_PRESET');
+    expect((await call('POST', '/api/moderation/presets', { category: 'BAN', numericId: 6, name: 'Reuse', reason: 'Reuse' })).body.code).toBe('DUPLICATE_PRESET_ID');
+    expect((await call('GET', '/api/moderation/presets')).body.some((p: { numericId: number; category: string }) => p.category === 'BAN' && p.numericId === 6)).toBe(false);
+    expect((await call('GET', '/api/moderation/presets?archived=true')).body.some((p: { numericId: number; archived: boolean }) => p.numericId === 6 && p.archived)).toBe(true);
+    const copy = await call('POST', `/api/moderation/presets/${created.body.id}/duplicate`);
+    expect(copy.body).toMatchObject({ category: 'BAN', numericId: 7, enabled: false });
+
+    const audit = await call('GET', '/api/audit-logs?action=moderation.');
+    expect(audit.body.items.map((e: { action: string }) => e.action)).toEqual(expect.arrayContaining(['moderation.preset_created', 'moderation.preset_updated', 'moderation.preset_archived', 'moderation.command_mode_changed']));
+    expect((await call('PUT', '/api/moderation/command-mode', { mode: 'FREE_TEXT' })).status).toBe(200);
+  });
+
   // ── Phase 5: statistics ────────────────────────────────────────
 
   it('ingests statistics from Paper and serves totals, ranges, series and leaderboards', async () => {
@@ -847,6 +925,9 @@ describe.skipIf(!enabled)('backend e2e (MySQL + Redis)', () => {
       ['POST', '/api/punishments/any-id/evidence', { type: 'TEXT', title: 'x', description: 'x' }],
       ['PATCH', '/api/punishments/any-id/evidence/e', { version: 1, title: 'x' }],
       ['DELETE', '/api/punishments/any-id/evidence/e', { version: 1 }],
+      ['GET', '/api/moderation/presets'],
+      ['POST', '/api/moderation/presets', { category: 'BAN', numericId: 99, name: 'x', reason: 'x' }],
+      ['PUT', '/api/moderation/command-mode', { mode: 'PRESET_ONLY' }],
       ['GET', '/api/updates'],
       ['GET', '/api/updates/notification'],
       ['POST', '/api/updates/notification/dismiss', { version: '9.9.9' }],

@@ -11,19 +11,32 @@ import { uuidSchema } from '../plugin-api/plugin-events';
 import { MAX_DURATION_SECONDS, MIN_DURATION_SECONDS } from './punishment-rules';
 import { reasonSchema } from './punishments.controller';
 import { PunishmentEditingService } from './punishment-editing.service';
+import { PresetsService } from '../presets/presets.service';
+import { reasonError } from '../presets/reason-errors';
 import { type Issuer, PunishmentsService } from './punishments.service';
 
 const actorSchema = z.object({ uuid: uuidSchema.optional(), name: z.string().trim().min(1).max(32) });
 
-const createSchema = z.object({
-  type: z.enum([PunishmentType.BAN, PunishmentType.TEMP_BAN, PunishmentType.MUTE, PunishmentType.TEMP_MUTE, PunishmentType.KICK, PunishmentType.WARNING]),
-  target: z.string().trim().min(1).max(36),
-  reason: reasonSchema,
-  durationSeconds: z.number().int().min(MIN_DURATION_SECONDS).max(MAX_DURATION_SECONDS).optional(),
-  issuer: actorSchema,
-  /** One key per command invocation; retries return the original punishment. */
-  idempotencyKey: z.string().min(8).max(64),
-});
+const createSchema = z
+  .object({
+    type: z.enum([PunishmentType.BAN, PunishmentType.TEMP_BAN, PunishmentType.MUTE, PunishmentType.TEMP_MUTE, PunishmentType.KICK, PunishmentType.WARNING]),
+    target: z.string().trim().min(1).max(36),
+    /** Numeric reason ID (/ban Steve 1); the punishment itself gets its own unique ID. */
+    presetNumericId: z.number().int().min(1).max(9999).optional(),
+    reason: reasonSchema.optional(),
+    /** Seconds; with a preset an override (null = permanent), omitted = the preset's duration. */
+    durationSeconds: z.number().int().min(MIN_DURATION_SECONDS).max(MAX_DURATION_SECONDS).nullable().optional(),
+    issuer: actorSchema,
+    /**
+     * Canonical permissions the plugin verified for the issuer for this command
+     * (nexora.punishment.<category>.<id>, .custom, .duration-override, .permanent).
+     * In-game permissions are checked on the proxy (LuckPerms); plugins before 1.3 send none.
+     */
+    granted: z.array(z.string().max(100)).max(16).default([]),
+    /** One key per command invocation; retries return the original punishment. */
+    idempotencyKey: z.string().min(8).max(64),
+  })
+  .refine((b) => b.presetNumericId !== undefined || Boolean(b.reason), { message: 'A reason or a reason ID is required', path: ['reason'] });
 
 const revokeSchema = z.object({
   kind: z.enum(['BAN', 'MUTE']),
@@ -47,6 +60,8 @@ const editSchema = z
     editor: actorSchema,
     /** Whether the editor holds the in-game permission for temporary ↔ permanent changes. */
     allowPermanentChange: z.boolean().default(false),
+    /** Canonical permissions verified in-game (nexora.punishment.custom for a typed reason outside free-text mode). */
+    granted: z.array(z.string().max(100)).max(16).default([]),
   })
   .strict()
   .refine((b) => Boolean(b.id) !== Boolean(b.target), { message: 'Either id or target is required' })
@@ -66,7 +81,14 @@ export class PluginPunishmentsController {
   constructor(
     private readonly punishments: PunishmentsService,
     private readonly editing: PunishmentEditingService,
+    private readonly presets: PresetsService,
   ) {}
+
+  /** Command mode and usable reason presets (fetched when the heartbeat's moderationRevision changes). */
+  @Get('moderation')
+  moderation() {
+    return this.presets.pluginCatalog();
+  }
 
   @Get('punishments/active')
   snapshot() {
@@ -83,12 +105,16 @@ export class PluginPunishmentsController {
   @ZodBody(createSchema)
   async create(@Req() req: PluginRequest, @Body() body: z.infer<typeof createSchema>) {
     const server = req.pluginServer!;
+    const granted = new Set(body.granted);
+    const resolved = await this.presets.resolve({ type: body.type, presetNumericId: body.presetNumericId, reason: body.reason, durationSeconds: body.durationSeconds }, (p) => granted.has(p));
+    if (!resolved.ok) throw reasonError(resolved.code, resolved.numericId);
     const player = await this.punishments.resolvePlayer(body.target);
     return this.punishments.create({
-      type: body.type,
+      type: resolved.type,
       targetUuid: player.uuid,
-      reason: body.reason,
-      durationSeconds: body.durationSeconds,
+      reason: resolved.reason,
+      durationSeconds: resolved.durationSeconds,
+      preset: resolved.preset ? { id: resolved.preset.id, category: resolved.preset.category, numericId: resolved.preset.numericId, name: resolved.preset.name } : null,
       source: body.issuer.uuid ? PunishmentSource.COMMAND : PunishmentSource.CONSOLE,
       issuer: issuerFor(body.issuer, server),
       serverId: server.id,
@@ -110,6 +136,7 @@ export class PluginPunishmentsController {
   @ZodBody(editSchema)
   async edit(@Req() req: PluginRequest, @Body() body: z.infer<typeof editSchema>) {
     const editor = issuerFor(body.editor, req.pluginServer!);
+    if (body.reason !== undefined && (await this.presets.mode()) !== 'FREE_TEXT' && !body.granted.includes('nexora.punishment.custom')) throw reasonError('CUSTOM_REASON_FORBIDDEN');
     const options = { kind: body.kind, allowPermanentChange: body.allowPermanentChange };
     if (body.id) return this.editing.editByCommand(body.id, body.durationSeconds, body.reason, editor, options);
     const player = await this.punishments.resolvePlayer(body.target!);

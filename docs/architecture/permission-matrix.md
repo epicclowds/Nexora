@@ -6,7 +6,7 @@ Every backend route and what it requires. Permissions are checked on the server 
 "session" = any signed-in dashboard user; "plugin signature" = HMAC-signed request from a registered Minecraft server.
 The `owner` role holds every permission (`*`).
 
-Routes: 114 · public: 10 · plugin: 17 · session only: 13 · checked in handler: 2 · permission-protected: 72
+Routes: 124 · public: 10 · plugin: 18 · session only: 13 · checked in handler: 2 · permission-protected: 81
 
 | Method | Path | Requires |
 | --- | --- | --- |
@@ -40,6 +40,15 @@ Routes: 114 · public: 10 · plugin: 17 · session only: 13 · checked in handle
 | PATCH | `/api/i18n/languages/:locale` | `translations.manage` |
 | GET | `/api/i18n/languages/:locale/missing` | `translations.manage` |
 | GET | `/api/i18n/messages/:locale` | public |
+| GET | `/api/moderation/command-mode` | `punishments.history` |
+| PUT | `/api/moderation/command-mode` | `punishments.presets.manage` |
+| GET | `/api/moderation/presets` | `punishments.presets.manage` |
+| POST | `/api/moderation/presets` | `punishments.presets.manage` |
+| PATCH | `/api/moderation/presets/:id` | `punishments.presets.manage` |
+| POST | `/api/moderation/presets/:id/archive` | `punishments.presets.manage` |
+| POST | `/api/moderation/presets/:id/duplicate` | `punishments.presets.manage` |
+| GET | `/api/moderation/presets/catalog` | `users.view` |
+| GET | `/api/moderation/presets/usable` | `punishments.history` |
 | GET | `/api/permissions` | `users.view` |
 | GET | `/api/players` | `players.view` |
 | GET | `/api/players/:uuid` | `players.view` |
@@ -66,6 +75,7 @@ Routes: 114 · public: 10 · plugin: 17 · session only: 13 · checked in handle
 | POST | `/api/plugin/v1/inventories` | plugin signature |
 | GET | `/api/plugin/v1/inventories/pending` | plugin signature |
 | POST | `/api/plugin/v1/inventories/revisions/:id/result` | plugin signature |
+| GET | `/api/plugin/v1/moderation` | plugin signature |
 | GET | `/api/plugin/v1/ping` | plugin signature |
 | GET | `/api/plugin/v1/players/lookup` | plugin signature |
 | POST | `/api/plugin/v1/punishments` | plugin signature |

@@ -1,6 +1,6 @@
 'use client';
 
-import { ALL_PERMISSIONS, PERMISSIONS } from '@mnm/shared-types';
+import { ALL_PERMISSIONS, hasPermission, PERMISSIONS } from '@mnm/shared-types';
 import { Plus } from 'lucide-react';
 import { useFormatter, useNow, useTranslations } from 'next-intl';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
@@ -239,6 +239,13 @@ function RolesPanel({ roles, onSaved }: { roles: Role[]; onSaved: () => Promise<
     if (role) setDraft(new Set(role.permissions));
   }, [role]);
 
+  const [reasons, setReasons] = useState<{ id: string; category: string; numericId: number; name: string; permission: string; enabled: boolean }[]>([]);
+  useEffect(() => {
+    api<typeof reasons>('/moderation/presets/catalog')
+      .then(setReasons)
+      .catch(() => setReasons([]));
+  }, []);
+
   if (!role) return null;
   const editable = can(PERMISSIONS.ROLES_MANAGE) && role.key !== 'owner' && (me.roleKey === 'owner' || role.priority < me.rolePriority);
 
@@ -297,6 +304,36 @@ function RolesPanel({ roles, onSaved }: { roles: Role[]; onSaved: () => Promise<
                   </label>
                 ))}
               </div>
+              {reasons.length > 0 && (
+                <div className="mt-5 grid gap-2">
+                  <span className="text-sm font-medium">{t('roles.reasonPermissions')}</span>
+                  <span className="text-xs text-muted-foreground">{t('roles.reasonPermissionsHint')}</span>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {reasons.map((r) => {
+                      const covered = !draft.has(r.permission) && hasPermission([...draft], r.permission);
+                      return (
+                        <label key={r.id} className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${r.enabled ? '' : 'opacity-60'}`}>
+                          <input
+                            type="checkbox"
+                            className="accent-[var(--primary)]"
+                            checked={draft.has(r.permission) || covered}
+                            disabled={!editable || covered}
+                            onChange={(e) => {
+                              const next = new Set(draft);
+                              if (e.target.checked) next.add(r.permission);
+                              else next.delete(r.permission);
+                              setDraft(next);
+                            }}
+                          />
+                          <span className="font-mono">{r.numericId}</span>
+                          <span className="truncate">{t(`reasons.categories.${r.category as 'BAN' | 'MUTE' | 'KICK' | 'WARN'}`)} · {r.name}</span>
+                          {covered && <span className="ml-auto text-muted-foreground">{t('roles.viaWildcard')}</span>}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               {editable && (
                 <div className="mt-4 flex justify-end">
                   <Button onClick={() => void save()}>{t('common.save')}</Button>
