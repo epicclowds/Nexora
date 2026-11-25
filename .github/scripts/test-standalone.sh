@@ -16,9 +16,23 @@ url=http://127.0.0.1:3000
 previous_tag=v1.1.0
 export VERIFY_STATE="$work/verify-state.json" VERIFY_PLAYERS=50
 
-step() { printf '\n▶ %s\n' "$*"; }
+log="${RUNNER_TEMP:-/tmp}/nexora-standalone.log"
+: > "$log"
+exec > >(tee -a "$log") 2>&1
+current_step=
+step() { current_step="$*"; printf '\n▶ %s\n' "$*"; }
 ok() { printf '  ✔ %s\n' "$*"; }
-fail() { printf '  ✖ %s\n' "$*" >&2; exit 1; }
+reason=
+# GitHub annotations are readable without signing in (unlike job logs), so a
+# failure is reported there with its context. Usage: annotate <title> <text>
+annotate() {
+  local title body
+  title=$(printf '%s' "$1" | sed 's/%/%25/g; s/:/%3A/g; s/,/%2C/g')
+  body=$(printf '%s\n' "$2" | sed 's/%/%25/g; s/\r/%0D/g' | awk '{printf "%s%%0A", $0}')
+  echo "::error title=${title}::${body}"
+}
+fail() { printf '  ✖ %s\n' "$*" >&2; reason="$*"; trap - ERR; exit 1; }
+trap 'reason="line $LINENO: $BASH_COMMAND"' ERR
 verify() { node "$repo/infrastructure/scripts/verify-deployment.mjs" "$url" "$@"; }
 volumes() { docker volume ls --format '{{.Name}}' | grep '^minecraft-network-manager_' | sort | tr '\n' ' '; }
 show_logs() {
@@ -30,8 +44,16 @@ show_logs() {
 }
 cleanup() {
   status=$?
+  if [ "$status" -ne 0 ]; then
+    script_output=$(tail -n 50 "$log" 2>/dev/null || true)
+    if cd "$work" 2>/dev/null; then
+      show_logs > "$work/containers.log" 2>&1 || true
+      cat "$work/containers.log"
+    fi
+    annotate "Standalone test failed in step: ${current_step:-setup}" "${reason:-exit status $status}"$'\n\n'"${script_output}"
+    annotate "Standalone test – container logs" "$(grep -v '^ *$' "$work/containers.log" 2>/dev/null | tail -n 120 || true)"
+  fi
   cd "$work" 2>/dev/null || return 0
-  if [ "$status" -ne 0 ]; then show_logs; fi
   docker compose -p nexora --env-file stack.env --profile https down -v --remove-orphans >/dev/null 2>&1 || true
   docker compose down -v --remove-orphans >/dev/null 2>&1 || true
   docker compose -f old.yml down -v --remove-orphans >/dev/null 2>&1 || true
@@ -83,7 +105,7 @@ ok "no build, no host paths, only the dashboard port is published, images defaul
 step "3: Existing installation made with the previous docker-compose.yml ($previous_tag)"
 docker compose -f old.yml pull --quiet
 docker compose -f old.yml up -d --wait --wait-timeout 300
-curl -fsS "$url/api/setup/status" | grep -q '"initialized":false' || fail "setup wizard is not offered on a fresh installation"
+grep -q '"initialized":false' <<<"$(curl -fsS "$url/api/setup/status")" || fail "setup wizard is not offered on a fresh installation"
 curl -fsS -o /dev/null "$url/setup" || fail "setup page not reachable"
 ok "fresh installation offers the setup wizard"
 verify setup
@@ -122,10 +144,10 @@ step "7: Pinned version and switching back to latest"
 version=${previous_tag#v}
 NEXORA_VERSION=$version docker compose -p nexora --env-file stack.env up -d --wait --wait-timeout 300
 docker compose -p nexora --env-file stack.env images backend dashboard
-docker compose -p nexora --env-file stack.env images backend --format json | grep -q "\"Tag\":\"$version\"" || fail "pinned version not used"
+grep -q "\"Tag\":\"$version\"" <<<"$(docker compose -p nexora --env-file stack.env images backend --format json)" || fail "pinned version not used"
 docker compose -p nexora --env-file stack.env pull --quiet
 docker compose -p nexora --env-file stack.env up -d --wait --wait-timeout 300
-docker compose -p nexora --env-file stack.env images backend --format json | grep -q '"Tag":"latest"' || fail "latest not used"
+grep -q '"Tag":"latest"' <<<"$(docker compose -p nexora --env-file stack.env images backend --format json)" || fail "latest not used"
 verify check
 ok "NEXORA_VERSION=$version pins the images; removing it returns to latest; data kept"
 
@@ -133,7 +155,7 @@ step "8: Wrong database password is diagnosed (and nothing secret is logged)"
 MYSQL_PASSWORD=ci-wrong-password-0000 docker compose -p nexora --env-file stack.env up -d --no-deps backend
 diagnosed=
 for _ in $(seq 1 30); do
-  if docker compose -p nexora --env-file stack.env logs backend 2>/dev/null | grep -q 'MySQL rejected the credentials'; then diagnosed=1; break; fi
+  if grep -q 'MySQL rejected the credentials' <<<"$(docker compose -p nexora --env-file stack.env logs backend 2>/dev/null)"; then diagnosed=1; break; fi
   sleep 3
 done
 logs=$(docker compose -p nexora --env-file stack.env logs --no-color 2>/dev/null)
