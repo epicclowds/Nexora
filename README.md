@@ -31,26 +31,31 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 
 Requirements: a Linux server (amd64 or arm64) with Docker Engine 24+ and the Compose plugin. Nothing is compiled: the backend and dashboard are prebuilt images on GitHub Container Registry, the plugins are prebuilt jars on the [Releases page](https://github.com/epicclowds/Nexora/releases).
 
-```sh
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.1.0/nexora-deploy-1.1.0.tar.gz
-tar -xzf nexora-deploy-1.1.0.tar.gz && cd nexora
-sh infrastructure/scripts/generate-secrets.sh      # creates .env with random secrets
-docker compose pull                                # ghcr.io/epicclowds/nexora/{backend,dashboard}:1.1.0, MySQL, Redis
-docker compose up -d
-docker compose logs backend | grep "Setup code"    # one-time code for the setup wizard
-```
+Nexora is deployed from a single, self-contained file: **[`docker-compose.yml`](https://github.com/epicclowds/Nexora/blob/main/docker-compose.yml)** ([raw](https://raw.githubusercontent.com/epicclowds/Nexora/main/docker-compose.yml)). No repository clone, archive, build or script is needed – it works with the Docker Compose CLI, [Portainer](docs/installation/portainer.md) and [Arcane](docs/installation/arcane.md).
 
-Open `http://<server>:3000`, complete the setup wizard, then install `Nexora-Velocity-1.1.0.jar` and `Nexora-Paper-1.1.0.jar` from the [release](https://github.com/epicclowds/Nexora/releases/tag/v1.1.0) and connect them under **Settings → Minecraft integration**.
+1. **Copy** [`docker-compose.yml`](https://raw.githubusercontent.com/epicclowds/Nexora/main/docker-compose.yml) into a new stack (Portainer/Arcane) or a folder on the server.
+2. **Set four secrets** – random values, e.g. from `openssl rand -hex 32`. Store them safely: the MySQL passwords cannot be changed later by editing them.
+   ```dotenv
+   MYSQL_PASSWORD=…
+   MYSQL_ROOT_PASSWORD=…
+   REDIS_PASSWORD=…
+   JWT_SECRET=…
+   ```
+3. **Deploy** – Portainer/Arcane: *Deploy*; command line (secrets in `.env` next to the file): `docker compose pull && docker compose up -d`.
+4. **Open** `http://<server>:3000` once all containers are healthy.
+5. **Complete the setup wizard** with the setup code from the backend log (`docker compose logs backend | grep "Setup code"`).
 
-Step-by-step guides: [Installation](docs/installation/README.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md)
+Then install `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` from the [latest release](https://github.com/epicclowds/Nexora/releases/latest) and connect them under **Settings → Minecraft integration**. Update with `docker compose pull && docker compose up -d` (Portainer/Arcane: re-pull and redeploy); set `NEXORA_VERSION=1.1.0` to pin a version.
+
+Step-by-step guides: [Installation](docs/installation/README.md) · [Environment variables](docs/installation/environment.md) · [Portainer](docs/installation/portainer.md) · [Arcane](docs/installation/arcane.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Moving an existing installation](docs/installation/migration.md)
 
 | Release artifact | Where |
 | --- | --- |
-| Backend image | `ghcr.io/epicclowds/nexora/backend:<version>` (`linux/amd64`, `linux/arm64`) |
-| Dashboard image | `ghcr.io/epicclowds/nexora/dashboard:<version>` (`linux/amd64`, `linux/arm64`) |
+| Backend image | `ghcr.io/epicclowds/nexora/backend:latest` or `:<version>` (`linux/amd64`, `linux/arm64`) |
+| Dashboard image | `ghcr.io/epicclowds/nexora/dashboard:latest` or `:<version>` (`linux/amd64`, `linux/arm64`) |
 | Velocity plugin | `Nexora-Velocity-<version>.jar` (Velocity 4.3.1, Java 25) |
 | Paper plugin | `Nexora-Paper-<version>.jar` (Paper 26.1.2–26.3, Java 25) |
-| Deployment files | `nexora-deploy-<version>.tar.gz` |
+| Deployment | `docker-compose.yml` (standalone); optional package with helper scripts: `nexora-deploy-<version>.tar.gz` |
 
 ## Repository layout
 
@@ -65,7 +70,7 @@ packages/
   shared-types/     Permissions, roles, locales and shared contracts
   translations/     Dashboard catalogues (JSON) + plugin messages (YAML) + validator
 infrastructure/
-  docker/           Dockerfiles, entrypoint, Caddyfile
+  docker/           Dockerfiles, backend entrypoint
   scripts/          Operational scripts
 docs/               Architecture, installation, API and development docs
 ```

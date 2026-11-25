@@ -36,13 +36,12 @@ find "$p" -exec touch -d "@$epoch" {} +
 
 # Deployment package (no source code; images come from GHCR)
 d="$work/nexora"
-mkdir -p "$d/infrastructure/scripts" "$d/infrastructure/docker" "$d/geoip"
+mkdir -p "$d/infrastructure/scripts" "$d/geoip"
 cp "$root/docker-compose.yml" "$root/.env.example" "$root/LICENSE" "$d/"
-cp "$root/infrastructure/docker/Caddyfile" "$d/infrastructure/docker/"
 cp "$root/infrastructure/scripts/generate-secrets.sh" "$root/infrastructure/scripts/backup.sh" "$root/infrastructure/scripts/restore.sh" \
   "$root/infrastructure/scripts/repair-db-credentials.sh" "$root/infrastructure/scripts/mysql-credentials.sh" "$d/infrastructure/scripts/"
 fill "$root/infrastructure/release/deploy-README.md" > "$d/README.md"
-echo "Optional MaxMind GeoLite2 databases (see the player profiles documentation)." > "$d/geoip/README.txt"
+echo "Optional MaxMind GeoLite2 databases. To use this folder, set GEOIP_DIR=./geoip in .env (see the player profiles documentation)." > "$d/geoip/README.txt"
 tar --sort=name --mtime="@$epoch" --owner=0 --group=0 --numeric-owner -C "$work" -cf - nexora | gzip -n -9 > "$out/nexora-deploy-$version.tar.gz"
 
 (cd "$out" && sha256sum "Nexora-Velocity-$version.jar" "Nexora-Paper-$version.jar" "nexora-plugins-$version.zip" "nexora-deploy-$version.tar.gz" > SHA256SUMS)

@@ -36,15 +36,16 @@ The IP summary lists the player's addresses with connection counts and first/las
 Location data is only stored when MaxMind GeoLite2 databases are configured. It is approximate by nature and is always presented as such — never as an exact location.
 
 1. Create a free MaxMind account and download **GeoLite2-City** and **GeoLite2-ASN** (`.mmdb`).
-2. Place them in `./geoip/` next to `docker-compose.yml`.
-3. In `.env`:
+2. Put them in a folder on the Docker host, e.g. `/opt/nexora/geoip/`.
+3. Set the variables (`.env` or the stack's environment variables):
 
    ```dotenv
+   GEOIP_DIR=/opt/nexora/geoip            # host folder, mounted read-only at /geoip
    GEOIP_CITY_DB=/geoip/GeoLite2-City.mmdb
    GEOIP_ASN_DB=/geoip/GeoLite2-ASN.mmdb
    ```
 
-4. `docker compose up -d`. The backend log shows `GeoIP City database loaded`. Databases are reloaded automatically when the files change (e.g. updated by MaxMind's `geoipupdate`).
+4. Redeploy (`docker compose up -d`). The backend log shows `GeoIP City database loaded`. Databases are reloaded automatically when the files change (e.g. updated by MaxMind's `geoipupdate`).
 
 Lookups happen once, when a player connects; private and special-purpose addresses are skipped. Stored fields: country, region, city, autonomous system number and organisation (shown as network / ISP).
 

@@ -1,8 +1,10 @@
 # Installing Nexora
 
-This guide takes you from an empty Linux server to a running Nexora dashboard with your Minecraft servers connected. You do **not** need to compile anything: the backend and dashboard are downloaded as ready-made Docker images, and the Minecraft plugins are ready-made `.jar` files from the [GitHub Releases page](https://github.com/epicclowds/Nexora/releases).
+This guide takes you from a server with Docker to a running Nexora dashboard with your Minecraft servers connected.
 
-**Contents:** [Requirements](#1-requirements) · [Install Docker](#2-install-docker) · [Download Nexora](#3-download-nexora) · [Configuration](#4-configuration-env) · [Start](#5-start-nexora) · [Setup wizard](#6-setup-wizard) · [Minecraft plugins](#7-connect-your-minecraft-servers) · [HTTPS](#8-https-and-a-domain) · [Everyday commands](#9-everyday-commands) · [Troubleshooting](#10-troubleshooting)
+Nexora is installed from **one file**: [`docker-compose.yml`](https://github.com/epicclowds/Nexora/blob/main/docker-compose.yml). It starts four containers – MySQL 8.4, Redis, the Nexora backend and the Nexora dashboard – from ready-made images. You do **not** clone the repository, download archives, install Node.js, compile anything or run scripts. The Minecraft plugins are ready-made `.jar` files from the [Releases page](https://github.com/epicclowds/Nexora/releases).
+
+**Contents:** [Requirements](#1-requirements) · [Install Docker](#2-install-docker) · [Choose how to deploy](#3-deploy-the-stack) · [Setup wizard](#4-setup-wizard) · [Minecraft plugins](#5-connect-your-minecraft-servers) · [HTTPS](#6-https-and-a-domain) · [Everyday tasks](#7-everyday-tasks) · [Troubleshooting](#8-troubleshooting)
 
 ## 1. Requirements
 
@@ -11,15 +13,15 @@ This guide takes you from an empty Linux server to a running Nexora dashboard wi
 | Server | Linux, 64-bit (`x86_64`/`amd64` or `arm64`) | Any current distribution (Debian, Ubuntu, Rocky, …) |
 | Memory | 2 GB RAM (4 GB for large networks) | MySQL, Redis, backend and dashboard |
 | Disk | 10 GB free | Database grows with players and statistics |
-| Software | Docker Engine 24+ with the Compose plugin, `openssl`, `curl` | Step 2 shows how to install them |
+| Software | Docker Engine 24+ with the Compose plugin (v2.20 or newer), or Portainer / Arcane on top of Docker | Standalone Docker – not Docker Swarm |
 | Network | Port 3000 (or 80/443 with HTTPS) reachable by your staff **and** by your Minecraft servers | MySQL and Redis are never exposed |
 | Minecraft | Velocity proxy + Paper servers, Java 25 | See [compatibility](minecraft-plugins.md#compatibility) |
 
-Nexora can run on the same machine as your Minecraft servers or on a separate one.
+Nexora can run on the same machine as your Minecraft servers or on a separate one. Run **one** Nexora per Docker host (for a second instance see [`NEXORA_VOLUME_PREFIX`](environment.md#data-volumes)).
 
 ## 2. Install Docker
 
-If `docker compose version` already prints a version, skip this step. Otherwise install Docker with the official script and allow your user to run it:
+If `docker compose version` already prints a version (or you use Portainer/Arcane), skip this step. Otherwise:
 
 ```sh
 curl -fsSL https://get.docker.com | sudo sh
@@ -27,64 +29,52 @@ sudo usermod -aG docker "$USER"     # then log out and in again
 docker compose version              # must print "Docker Compose version v2…"
 ```
 
-## 3. Download Nexora
+## 3. Deploy the stack
 
-Pick **one** of the two ways. Both give you a folder with `docker-compose.yml`, `.env.example` and the helper scripts; neither contains anything you have to build.
+You need four secret values. Generate each one with `openssl rand -hex 32` (any Linux/macOS terminal), or use a password manager (letters and digits only is simplest):
 
-**A) Release package (recommended)** – replace `1.1.0` with the [newest release](https://github.com/epicclowds/Nexora/releases/latest):
+| Variable | What it is |
+| --- | --- |
+| `MYSQL_PASSWORD` | Password of the Nexora database user |
+| `MYSQL_ROOT_PASSWORD` | Password of the MySQL administrator |
+| `REDIS_PASSWORD` | Password of the Redis cache |
+| `JWT_SECRET` | Signs dashboard logins (at least 32 characters) |
 
-```sh
-mkdir -p /opt && cd /opt
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.1.0/nexora-deploy-1.1.0.tar.gz
-tar -xzf nexora-deploy-1.1.0.tar.gz
-cd nexora
-```
+> **Store these values safely and never change them later.** MySQL saves its passwords inside its data volume when it starts for the first time. Changing `MYSQL_PASSWORD` afterwards does **not** change the database – the backend would then be locked out (see [P1000](#database-password-mismatch-p1000)). `JWT_SECRET` also encrypts two-factor secrets.
 
-**B) Git checkout of a release**
+Everything else is optional – see the [environment variable reference](environment.md). Then pick one way:
 
-```sh
-git clone --branch v1.1.0 --depth 1 https://github.com/epicclowds/Nexora.git /opt/nexora
-cd /opt/nexora
-```
+- **[Docker Compose on the command line](#docker-compose-cli)** – below
+- **[Portainer](portainer.md)** – paste the file as a stack
+- **[Arcane](arcane.md)** – paste the file as a project
 
-All following commands are run inside this folder.
+Already running Nexora from the release package or a Git checkout? See [Moving an existing installation](migration.md) – your data is kept.
 
-## 4. Configuration (`.env`)
-
-All settings live in one file, `.env`. Create it with random passwords:
+### Docker Compose (CLI)
 
 ```sh
-sh infrastructure/scripts/generate-secrets.sh
+sudo mkdir -p /opt/nexora && sudo chown "$USER" /opt/nexora && cd /opt/nexora
+curl -fsSLO https://raw.githubusercontent.com/epicclowds/Nexora/main/docker-compose.yml
+
+# Create .env with random secrets – only for a NEW installation:
+if docker volume inspect minecraft-network-manager_mysql-data >/dev/null 2>&1; then
+  echo "An existing Nexora database was found: reuse your previous .env instead (see migration.md)."
+else
+  umask 077
+  cat > .env <<EOF
+MYSQL_PASSWORD=$(openssl rand -hex 24)
+MYSQL_ROOT_PASSWORD=$(openssl rand -hex 24)
+REDIS_PASSWORD=$(openssl rand -hex 24)
+JWT_SECRET=$(openssl rand -hex 48)
+EOF
+fi
+
+docker compose pull           # downloads Nexora, MySQL and Redis
+docker compose up -d --wait   # starts everything; returns when all services are healthy (1–2 minutes)
+docker compose ps             # all services "healthy"
 ```
 
-This copies `.env.example` to `.env` and fills in `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `REDIS_PASSWORD` and `JWT_SECRET`. Keep `.env` private and back it up – it contains the keys to your data.
-
-> **Only once per installation.** MySQL stores `MYSQL_PASSWORD` and `MYSQL_ROOT_PASSWORD` inside its data volume when it starts for the first time. A new `.env` with new passwords does **not** change them, and `JWT_SECRET` also encrypts the two-factor secrets. When you move or re-download Nexora, copy your existing `.env` instead of generating a new one. `generate-secrets.sh` refuses to run when it finds an existing Nexora database volume.
-
-Passwords may contain special characters; wrap values with `#`, spaces or `"` in single quotes (`MYSQL_PASSWORD='p@ss#word'`) and avoid `$` and `'`.
-
-Settings you may want to change (open `.env` with any editor, e.g. `nano .env`):
-
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `NEXORA_VERSION` | the release you downloaded | Which Nexora images to run. Changing it is how you update (see [Updating](updating.md)). |
-| `DASHBOARD_PORT` | `3000` | Port of the dashboard |
-| `DASHBOARD_BIND` | `0.0.0.0` | `127.0.0.1` if a reverse proxy on the same machine serves the dashboard |
-| `SETUP_TOKEN` | empty | Fixed setup code (min. 16 characters) instead of a random one |
-| `COOKIE_SECURE` | `auto` | Set to `true` once HTTPS works |
-| `DASHBOARD_DOMAIN`, `ACME_EMAIL` | – | For the built-in HTTPS (step 8) |
-
-The complete list is in [Production deployment](deployment.md#environment-reference-env).
-
-**MySQL and Redis** are part of the stack: they are started automatically, store their data in Docker volumes and are only reachable by Nexora itself. You do not have to install or configure a database, and you never need to run SQL – migrations are applied automatically on every start.
-
-## 5. Start Nexora
-
-```sh
-docker compose pull      # downloads Nexora, MySQL, Redis (only the first time and when updating)
-docker compose up -d     # starts everything in the background
-docker compose ps        # wait until all services show "healthy" (about one minute)
-```
+Keep a copy of `.env` somewhere safe (password manager, backup). Add optional settings to `.env` as `NAME=value` lines (e.g. `DASHBOARD_PORT=8080`) and apply them with `docker compose up -d`.
 
 Get the one-time **setup code**:
 
@@ -92,120 +82,101 @@ Get the one-time **setup code**:
 docker compose logs backend | grep "Setup code"
 ```
 
-(If you set `SETUP_TOKEN` in `.env`, that value is the code.)
+(If you set `SETUP_TOKEN`, that value is the code.)
 
-## 6. Setup wizard
+## 4. Setup wizard
 
 Open `http://<your-server-ip>:3000` in a browser. The setup wizard guides you through:
 
 1. **Welcome** – shows that backend, database and Redis are running
 2. **Database** – connection, MySQL version and migration status (nothing to do)
-3. **Owner account** – the setup code, your username, email and password
+3. **Owner account** – the setup code from the backend log, your username, email and password
 4. **Network** – name, description, Minecraft domain, dashboard URL, language (English preselected), time zone, theme
 5. **Velocity** – optionally creates a registration token for your proxy right away
 6. **Finish** – summary
 
-After this, the wizard is locked and nobody can create another owner. Enable two-factor authentication for your account under **Settings → General**.
+The wizard never shows or asks for infrastructure secrets (database passwords, `JWT_SECRET`); those stay in the stack configuration. After completion the wizard is locked: nobody can create another owner or re-initialise the installation. Enable two-factor authentication under **Settings → General**.
 
-## 7. Connect your Minecraft servers
+## 5. Connect your Minecraft servers
 
-Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` from the [release](https://github.com/epicclowds/Nexora/releases/latest) that matches `NEXORA_VERSION`, then follow the step-by-step [Minecraft plugin guide](minecraft-plugins.md). In short: **Settings → Minecraft integration → Add a server** generates a ready-to-use `config.properties` with a registration token for each server.
+Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` from the [latest release](https://github.com/epicclowds/Nexora/releases/latest) (with a pinned `NEXORA_VERSION`, take the same version), then follow the [Minecraft plugin guide](minecraft-plugins.md). In short: **Settings → Minecraft integration → Add a server** generates a ready-to-use `config.properties` with a registration token for each server. The dashboard shows which version the backend runs and warns about plugins of another release.
 
-## 8. HTTPS and a domain
+## 6. HTTPS and a domain
 
-For production, serve the dashboard over HTTPS:
+Serve the dashboard over HTTPS in production – either with your existing reverse proxy (Nginx Proxy Manager, Traefik, Caddy, …) or with the built-in Caddy service. See [HTTPS and reverse proxies](https.md).
 
-1. Point a DNS record (e.g. `admin.example.net`) to your server and open ports 80 and 443.
-2. In `.env` set `DASHBOARD_DOMAIN=admin.example.net`, `ACME_EMAIL=you@example.net`, `COOKIE_SECURE=true` and `DASHBOARD_BIND=127.0.0.1`.
-3. Start with the HTTPS profile: `docker compose --profile https up -d`
+## 7. Everyday tasks
 
-Caddy obtains and renews certificates automatically. Use `https://admin.example.net` as backend URL in the plugin configurations. Details and other reverse proxies: [HTTPS](https.md).
+| Task | Command line | Portainer / Arcane |
+| --- | --- | --- |
+| Status | `docker compose ps` | Stack / project page |
+| Logs | `docker compose logs -f backend` (or `dashboard`, `mysql`) | Container → Logs |
+| Stop / start | `docker compose stop` / `docker compose up -d` | Stop / Start buttons |
+| Update | `docker compose pull && docker compose up -d` – see [Updating](updating.md) | Re-pull images and redeploy – see the platform guide |
+| Back up the database | see [Backup & restore](backup-restore.md) | see [Backup & restore](backup-restore.md) |
 
-## 9. Everyday commands
+**Never** use `docker compose down -v` or delete the stack's volumes: that deletes the database. `docker compose down` (without `-v`), stopping or removing a stack, and updates keep all data.
 
-| Task | Command |
-| --- | --- |
-| Status | `docker compose ps` |
-| Logs | `docker compose logs -f backend` (or `dashboard`, `mysql`) |
-| Stop / start | `docker compose stop` / `docker compose up -d` |
-| Back up the database | `sh infrastructure/scripts/backup.sh` – see [Backup & restore](backup-restore.md) |
-| Update | set `NEXORA_VERSION` in `.env`, then `docker compose pull && docker compose up -d` – see [Updating](updating.md) |
-
-Never use `docker compose down -v`: `-v` deletes the database.
-
-## 10. Troubleshooting
+## 8. Troubleshooting
 
 | Problem | Solution |
 | --- | --- |
-| `docker compose pull` fails with "manifest unknown" | `NEXORA_VERSION` names a version that does not exist. Use a version from the [releases page](https://github.com/epicclowds/Nexora/releases). |
-| `docker compose pull` fails with "denied" | Run `docker logout ghcr.io` – the images are public and need no login. |
-| Backend log shows `P1000` / "Authentication failed against database server" | The passwords in `.env` do not match the database volume – see [Database password mismatch](#database-password-mismatch-p1000). |
-| A service stays `unhealthy` | `docker compose logs <service>`. For the backend, check that MySQL and Redis are healthy. |
-| "Setup code" not found in the logs | The installation is already initialised, or the backend is not running yet (`docker compose ps`). |
-| Dashboard says "The backend could not be reached" | The backend is still starting or unhealthy: `docker compose logs backend`. |
-| Port 3000 already in use | Change `DASHBOARD_PORT` in `.env`, then `docker compose up -d`. |
-| A Minecraft server does not appear in the dashboard | See [plugin troubleshooting](minecraft-plugins.md#troubleshooting). |
+| `required variable MYSQL_PASSWORD is missing a value: MYSQL_PASSWORD is required …` (or `REDIS_PASSWORD`, `JWT_SECRET`, …) | Set the named variable in `.env` or in the stack's environment variables. |
+| Backend log: `JWT_SECRET must be at least 32 characters` (or another `Invalid environment configuration` line) | Fix the named variable; the message says what is expected. |
+| `pull` fails with "manifest unknown" | `NEXORA_VERSION` names a version that does not exist. Use `latest` or a version from the [releases page](https://github.com/epicclowds/Nexora/releases). |
+| `pull` fails with "denied" | Run `docker logout ghcr.io` – the images are public and need no login. |
+| Backend log shows `P1000` / "MySQL rejected the credentials" | The database passwords do not match the existing database volume – see [below](#database-password-mismatch-p1000). |
+| Backend log: "Migrations failed … Refusing to start" | A database migration failed; nothing is half-applied. Keep the volume, save the log and restore a backup if needed ([Updating](updating.md#if-something-goes-wrong)). |
+| A service stays `unhealthy` / "dependency failed to start" | Look at that service's logs. The backend is only healthy when MySQL **and** Redis answer; the dashboard waits for a healthy backend. |
+| Dashboard shows "The backend could not be reached" | The backend is starting or unhealthy: check its logs. |
+| "Setup code" not in the logs | The installation is already initialised, or the backend is not running yet. |
+| Port 3000 already in use | Set `DASHBOARD_PORT` (e.g. `8080`) and redeploy. |
+| Empty dashboard / setup wizard after moving to Portainer or Arcane, although Nexora was set up before | The stack uses other volumes than before – see [Moving an existing installation](migration.md#if-the-setup-wizard-appears-again). Do not run the wizard. |
+| A Minecraft server does not appear | See [plugin troubleshooting](minecraft-plugins.md#troubleshooting). |
 
 ### Database password mismatch (P1000)
 
-**Symptom:** the backend stops (or restarts again and again) and its log shows
+**Symptom:** the backend restarts again and again; its log shows `MySQL rejected the credentials of database user "mnm" (Prisma P1000)` while MySQL is healthy.
 
-```
-Error: P1000: Authentication failed against database server, the provided database credentials for `mnm` are not valid.
-```
+**Cause:** MySQL created its accounts with the passwords from its **first** start and keeps them in the data volume. Later values of `MYSQL_PASSWORD` / `MYSQL_ROOT_PASSWORD` are only what Nexora *uses*, not what MySQL *expects*. This happens when the variables were regenerated or retyped while the volume was kept.
 
-while `docker compose ps` shows MySQL as *healthy*. (The MySQL healthcheck only checks that the server answers, so it stays healthy even with wrong passwords.)
+**Your data is not affected.** Do not delete volumes, do not remove the stack with its volumes, and do not run the setup wizard again.
 
-**Cause:** MySQL created its accounts with the passwords from the **first** start and keeps them in the data volume. Afterwards `MYSQL_PASSWORD` / `MYSQL_ROOT_PASSWORD` in `.env` are only what Nexora *uses*, not what MySQL *expects*. This happens when `.env` was replaced or regenerated while the volume was kept – typically when a release package was extracted into a new folder and `generate-secrets.sh` was run there: the new folder uses the same Compose project name and therefore the same existing database volume.
+**Fix A – put the previous values back (preferred).** Take `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `REDIS_PASSWORD` and `JWT_SECRET` from your old `.env`, password manager or previous stack configuration, set them again and redeploy. The backend becomes healthy within about a minute.
 
-**Your data is not affected.** Do **not** run `docker compose down -v`, do not delete volumes, and do not run the setup wizard again.
-
-Check which volume is used: `docker volume ls | grep mysql-data` (normally `minecraft-network-manager_mysql-data`).
-
-**Repair, option A – restore the previous passwords (preferred if you still have the old `.env`):**
+**Fix B – the root password still works, only the Nexora user's password is lost.** Set the database user's password to the value now configured in `MYSQL_PASSWORD`:
 
 ```sh
-cd /opt/nexora                      # your current Nexora folder
-cp .env .env.generated              # keep the new file for reference
-# copy these lines from the OLD .env into .env (replace the generated values):
-grep -E '^(MYSQL_DATABASE|MYSQL_USER|MYSQL_PASSWORD|MYSQL_ROOT_PASSWORD|REDIS_PASSWORD|JWT_SECRET)=' /path/to/old/.env
-nano .env
+docker compose exec mysql mysql -u root -p
+# enter MYSQL_ROOT_PASSWORD, then (replace the password; keep the quotes):
+#   ALTER USER 'mnm'@'%' IDENTIFIED BY 'the-value-of-MYSQL_PASSWORD';
+#   exit
 docker compose up -d
-docker compose ps                   # backend becomes healthy within about a minute
 ```
 
-Taking the old `JWT_SECRET` as well keeps everybody signed in and two-factor authentication working.
+In Portainer/Arcane, open a console (`/bin/sh`) in the MySQL container and run `mysql -u root -p` there.
 
-**Repair, option B – make MySQL accept the passwords in `.env` (old `.env` lost):**
+**Fix C – both passwords are lost.** Use [`repair-db-credentials.sh`](https://github.com/epicclowds/Nexora/blob/main/infrastructure/scripts/repair-db-credentials.sh) from the release package or a repository checkout on the Docker host. It never deletes data: it takes a full backup, starts MySQL once in maintenance mode and sets both passwords to the configured values (it needs the command line, a `.env` file and the `docker-compose.yml` in the same folder).
 
-```sh
-cd /opt/nexora
-sh infrastructure/scripts/repair-db-credentials.sh
-```
-
-The script never deletes data. It first checks whether anything is wrong at all, then:
-
-- if the root password in `.env` is still accepted, it sets the application user's password to the `.env` value while MySQL keeps running;
-- otherwise it asks for confirmation, stops backend, dashboard and MySQL for about a minute, writes a complete backup to `backups/mnm-before-credential-repair-<date>.sql.gz`, starts MySQL once in maintenance mode, sets the root and application passwords to the `.env` values and starts everything again.
-
-Passwords are never printed. If `JWT_SECRET` also changed (and the old value is lost), everybody has to sign in again, and authenticator codes no longer work because the two-factor secrets are encrypted with it. Affected users sign in with one of their **recovery codes**, turn two-factor authentication off and set it up again (an administrator can also reset it under User Management).
+If `JWT_SECRET` also changed and the old value is lost, everybody signs in again, and authenticator codes stop working because the two-factor secrets are encrypted with it: users sign in with a **recovery code** and set up two-factor authentication again (an administrator can reset it under User Management).
 
 ## Optional: IP geolocation
 
-To show approximate player locations, add the free MaxMind GeoLite2 databases as described in [Player profiles](../architecture/player-profiles.md#ip-geolocation-optional).
+To show approximate player locations, add the free MaxMind GeoLite2 databases as described in [Player profiles](../architecture/player-profiles.md#ip-geolocation-optional). Nexora works normally without them.
 
 ## Ports and exposure
 
-| Service | Exposed | Notes |
+| Service | Published | Notes |
 | --- | --- | --- |
 | dashboard | `DASHBOARD_BIND:DASHBOARD_PORT` (default `0.0.0.0:3000`) | Also serves the API under `/api` |
-| caddy (profile `https`) | 80, 443 | See [HTTPS](https.md) |
-| backend, mysql, redis | internal only | Never published |
+| caddy (optional, profile `https`) | 80, 443 | See [HTTPS](https.md) |
+| backend, mysql, redis | none | Internal Docker network only |
 
 API documentation (OpenAPI) is available at `http://<host>:3000/api/docs` unless `API_DOCS_ENABLED=false`.
 
-## Building from source
+## Other installation methods
 
-Only needed for development: `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build` builds the images from your checkout. See [Development](../development/README.md).
+- **Release package** (`nexora-deploy-<version>.tar.gz` on each release): the same `docker-compose.yml` plus helper scripts (`generate-secrets.sh`, `backup.sh`, `restore.sh`, `repair-db-credentials.sh`). Extract it, run `sh infrastructure/scripts/generate-secrets.sh`, then `docker compose pull && docker compose up -d`.
+- **Building from source** (development only): `docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build` in a repository checkout. See [Development](../development/README.md).
 
-More: [Production deployment checklist](deployment.md) · [Updating](updating.md) · [Backup & restore](backup-restore.md) · [HTTPS](https.md)
+More: [Environment variables](environment.md) · [Portainer](portainer.md) · [Arcane](arcane.md) · [Updating](updating.md) · [Backup & restore](backup-restore.md) · [HTTPS](https.md) · [Moving an existing installation](migration.md) · [Production checklist](deployment.md)

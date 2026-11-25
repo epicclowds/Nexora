@@ -1,38 +1,45 @@
 # Updating
 
-Nexora is released as one version for all components: backend image, dashboard image and both Minecraft plugins carry the same number (e.g. `1.0.2`). Always update them together. Release notes (new features, breaking changes, migration notes) are on the [Releases page](https://github.com/epicclowds/Nexora/releases).
+Nexora is released as one version for all components: backend image, dashboard image and both Minecraft plugins carry the same number (e.g. `1.1.0`). Update them together. Release notes (new features, breaking changes, migration notes) are on the [Releases page](https://github.com/epicclowds/Nexora/releases).
+
+## Stable or pinned
+
+`NEXORA_VERSION` selects the image tag of the backend and dashboard:
+
+| Mode | Setting | Behaviour |
+| --- | --- | --- |
+| **Stable** (default) | `NEXORA_VERSION=latest` or not set | Each *pull* fetches the newest stable release. `latest` is moved only after a release passed the complete release pipeline (tests, clean installation from the published images, image scans); development builds and pre-releases never become `latest`. Backend and dashboard of `latest` always belong to the same release. |
+| **Pinned** | `NEXORA_VERSION=1.1.0` | Always this version. Nothing changes until you change the value. |
+
+Nothing updates by itself in either mode: images are only downloaded when you pull them (or let Portainer/Arcane re-pull). To switch from stable to pinned, set the version you currently run (shown under the Nexora logo in the dashboard); to switch back, set `latest` or remove the variable.
 
 ## 1. Back up
 
+Back up the database before every update ([Backup & restore](backup-restore.md)). Database migrations are forward-only: an older version cannot run on a database that a newer version has migrated.
+
+## 2. Update the server
+
+Read the release notes of every version between yours and the new one, then:
+
+**Command line** (in the folder with `docker-compose.yml`):
+
 ```sh
-sh infrastructure/scripts/backup.sh
+# pinned only: set NEXORA_VERSION=<new version> in .env first
+docker compose pull          # downloads the newer images (keeps the old ones until pruned)
+docker compose up -d --wait  # recreates only containers whose image or configuration changed
+docker compose ps            # all services healthy
 ```
 
-Database migrations are forward-only and cannot be undone automatically ([Backup & restore](backup-restore.md)).
+`docker compose pull` downloads the images named by the current configuration; `docker compose up -d` replaces the running containers with new ones. Named volumes – the database – are never touched by these commands.
 
-## 2. Update the server (Docker)
+**Portainer:** Stack → Editor → *Update the stack* with *Re-pull image and redeploy* ([details](portainer.md#update)). **Arcane:** pull the project's images, then redeploy ([details](arcane.md#update)).
 
-Your installation is **pinned** to the version in `.env` – it never switches to a new release by itself:
+If a release note says that `docker-compose.yml` changed, replace it (or paste the new version into the stack editor) and keep your environment variables.
 
-```dotenv
-NEXORA_VERSION=1.0.2
-```
+## If something goes wrong
 
-To update:
-
-1. Read the release notes of every version between yours and the new one.
-2. Set `NEXORA_VERSION` in `.env` to the new version.
-3. Pull and restart:
-
-   ```sh
-   docker compose pull
-   docker compose up -d
-   docker compose ps        # all services healthy again
-   ```
-
-If a release changes `docker-compose.yml` or `.env.example` (the release notes say so), take the new files from the release's `nexora-deploy-<version>.tar.gz` (or `git checkout v<version>` in a Git checkout) before step 3, keeping your own `.env`.
-
-`docker compose pull` alone only refreshes images of the version that is already configured; it never upgrades you to another release.
+- The backend refuses to start with `Migrations failed … Refusing to start`: nothing was half-applied. Keep the volume as it is, save the backend log and [open an issue](https://github.com/epicclowds/Nexora/issues). To go back, restore the backup taken before the update **and** pin `NEXORA_VERSION` to the previous version ([Restore](backup-restore.md#restore)). There is no automatic rollback.
+- `P1000`: the secret values changed – see [Database password mismatch](README.md#database-password-mismatch-p1000).
 
 ## 3. Update the Minecraft plugins
 
@@ -40,14 +47,14 @@ Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` of the
 
 ## What happens during an update
 
-1. Containers are recreated; the volumes `mysql-data` and `redis-data` are kept.
+1. Containers are recreated; the volumes (`…_mysql-data`, `…_redis-data`) are kept.
 2. The backend applies pending database migrations before it starts serving requests. If a migration fails, the backend refuses to start (nothing is half-applied silently) – restore the backup and report the problem. To run migrations manually instead, set `RUN_MIGRATIONS=false` on the backend service.
 3. Startup synchronisation adds new permissions and languages without overwriting customised roles.
 4. Plugins keep working during the update: they buffer events and keep enforcing punishments from their local cache until the backend is back.
 
 ## Never generate a new `.env` for an existing installation
 
-Whether you update in place or extract a newer release package into a new folder: **keep your existing `.env`** (copy it into the new folder). Do not run `generate-secrets.sh` again – MySQL keeps the passwords of its first start in the data volume, and new passwords make the backend fail with `P1000 Authentication failed` (since 1.0.3 the script refuses when it finds an existing database volume). If it already happened, follow [Database password mismatch](README.md#database-password-mismatch-p1000) – no data is lost.
+Whether you update in place, extract a newer release package into a new folder, or move to Portainer or Arcane: **keep your existing secret values** (copy the old `.env`). Do not run `generate-secrets.sh` again – MySQL keeps the passwords of its first start in the data volume, and new passwords make the backend fail with `P1000 Authentication failed` (since 1.0.3 the script refuses when it finds an existing database volume). If it already happened, follow [Database password mismatch](README.md#database-password-mismatch-p1000) – no data is lost.
 
 ## Upgrading from 1.0.3 to 1.1.0
 

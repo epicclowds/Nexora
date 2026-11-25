@@ -17,7 +17,7 @@ if [ -f .env ]; then
   exit 1
 fi
 
-volume="${COMPOSE_PROJECT_NAME:-minecraft-network-manager}_mysql-data"
+volume="${NEXORA_VOLUME_PREFIX:-minecraft-network-manager}_mysql-data"
 if [ "${1:-}" != "--force" ] && command -v docker >/dev/null 2>&1 && docker volume inspect "$volume" >/dev/null 2>&1; then
   cat >&2 <<EOF
 An existing Nexora database volume was found: $volume

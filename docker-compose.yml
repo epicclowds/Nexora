@@ -1,20 +1,34 @@
-# Nexora – production stack using the published images from GitHub Container Registry.
-#   sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
-#   docker compose pull
-#   docker compose up -d
-# Nothing is compiled locally. To build from source instead, see docker-compose.dev.yml.
+# ──────────────────────────────────────────────────────────────────────────────
+# Nexora – standalone production stack (Docker Compose, Portainer, Arcane, …)
+#
+# This file is self-contained: it needs no repository checkout, no other files
+# and no scripts. Paste it into a stack editor, or save it as docker-compose.yml:
+#   https://github.com/epicclowds/Nexora/blob/main/docker-compose.yml
+#
+# Required variables (stack "Environment variables", or a .env file next to this file):
+#   MYSQL_PASSWORD, MYSQL_ROOT_PASSWORD, REDIS_PASSWORD   random passwords
+#   JWT_SECRET                                            at least 32 random characters
+# Generate values with:  openssl rand -hex 32
+# All other variables are optional; see docs/installation/environment.md.
+#
+# Updates:  docker compose pull && docker compose up -d   (volumes are kept)
+# NEXORA_VERSION=latest follows the newest verified stable release;
+# set e.g. NEXORA_VERSION=1.1.0 to pin a version.
+#
+# MySQL keeps the passwords of its FIRST start in its data volume. Changing
+# MYSQL_PASSWORD later does not change the database user – keep the values.
 # MySQL and Redis are only reachable on the internal network.
-# The project name is kept from earlier releases so existing volumes (data) are reused.
+# ──────────────────────────────────────────────────────────────────────────────
 
+# Project name used by "docker compose" on the command line (kept from earlier
+# releases). Portainer and Arcane use the stack name instead; the volumes below
+# have fixed names, so the data is found either way.
 name: minecraft-network-manager
-
-x-restart: &restart
-  restart: unless-stopped
 
 services:
   mysql:
-    <<: *restart
     image: mysql:8.4
+    restart: unless-stopped
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -22,8 +36,8 @@ services:
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-mnm}
       MYSQL_USER: ${MYSQL_USER:-mnm}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in .env}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required - set it in the stack environment variables or in .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?MYSQL_ROOT_PASSWORD is required - set it in the stack environment variables or in .env}
     volumes:
       - mysql-data:/var/lib/mysql
     networks: [internal]
@@ -32,28 +46,29 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
-      start_period: 30s
+      start_period: 60s
     stop_grace_period: 60s
 
   redis:
-    <<: *restart
     image: redis:7.4-alpine
-    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}']
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD:?REDIS_PASSWORD is required - set it in the stack environment variables or in .env}']
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD}
     volumes:
       - redis-data:/data
     networks: [internal]
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      # Authenticated ping: fails on a wrong password, not only when Redis is down.
+      test: ['CMD-SHELL', 'redis-cli ping | grep -q PONG']
       interval: 10s
       timeout: 3s
       retries: 10
+      start_period: 10s
 
   backend:
-    <<: *restart
-    # Pinned release; change NEXORA_VERSION in .env to update (docs/installation/updating.md).
-    image: ${NEXORA_IMAGE_PREFIX:-ghcr.io/epicclowds/nexora}/backend:${NEXORA_VERSION:-1.1.0}
+    image: ${NEXORA_IMAGE_PREFIX:-ghcr.io/epicclowds/nexora}/backend:${NEXORA_VERSION:-latest}
+    restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 4000
@@ -63,11 +78,11 @@ services:
       DATABASE_PORT: 3306
       DATABASE_NAME: ${MYSQL_DATABASE:-mnm}
       DATABASE_USER: ${MYSQL_USER:-mnm}
-      DATABASE_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in .env}
+      DATABASE_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required - set it in the stack environment variables or in .env}
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD:?Set REDIS_PASSWORD in .env}
-      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD is required - set it in the stack environment variables or in .env}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required (at least 32 random characters) - set it in the stack environment variables or in .env}
       SETUP_TOKEN: ${SETUP_TOKEN:-}
       COOKIE_SECURE: ${COOKIE_SECURE:-auto}
       TRUST_PROXY: ${TRUST_PROXY:-loopback, linklocal, uniquelocal}
@@ -77,44 +92,80 @@ services:
       GEOIP_CITY_DB: ${GEOIP_CITY_DB:-}
       GEOIP_ASN_DB: ${GEOIP_ASN_DB:-}
     volumes:
-      - ./geoip:/geoip:ro
+      # Optional MaxMind GeoLite2 files. Default: an (empty) named volume, so no
+      # host directory is needed. Set GEOIP_DIR to a host path such as ./geoip
+      # or /opt/geoip to use files from the host instead.
+      - ${GEOIP_DIR:-geoip}:/geoip:ro
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_healthy
     networks: [internal]
+    healthcheck:
+      # Ready = migrations applied, HTTP served, MySQL and Redis reachable.
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:4000/api/health/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
     # Node.js needs no Linux capabilities and must never gain privileges.
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     stop_grace_period: 30s
 
   dashboard:
-    <<: *restart
-    image: ${NEXORA_IMAGE_PREFIX:-ghcr.io/epicclowds/nexora}/dashboard:${NEXORA_VERSION:-1.1.0}
+    image: ${NEXORA_IMAGE_PREFIX:-ghcr.io/epicclowds/nexora}/dashboard:${NEXORA_VERSION:-latest}
+    restart: unless-stopped
     environment:
       BACKEND_INTERNAL_URL: http://backend:4000
     depends_on:
       backend:
         condition: service_healthy
     ports:
+      # The only published port. Use DASHBOARD_BIND=127.0.0.1 behind a reverse proxy on the same host.
       - '${DASHBOARD_BIND:-0.0.0.0}:${DASHBOARD_PORT:-3000}:3000'
     networks: [internal]
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/login').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     # Node.js needs no Linux capabilities and must never gain privileges.
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     stop_grace_period: 20s
 
-  # Optional HTTPS front with automatic certificates: docker compose --profile https up -d
+  # Optional built-in HTTPS with automatic Let's Encrypt certificates for
+  # DASHBOARD_DOMAIN (ports 80 and 443 must be free and reachable).
+  # Enable: docker compose --profile https up -d  (or COMPOSE_PROFILES=https).
+  # Not needed behind an existing reverse proxy (Nginx Proxy Manager, Traefik, …).
+  # The configuration is generated at startup – no Caddyfile on the host.
   caddy:
-    <<: *restart
     profiles: [https]
     image: caddy:2.10-alpine
+    restart: unless-stopped
     environment:
-      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-localhost}
+      DASHBOARD_DOMAIN: ${DASHBOARD_DOMAIN:-}
       ACME_EMAIL: ${ACME_EMAIL:-}
+    entrypoint: ['/bin/sh', '-c']
+    command:
+      - |
+        set -eu
+        if [ -z "$${DASHBOARD_DOMAIN}" ]; then
+          echo "[caddy] DASHBOARD_DOMAIN is required for the https profile (e.g. nexora.example.com)." >&2
+          exit 1
+        fi
+        {
+          if [ -n "$${ACME_EMAIL}" ]; then printf '{\n\temail %s\n}\n\n' "$${ACME_EMAIL}"; fi
+          printf '%s {\n' "$${DASHBOARD_DOMAIN}"
+          printf '\tencode zstd gzip\n'
+          printf '\theader {\n\t\tStrict-Transport-Security "max-age=31536000; includeSubDomains"\n\t\t-Server\n\t}\n'
+          printf '\treverse_proxy dashboard:3000\n}\n'
+        } > /etc/caddy/Caddyfile
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
     volumes:
-      - ./infrastructure/docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
       - caddy-config:/config
     ports:
@@ -126,11 +177,20 @@ services:
         condition: service_healthy
     networks: [internal]
 
+# Fixed volume names: the same data is used whatever the stack/project is called
+# (docker compose, Portainer, Arcane). They match the volumes of earlier Nexora
+# releases. Set NEXORA_VOLUME_PREFIX only to run a second, separate instance.
 volumes:
   mysql-data:
+    name: ${NEXORA_VOLUME_PREFIX:-minecraft-network-manager}_mysql-data
   redis-data:
+    name: ${NEXORA_VOLUME_PREFIX:-minecraft-network-manager}_redis-data
+  geoip:
+    name: ${NEXORA_VOLUME_PREFIX:-minecraft-network-manager}_geoip
   caddy-data:
+    name: ${NEXORA_VOLUME_PREFIX:-minecraft-network-manager}_caddy-data
   caddy-config:
+    name: ${NEXORA_VOLUME_PREFIX:-minecraft-network-manager}_caddy-config
 
 networks:
   internal:

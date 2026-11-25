@@ -2,6 +2,25 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [Unreleased]
+
+Standalone deployment: Nexora is installed from `docker-compose.yml` alone – no release package, repository checkout, build or script. No application images changed.
+
+### Added
+- Installation guides for Portainer and Arcane, an environment variable reference and a guide for moving existing installations (`docs/installation/`).
+- CI job *Standalone stack*: installs from nothing but `docker-compose.yml` and the published images, adopts an installation created with the v1.1.0 file, restarts, redeploys under another stack name with an env file (as Portainer/Arcane do), pins and unpins the version, diagnoses a wrong database password without logging secrets, and serves the built-in HTTPS profile.
+- Backup and restore commands that need only Docker (no helper scripts).
+
+### Changed
+- `docker-compose.yml` defaults to `NEXORA_VERSION=latest` (newest verified stable release; `latest` is still only moved after a complete release run). Set e.g. `NEXORA_VERSION=1.1.0` to pin.
+- No host files are needed anymore: GeoIP files are optional via `GEOIP_DIR` (default: an internal volume, geolocation off), and the built-in Caddy HTTPS configuration is generated from `DASHBOARD_DOMAIN`/`ACME_EMAIL` (`infrastructure/docker/Caddyfile` was removed).
+- Data volumes have fixed names (`minecraft-network-manager_mysql-data`, …), identical to the volumes earlier versions created, so the data is found whatever the stack is called. `NEXORA_VOLUME_PREFIX` selects other volumes (second instance, custom project names).
+- Explicit health checks for backend and dashboard in the Compose file; the Redis health check now fails on a wrong password.
+- Clearer messages for missing required variables.
+
+### Migration
+Existing installations keep their data: replace `docker-compose.yml` (or paste it into Portainer/Arcane) and keep the existing `.env` values. If you used `./geoip`, set `GEOIP_DIR=./geoip`. See [Moving an existing installation](docs/installation/migration.md).
+
 ## [1.1.0] – 2026-11-25
 
 Punishment editing and evidence management.

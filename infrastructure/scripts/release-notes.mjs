@@ -49,7 +49,7 @@ const notes = `${entry}
 | \`Nexora-Velocity-${version}.jar\` | Velocity proxy → \`plugins/\` |
 | \`Nexora-Paper-${version}.jar\` | Every Paper server → \`plugins/\` |
 | \`nexora-plugins-${version}.zip\` | Both plugins, example configurations and instructions |
-| \`nexora-deploy-${version}.tar.gz\` | Docker Compose deployment files (no source code needed) |
+| \`nexora-deploy-${version}.tar.gz\` | Optional: the same \`docker-compose.yml\` with helper scripts (backup, restore, credential repair) |
 | \`SHA256SUMS\` | Checksums of all files above |
 
 ## Compatibility (tested in CI)
@@ -74,20 +74,12 @@ Use plugins and server images of the **same version**: the dashboard warns about
 
 ## Install
 
-\`\`\`sh
-curl -fsSLO https://github.com/${repo}/releases/download/v${version}/nexora-deploy-${version}.tar.gz
-tar -xzf nexora-deploy-${version}.tar.gz && cd nexora
-sh infrastructure/scripts/generate-secrets.sh
-docker compose pull
-docker compose up -d
-\`\`\`
-
-Then open \`http://<server>:3000\` and follow the [installation guide](https://github.com/${repo}/blob/v${version}/docs/installation/README.md) and the [Minecraft plugin guide](https://github.com/${repo}/blob/v${version}/docs/installation/minecraft-plugins.md).
+Paste [\`docker-compose.yml\`](https://github.com/${repo}/blob/v${version}/docker-compose.yml) into Portainer, Arcane or a folder on the server, set \`MYSQL_PASSWORD\`, \`MYSQL_ROOT_PASSWORD\`, \`REDIS_PASSWORD\` and \`JWT_SECRET\`, and deploy (\`docker compose pull && docker compose up -d\`). No other files are needed. Then open \`http://<server>:3000\` and follow the [installation guide](https://github.com/${repo}/blob/v${version}/docs/installation/README.md) and the [Minecraft plugin guide](https://github.com/${repo}/blob/v${version}/docs/installation/minecraft-plugins.md). \`nexora-deploy-${version}.tar.gz\` contains the same file plus optional helper scripts.
 
 ## Update an existing installation
 
-1. Back up: \`sh infrastructure/scripts/backup.sh\`
-2. Set \`NEXORA_VERSION=${version}\` in \`.env\`, then \`docker compose pull && docker compose up -d\` (database migrations run automatically).
+1. Back up the database ([Backup & restore](https://github.com/${repo}/blob/v${version}/docs/installation/backup-restore.md)).
+2. \`docker compose pull && docker compose up -d\` (with \`NEXORA_VERSION=latest\`), or set \`NEXORA_VERSION=${version}\` first when pinned; in Portainer/Arcane re-pull and redeploy. Database migrations run automatically.
 3. Replace both plugin jars with the files from this release and restart the servers.
 
 Details: [Updating](https://github.com/${repo}/blob/v${version}/docs/installation/updating.md).

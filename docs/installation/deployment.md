@@ -13,47 +13,18 @@ This guide takes a fresh Linux host to a production installation. The short vers
 
 ## 2. Configure the environment
 
-Download the deployment package of the release you want to run (no source code, images are pulled from GHCR) – see [Installation, step 3](README.md#3-download-nexora):
+Deploy the standalone [`docker-compose.yml`](https://github.com/epicclowds/Nexora/blob/main/docker-compose.yml) with the Compose CLI, [Portainer](portainer.md) or [Arcane](arcane.md) as described in the [installation guide](README.md#3-deploy-the-stack). All settings are environment variables – see the [environment variable reference](environment.md). Production decisions:
 
-```sh
-curl -fsSLO https://github.com/epicclowds/Nexora/releases/download/v1.1.0/nexora-deploy-1.1.0.tar.gz
-tar -xzf nexora-deploy-1.1.0.tar.gz && cd nexora
-sh infrastructure/scripts/generate-secrets.sh   # creates .env with random secrets
-```
-
-### Environment reference (`.env`)
-
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `MYSQL_DATABASE`, `MYSQL_USER` | `mnm` | Database and user |
-| `MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD` | – (required) | Database passwords. MySQL applies them only when its volume is created – changing them later requires `repair-db-credentials.sh` ([details](README.md#database-password-mismatch-p1000)). Special characters are allowed (wrap the value in single quotes; avoid `$` and `'`) |
-| `REDIS_PASSWORD` | – (required) | Redis password (special characters allowed, as above) |
-| `JWT_SECRET` | – (required) | Signs session tokens, ≥ 32 random characters |
-| `SETUP_TOKEN` | empty | Fixed setup code (≥ 16 chars); empty = random code in the backend log |
-| `DASHBOARD_BIND`, `DASHBOARD_PORT` | `0.0.0.0`, `3000` | Published address of the dashboard. Use `127.0.0.1` behind a reverse proxy on the same host. |
-| `COOKIE_SECURE` | `auto` | `true` behind HTTPS |
-| `TRUST_PROXY` | private ranges | Proxies whose `X-Forwarded-For` is trusted ([HTTPS](https.md)) |
-| `GEOIP_CITY_DB`, `GEOIP_ASN_DB` | empty | Optional GeoLite2 databases in `./geoip` |
-| `API_DOCS_ENABLED` | `true` | OpenAPI docs at `/api/docs` |
-| `LOG_LEVEL` | `log` | `error`, `warn`, `log`, `debug`, `verbose` |
-| `DASHBOARD_DOMAIN`, `ACME_EMAIL` | – | Caddy HTTPS profile |
-| `NEXORA_VERSION` | the downloaded release | Release of the backend and dashboard images; pinned, change it to update |
-| `NEXORA_IMAGE_PREFIX` | `ghcr.io/epicclowds/nexora` | Registry/namespace of the images (for mirrors) |
-
-`.env` contains secrets: keep it out of version control and readable only by the operator (`chmod 600 .env`).
+- **Secrets:** four random values (`MYSQL_PASSWORD`, `MYSQL_ROOT_PASSWORD`, `REDIS_PASSWORD`, `JWT_SECRET`), stored outside the host (password manager). A `.env` file must be readable only by the operator (`chmod 600 .env`) and never committed.
+- **Version:** `latest` follows verified stable releases when you pull; pin `NEXORA_VERSION` (e.g. `1.1.0`) if updates must be planned and tested first ([Updating](updating.md#stable-or-pinned)).
+- **Exposure:** `DASHBOARD_BIND=127.0.0.1` behind a reverse proxy on the same host; `COOKIE_SECURE=true` with HTTPS.
 
 ## 3. Start and secure
 
-```sh
-docker compose pull
-docker compose up -d                         # or: docker compose --profile https up -d
-docker compose ps                            # all services healthy
-docker compose logs backend | grep "Setup code"
-```
-
-- Open the dashboard and run the [setup wizard](README.md#steps). English is preselected; the wizard locks itself after completion.
-- Firewall: allow only 80/443 (HTTPS profile) or the dashboard port from the networks that need it. MySQL and Redis have no published ports.
-- Set `COOKIE_SECURE=true` once HTTPS works and restart: `docker compose up -d`.
+- Wait until all services are *healthy* (`docker compose up -d --wait`, or the stack page in Portainer/Arcane). The backend is healthy only after migrations ran and MySQL and Redis answer; the dashboard starts after the backend.
+- Open the dashboard and run the [setup wizard](README.md#4-setup-wizard) with the setup code from the backend log. English is preselected; the wizard locks itself after completion.
+- Firewall: allow only 80/443 (HTTPS) or the dashboard port from the networks that need it. MySQL, Redis and the backend have no published ports.
+- Serve the dashboard over [HTTPS](https.md), then set `COOKIE_SECURE=true` and redeploy.
 
 ## 4. Configure the network
 
@@ -70,12 +41,12 @@ In the dashboard, as owner:
 
 - **Backups:** schedule the database and configuration backups with cron and test a restore – see [Backup & restore](backup-restore.md). Plugin data folders (`credentials.properties`, `punishments-cache.json`, `managed-settings.json`) belong into the Minecraft servers' own backups.
 - **Updates:** [Updating](updating.md). Database migrations run automatically on start; take a backup first.
-- **Monitoring:** `docker compose ps` health states; `GET /api/health/ready` for external monitors; Servers page for plugin heartbeats.
+- **Monitoring:** container health states (`docker compose ps`, Portainer/Arcane); `GET /api/health/ready` for external monitors; Servers page for plugin heartbeats.
 - **Credential hygiene:** rotate a server's credentials on its page when a server is reinstalled or compromised; revoke unused registration tokens.
 
 ## Checklist
 
-- [ ] `.env` generated, not committed, `chmod 600`
+- [ ] Secrets generated randomly, stored in a password manager; `.env` (if used) not committed, `chmod 600`
 - [ ] HTTPS active, `COOKIE_SECURE=true`
 - [ ] Setup completed, owner password stored in a password manager
 - [ ] Only required ports reachable
