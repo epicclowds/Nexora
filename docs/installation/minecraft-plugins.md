@@ -50,7 +50,8 @@ Tokens are single-use and expire after 30 minutes. If one expired, simply add th
 
 - **Servers** page: every server shows *Online*, its Minecraft and plugin version, and a recent heartbeat (every 15 s).
 - Join the network: the player appears under **Online players**; after the statistics interval (5 minutes by default) the player's **Statistics** tab fills.
-- In the console or in game (permission `networkmanager.admin`): `/networkmanager` (alias `/nm`) shows the connection status.
+- In the console or in game (permission `networkmanager.admin`): `/networkmanager` (aliases `/nm`, `/nexora`) shows the connection status.
+- `/nexora update` (or `/nexora version`, permission `networkmanager.update.check`) shows the installed plugin version and the latest Nexora release.
 
 ## 5. Updating the plugins
 
@@ -95,6 +96,15 @@ Nothing is estimated: values that were not collected are shown as "not collected
 ## Moderation
 
 The Velocity plugin provides `/ban`, `/tempban`, `/unban`, `/mute`, `/tempmute`, `/unmute`, `/kick`, `/warn`, `/history`, `/check`, `/editban` and `/editmute`. Ban screens can show an appeal link: set it under *Settings → Plugin settings → Appeal link* or with `appeal-url=https://…` in `config.properties`. Permissions and behaviour are described in [Punishments](../architecture/punishments.md). Both plugins keep `punishments-cache.json` in their folder so bans and mutes stay enforced during backend outages; do not delete it while the backend is unreachable.
+
+## Update notifications
+
+When the dashboard reports a newer Nexora release, staff with `networkmanager.update.notify` get a short message when they join the network (from the Velocity proxy, at most once per cooldown – default 24 hours, set under **Settings → Updates**). Players without the permission never see it. Paper servers do not notify by default, so nobody is notified twice; for a network without Velocity set `update-notifications=true` in the Paper plugin's `config.properties` (`false` disables it on any server). The plugins only read cached information from the backend – they never contact GitHub and never download or replace anything. Details: [Update notifications](../architecture/updates.md).
+
+| Permission | Allows |
+| --- | --- |
+| `networkmanager.update.notify` | Update notification when joining |
+| `networkmanager.update.check` | `/nexora update` / `/nexora version` |
 
 ## AntiCheat
 

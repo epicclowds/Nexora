@@ -112,7 +112,7 @@ Serve the dashboard over HTTPS in production – either with your existing rever
 | Status | `docker compose ps` | Stack / project page |
 | Logs | `docker compose logs -f backend` (or `dashboard`, `mysql`) | Container → Logs |
 | Stop / start | `docker compose stop` / `docker compose up -d` | Stop / Start buttons |
-| Update | `docker compose pull && docker compose up -d` – see [Updating](updating.md) | Re-pull images and redeploy – see the platform guide |
+| Update (you are notified under Settings → Updates) | `docker compose pull && docker compose up -d` – see [Updating](updating.md) | Re-pull images and redeploy – see the platform guide |
 | Back up the database | see [Backup & restore](backup-restore.md) | see [Backup & restore](backup-restore.md) |
 
 **Never** use `docker compose down -v` or delete the stack's volumes: that deletes the database. `docker compose down` (without `-v`), stopping or removing a stack, and updates keep all data.

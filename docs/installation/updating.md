@@ -2,6 +2,10 @@
 
 Nexora is released as one version for all components: backend image, dashboard image and both Minecraft plugins carry the same number (e.g. `1.1.0`). Update them together. Release notes (new features, breaking changes, migration notes) are on the [Releases page](https://github.com/epicclowds/Nexora/releases).
 
+## How you learn about updates
+
+The backend checks GitHub for new releases every 6 hours (read-only). Administrators see a notification in the dashboard and the details under **Settings → Updates** (versions of the backend, dashboard and every server's plugin, release notes, plugin downloads); staff with `networkmanager.update.notify` are told in-game when they join. Nothing is installed automatically. See [Update notifications](../architecture/updates.md).
+
 ## Stable or pinned
 
 `NEXORA_VERSION` selects the image tag of the backend and dashboard:
@@ -55,6 +59,15 @@ Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` of the
 ## Never generate a new `.env` for an existing installation
 
 Whether you update in place, extract a newer release package into a new folder, or move to Portainer or Arcane: **keep your existing secret values** (copy the old `.env`). Do not run `generate-secrets.sh` again – MySQL keeps the passwords of its first start in the data volume, and new passwords make the backend fail with `P1000 Authentication failed` (since 1.0.3 the script refuses when it finds an existing database volume). If it already happened, follow [Database password mismatch](README.md#database-password-mismatch-p1000) – no data is lost.
+
+## Upgrading from 1.1.0 to 1.2.0
+
+1.2.0 adds update notifications and makes `docker-compose.yml` standalone. The migration only adds one column (dismissed update notifications) and the `updates.*` permissions.
+
+1. Back up the database.
+2. Replace `docker-compose.yml` with the [standalone file](https://raw.githubusercontent.com/epicclowds/Nexora/main/docker-compose.yml) (or paste it into Portainer/Arcane) and keep your `.env` values. If you used GeoIP files in `./geoip`, add `GEOIP_DIR=./geoip`. If `.env` pins `NEXORA_VERSION=1.1.0`, set `1.2.0` or `latest`. The data volumes keep their names ([details](migration.md)).
+3. `docker compose pull && docker compose up -d`.
+4. Replace both plugin jars with the 1.2.0 jars and restart the servers. Grant `networkmanager.update.notify` (join notification) and `networkmanager.update.check` (`/nexora update`) to your staff in your proxy's permission plugin.
 
 ## Upgrading from 1.0.3 to 1.1.0
 

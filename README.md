@@ -1,8 +1,8 @@
-# Minecraft Network Manager
+# Nexora
 
-A self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring and a multilingual web dashboard. Everything is deployed with Docker Compose.
+**Nexora – Minecraft Network Manager** is a self-hosted administration and player-intelligence platform for Minecraft networks running **Velocity** (proxy) and **Paper** (backend servers): network-wide punishments, player profiles and statistics, AntiCheat integration, inventory management, server monitoring, update notifications and a multilingual web dashboard. It runs with Docker Compose from prebuilt images – nothing is compiled on your server.
 
-> **Status: v1.0.3 – stable, installable from prebuilt release artifacts.** All nine development phases are complete: web platform, Velocity and Paper plugins, network-wide moderation, player profiles, statistics, AntiCheat integration, inventory management, central configuration and production hardening (security review, two-factor authentication, permission audit, verified deployment, load and backup/restore tests). See the [changelog](CHANGELOG.md).
+> **Status: v1.2.0 – stable.** Backend and dashboard are published as Docker images on GitHub Container Registry, the Minecraft plugins as jars on the [Releases page](https://github.com/epicclowds/Nexora/releases). See the [changelog](CHANGELOG.md).
 
 ## Features
 
@@ -21,33 +21,137 @@ A self-hosted administration and player-intelligence platform for Minecraft netw
 | AntiCheat | Java API for allow-listed AntiCheat plugins and console-only `/anticheatban`; dashboard rule engine per check (action, duration, VL threshold, cooldown), safe defaults (log only), rate limits, idempotent reports, evidence on punishments, event history and daily counters |
 | Inventories | View and edit inventories and Ender Chests per server in a Minecraft-style editor (drag & drop, amount, name, lore, enchantments); per-slot compare-and-set applied atomically on the server thread (no duplication or loss), offline edits queued until the next join, revision history with rollback, full audit trail |
 | Configuration | Setup wizard; guided server registration with Velocity/Paper config generator (copy, download, ZIP package with instructions, live registration status); plugin settings and in-game messages managed centrally and applied live without restarts; punishment templates; language management with catalogue import/export and runtime-added languages |
+| Updates | Central, read-only check of GitHub Releases (cached, ETag, rate-limit aware, every 6 h by default); dashboard notification and **Settings → Updates** with backend, dashboard and per-server plugin versions, compatibility warnings and release notes; in-game notifications for staff and `/nexora update`; never installs anything by itself |
 | Realtime | Server-Sent Events with Redis fan-out; permission-filtered |
 | Moderation | Bans, temp bans, IP blacklists, mutes, temp mutes, kicks, warnings; `/ban /tempban /unban /mute /tempmute /unmute /kick /warn /history /check /editban /editmute`; editing of reason, duration and permanent/temporary with preview, optimistic locking and live sync; multiple evidence entries per punishment (video, screenshot, link, text, note) that can be added later; immutable change history; login checks from a local, disk-persisted cache (no network on join, works during outages); mutes enforced on Paper; duplicate prevention and idempotency; dashboard moderation page, player history, revoke, internal notes; full audit trail |
 | Dashboard | Live overview, players, online players, player profiles, servers, users & roles, audit log, settings; dark/light theme; responsive |
 | API | REST with OpenAPI docs at `/api/docs`; [permission matrix](docs/architecture/permission-matrix.md) generated from the code |
 | Operations | Verified backup/restore scripts, deployment verification and load test (run in CI against the real Compose stack), hardened containers, Content-Security-Policy |
 
+## Requirements
+
+- A Linux server, 64-bit `amd64` (`x86_64`) or `arm64`, with 2 GB RAM (4 GB for large networks) and 10 GB free disk space
+- [Docker Engine](https://docs.docker.com/engine/install/) 24 or newer with the Docker Compose plugin (`docker compose version` must work)
+- `curl` and `openssl` (preinstalled on most distributions)
+- Port `3000` (or 80/443 with HTTPS) reachable by your staff **and** your Minecraft servers
+- Velocity 4.3 proxy and Paper 26 servers with Java 25 for the plugins
+
 ## Quick start
 
-Requirements: a Linux server (amd64 or arm64) with Docker Engine 24+ and the Compose plugin. Nothing is compiled: the backend and dashboard are prebuilt images on GitHub Container Registry, the plugins are prebuilt jars on the [Releases page](https://github.com/epicclowds/Nexora/releases).
+These steps install Nexora on a Linux server from the command line. They use only the standalone [`docker-compose.yml`](https://github.com/epicclowds/Nexora/blob/main/docker-compose.yml) – no repository checkout, archive or build.
 
-Nexora is deployed from a single, self-contained file: **[`docker-compose.yml`](https://github.com/epicclowds/Nexora/blob/main/docker-compose.yml)** ([raw](https://raw.githubusercontent.com/epicclowds/Nexora/main/docker-compose.yml)). No repository clone, archive, build or script is needed – it works with the Docker Compose CLI, [Portainer](docs/installation/portainer.md) and [Arcane](docs/installation/arcane.md).
+**1. Install Docker** (skip if `docker compose version` already works):
 
-1. **Copy** [`docker-compose.yml`](https://raw.githubusercontent.com/epicclowds/Nexora/main/docker-compose.yml) into a new stack (Portainer/Arcane) or a folder on the server.
-2. **Set four secrets** – random values, e.g. from `openssl rand -hex 32`. Store them safely: the MySQL passwords cannot be changed later by editing them.
-   ```dotenv
-   MYSQL_PASSWORD=…
-   MYSQL_ROOT_PASSWORD=…
-   REDIS_PASSWORD=…
-   JWT_SECRET=…
-   ```
-3. **Deploy** – Portainer/Arcane: *Deploy*; command line (secrets in `.env` next to the file): `docker compose pull && docker compose up -d`.
-4. **Open** `http://<server>:3000` once all containers are healthy.
-5. **Complete the setup wizard** with the setup code from the backend log (`docker compose logs backend | grep "Setup code"`).
+```sh
+curl -fsSL https://get.docker.com | sudo sh
+sudo usermod -aG docker "$USER"   # log out and in again afterwards
+```
 
-Then install `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` from the [latest release](https://github.com/epicclowds/Nexora/releases/latest) and connect them under **Settings → Minecraft integration**. Update with `docker compose pull && docker compose up -d` (Portainer/Arcane: re-pull and redeploy); set `NEXORA_VERSION=1.1.0` to pin a version.
+**2. Download `docker-compose.yml`:**
 
-Step-by-step guides: [Installation](docs/installation/README.md) · [Environment variables](docs/installation/environment.md) · [Portainer](docs/installation/portainer.md) · [Arcane](docs/installation/arcane.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Moving an existing installation](docs/installation/migration.md)
+```sh
+mkdir nexora
+cd nexora
+curl -fsSL https://raw.githubusercontent.com/epicclowds/Nexora/main/docker-compose.yml -o docker-compose.yml
+```
+
+**3. Configure the environment variables.** Nexora needs four secrets in a file called `.env` next to `docker-compose.yml`. Generate random values:
+
+```sh
+cat > .env <<EOF
+MYSQL_PASSWORD=$(openssl rand -hex 24)
+MYSQL_ROOT_PASSWORD=$(openssl rand -hex 24)
+REDIS_PASSWORD=$(openssl rand -hex 24)
+JWT_SECRET=$(openssl rand -hex 48)
+EOF
+chmod 600 .env
+```
+
+Or write the file yourself with `nano .env`:
+
+```dotenv
+MYSQL_PASSWORD=replace-with-a-long-random-value
+MYSQL_ROOT_PASSWORD=replace-with-another-long-random-value
+REDIS_PASSWORD=replace-with-a-third-long-random-value
+JWT_SECRET=replace-with-at-least-32-random-characters
+```
+
+> **Keep these values and back up `.env`.** MySQL stores its passwords when it starts for the first time; the same values must be used for every later start and update. Never generate a new `.env` for an existing installation. Optional settings (port, version pinning, HTTPS, …): [Environment variables](docs/installation/environment.md).
+
+**4. Start Nexora:**
+
+```sh
+docker compose pull
+docker compose up -d
+```
+
+Check that all four services (`mysql`, `redis`, `backend`, `dashboard`) become `healthy` – this takes one to two minutes:
+
+```sh
+docker compose ps
+```
+
+View the logs (press `Ctrl+C` to stop following them):
+
+```sh
+docker compose logs -f
+```
+
+**5. Open the dashboard** in a browser:
+
+```
+http://YOUR_SERVER_IP:3000
+```
+
+(`3000` is the default; change it with `DASHBOARD_PORT` in `.env`. For a domain with HTTPS see [HTTPS and reverse proxies](docs/installation/https.md).)
+
+**6. Complete the setup wizard.** It asks for a one-time setup code, which the backend prints to its log:
+
+```sh
+docker compose logs backend | grep "Setup code"
+```
+
+Create the Owner account, name your network and choose the language (English is preselected). Details: [Installation guide](docs/installation/README.md).
+
+## Minecraft plugin installation
+
+1. Download `Nexora-Velocity-<version>.jar` and `Nexora-Paper-<version>.jar` from the [latest release](https://github.com/epicclowds/Nexora/releases/latest).
+2. In the dashboard open **Settings → Minecraft integration → Add a server**. It generates a ready-to-use `config.properties` with a one-time registration token for each server.
+3. Put the jar into the server's `plugins/` folder, the generated `config.properties` into the plugin folder, and start the server. The server appears in the dashboard within seconds.
+
+Step-by-step guide, permissions and commands: [Minecraft plugins](docs/installation/minecraft-plugins.md).
+
+## Updating Nexora
+
+Nexora tells you about new releases: in the dashboard (**Settings → Updates** and a notification for administrators) and in-game for staff with `networkmanager.update.notify`. It never updates itself.
+
+1. **Back up** the database ([Backup & restore](docs/installation/backup-restore.md)).
+2. **Pull the updated images:** `docker compose pull`
+3. **Recreate the updated containers:** `docker compose up -d` – database migrations run automatically.
+4. **Verify** that all services are healthy again: `docker compose ps`
+
+```sh
+docker compose pull
+docker compose up -d
+docker compose ps
+```
+
+By default the stack uses the `latest` image tag, which moves to each new stable release once it has passed all release checks. If you pinned a version (`NEXORA_VERSION=1.1.0` in `.env`), change that value to the new version first. Then update the Minecraft plugins to the same release. Your data stays in the Docker volumes – never use `docker compose down -v` (it deletes the database). More: [Updating](docs/installation/updating.md).
+
+## Alternative installation methods
+
+The same standalone `docker-compose.yml` also works in Docker management interfaces – paste it as a stack and enter the four secrets as environment variables:
+
+- [Portainer](docs/installation/portainer.md)
+- [Arcane](docs/installation/arcane.md)
+
+Moving an existing installation between methods keeps its data: [Moving an existing installation](docs/installation/migration.md). Each release also offers `nexora-deploy-<version>.tar.gz` (the same file plus optional helper scripts).
+
+## Documentation
+
+- **Installation:** [Installation guide](docs/installation/README.md) · [Environment variables](docs/installation/environment.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Backup & restore](docs/installation/backup-restore.md) · [HTTPS](docs/installation/https.md) · [Production checklist](docs/installation/deployment.md) · [Portainer](docs/installation/portainer.md) · [Arcane](docs/installation/arcane.md) · [Moving an installation](docs/installation/migration.md)
+- **Architecture:** [Overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md) · [Player profiles](docs/architecture/player-profiles.md) · [Statistics](docs/architecture/statistics.md) · [AntiCheat](docs/architecture/anticheat.md) · [Inventories](docs/architecture/inventory.md) · [Configuration](docs/architecture/configuration.md) · [Updates](docs/architecture/updates.md) · [Security review](docs/architecture/security-review.md) · [Permission matrix](docs/architecture/permission-matrix.md)
+- **Reference:** [API](docs/api/README.md) · [Development](docs/development/README.md)
 
 | Release artifact | Where |
 | --- | --- |
@@ -75,12 +179,6 @@ infrastructure/
 docs/               Architecture, installation, API and development docs
 ```
 
-## Documentation
-
-- [Architecture overview](docs/architecture/overview.md) · [Database decision](docs/architecture/database.md) · [Security model](docs/architecture/security.md) · [Internationalization](docs/architecture/i18n.md) · [Plugin protocol](docs/architecture/plugin-protocol.md) · [Realtime](docs/architecture/realtime.md) · [Punishments](docs/architecture/punishments.md) · [Player profiles](docs/architecture/player-profiles.md) · [Statistics](docs/architecture/statistics.md) · [AntiCheat](docs/architecture/anticheat.md) · [Inventories](docs/architecture/inventory.md) · [Configuration](docs/architecture/configuration.md) · [Security review](docs/architecture/security-review.md) · [Permission matrix](docs/architecture/permission-matrix.md)
-- [Installation](docs/installation/README.md) · [Production deployment](docs/installation/deployment.md) · [Minecraft plugins](docs/installation/minecraft-plugins.md) · [Updating](docs/installation/updating.md) · [Backup & restore](docs/installation/backup-restore.md) · [HTTPS](docs/installation/https.md)
-- [API](docs/api/README.md) · [Development](docs/development/README.md)
-
 ## Roadmap
 
 | Version | Milestone | Status |
@@ -97,6 +195,11 @@ docs/               Architecture, installation, API and development docs
 | v1.0.2 | Distribution: GitHub Releases with plugin jars, prebuilt GHCR images by default, release pipeline | ✅ released |
 | v1.0.3 | Database credentials: encoded connection URLs, P1000 diagnosis, non-destructive repair script | ✅ released |
 | v1.1.0 | Punishment editing (`/editban`, `/editmute`, dashboard), evidence management, change history, appeal link | ✅ released |
+| v1.2.0 | Update notifications (dashboard, in-game, `/nexora update`), standalone Docker Compose for CLI, Portainer and Arcane | ✅ released |
+
+## Contributing
+
+Issues and pull requests are welcome. The [development guide](docs/development/README.md) explains the local setup, tests and conventions (Conventional Commits; CI must pass). Please report security problems privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 

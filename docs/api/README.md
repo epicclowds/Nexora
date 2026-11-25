@@ -55,6 +55,10 @@ The complete list of routes with their required permissions is generated into th
 | `POST /api/i18n/languages` · `DELETE …/:locale` · `PUT/DELETE /api/i18n/catalogs/:locale` | session | `translations.manage` | Add/delete languages, import/reset catalogues |
 | `GET /api/i18n/messages/:locale` | public | – | Imported messages of an enabled language (used by the dashboard) |
 | `GET /api/servers/registration-tokens/:id` | session | `servers.manage` | Registration progress (pending, registered, expired) |
+| `GET /api/updates` | session | `updates.view` | Installed and latest versions, plugin versions per server, warnings, settings ([updates](../architecture/updates.md)) |
+| `GET /api/updates/notification` · `POST …/notification/dismiss` | session | `updates.notify` | Update notification for the current user; dismiss it for a version |
+| `POST /api/updates/check` | session | `updates.check` | Manual check (5/min; cached within one minute) |
+| `GET/PUT /api/updates/settings` | session | `updates.view` / `updates.manage` | Update settings |
 | `GET/PATCH /api/settings/privacy` | session | `settings.manage` | IP retention period, retention of removed evidence |
 | `GET /api/punishments` | session | `punishments.history` | Search/filter punishments (`type`, `status`, `search`) |
 | `POST /api/punishments` | session | per type (e.g. `punishments.ban`) | Issue a punishment |
