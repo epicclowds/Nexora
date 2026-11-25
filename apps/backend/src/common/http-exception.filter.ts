@@ -2,6 +2,9 @@ import { type ArgumentsHost, Catch, type ExceptionFilter, HttpException, HttpSta
 import type { Response } from 'express';
 import { Prisma } from '../generated/prisma/client';
 
+/** Detail fields forwarded from HttpException bodies (allowlist; never internal data). */
+const DETAIL_FIELDS = ['punishmentId', 'reasonId'] as const;
+
 /**
  * Converts every error into a stable JSON shape without leaking stack traces,
  * SQL or internal messages to clients.
@@ -25,6 +28,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
         code: (payload.code as string | undefined) ?? HttpStatus[status] ?? 'ERROR',
         message: Array.isArray(payload.message) ? payload.message.join(', ') : (payload.message ?? exception.message),
         ...(payload.issues ? { issues: payload.issues } : {}),
+        // Non-sensitive details clients use in messages (e.g. the reason ID in "/ban Steve 7").
+        ...Object.fromEntries(DETAIL_FIELDS.filter((key) => typeof payload[key] === 'string' || typeof payload[key] === 'number').map((key) => [key, payload[key]])),
       });
       return;
     }
