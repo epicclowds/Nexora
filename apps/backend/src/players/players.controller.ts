@@ -11,6 +11,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { SettingsService } from '../settings/settings.service';
 import { buildActivity } from './activity';
 import { GeoIpService } from './geoip.service';
+import { sendSkin } from './account-skin.controller';
 import { SkinService } from './skin.service';
 
 const listQuery = paginationSchema.extend({
@@ -160,12 +161,7 @@ export class PlayersController {
   async skin(@Param('uuid') raw: string, @Res() res: Response) {
     const uuid = normalizeUuid(raw);
     const skin = uuid ? await this.skins.getSkin(uuid) : null;
-    if (!skin) throw new NotFoundException({ code: 'SKIN_UNAVAILABLE', message: 'No skin available' });
-    res.setHeader('Content-Type', 'image/png');
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.setHeader('X-Skin-Model', skin.model);
-    res.setHeader('Content-Security-Policy', "default-src 'none'");
-    res.send(skin.png);
+    sendSkin(res, skin);
   }
 
   /** Daily playtime and weekday/hour heatmap from recorded sessions, in the viewer's time zone. */

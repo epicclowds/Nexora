@@ -29,6 +29,7 @@ const SESSION_ONLY_ALLOWLIST = new Set([
   'POST /api/auth/logout',
   // Every signed-in user links their own Minecraft account.
   'GET /api/account/minecraft-link',
+  'GET /api/account/minecraft-link/skin',
   'POST /api/account/minecraft-link',
   'GET /api/dashboard/summary',
   'GET /api/settings/network',

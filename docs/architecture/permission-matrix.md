@@ -6,12 +6,13 @@ Every backend route and what it requires. Permissions are checked on the server 
 "session" = any signed-in dashboard user; "plugin signature" = HMAC-signed request from a registered Minecraft server.
 The `owner` role holds every permission (`*`).
 
-Routes: 139 · public: 12 · plugin: 20 · session only: 15 · checked in handler: 2 · permission-protected: 90
+Routes: 141 · public: 12 · plugin: 20 · session only: 16 · checked in handler: 2 · permission-protected: 91
 
 | Method | Path | Requires |
 | --- | --- | --- |
 | GET | `/api/account/minecraft-link` | session |
 | POST | `/api/account/minecraft-link` | session |
+| GET | `/api/account/minecraft-link/skin` | session |
 | GET | `/api/anticheat/events` | `anticheat.view` |
 | GET | `/api/anticheat/settings` | `anticheat.view` |
 | PUT | `/api/anticheat/settings` | `anticheat.manage` |
@@ -146,6 +147,7 @@ Routes: 139 · public: 12 · plugin: 20 · session only: 15 · checked in handle
 | POST | `/api/users` | `users.manage` |
 | PATCH | `/api/users/:id` | `users.manage` |
 | DELETE | `/api/users/:id/minecraft-link` | `users.manage` |
+| GET | `/api/users/:id/minecraft-link/skin` | `users.view` |
 | GET | `/api/users/:id/staff` | `users.view` |
 | POST | `/api/users/:id/staff/recheck` | `users.manage` |
 | POST | `/api/users/:id/staff/revoke-sessions` | `users.manage` |
