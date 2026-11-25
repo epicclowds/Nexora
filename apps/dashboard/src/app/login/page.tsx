@@ -19,6 +19,13 @@ function LoginForm() {
   const [networkName, setNetworkName] = useState<string | null>(null);
   const [challenge, setChallenge] = useState<string | null>(null);
   const [code, setCode] = useState('');
+  const [registration, setRegistration] = useState(false);
+
+  useEffect(() => {
+    api<{ enabled: boolean }>('/auth/registration')
+      .then((r) => setRegistration(r.enabled))
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     api<SetupStatus>('/setup/status')
@@ -71,6 +78,7 @@ function LoginForm() {
       <CardContent>
         <form onSubmit={submit} className="grid gap-4" noValidate>
           {error && <Alert variant="destructive">{error}</Alert>}
+          {params.get('registered') && !error && <Alert variant="success">{t('register.done')}</Alert>}
           {challenge ? (
             <Field label={t('auth.twoFactorCode')} hint={t('auth.twoFactorHint')} htmlFor="code">
               <Input
@@ -109,6 +117,11 @@ function LoginForm() {
             >
               {t('auth.twoFactorBack')}
             </Button>
+          )}
+          {registration && !challenge && (
+            <a href="/register" className="text-center text-sm text-muted-foreground hover:text-foreground">
+              {t('register.fromLogin')}
+            </a>
           )}
         </form>
       </CardContent>

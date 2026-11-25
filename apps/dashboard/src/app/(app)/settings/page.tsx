@@ -14,6 +14,7 @@ import { LanguageSwitcher, ThemeToggle } from '@/components/preference-controls'
 import { useToast } from '@/components/toaster';
 import { TwoFactorCard } from '@/components/two-factor-card';
 import { UpdatesPanel } from '@/components/updates-panel';
+import { LuckPermsIntegration, MinecraftLinkCard } from '@/components/staff-accounts';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle, Field, Input, Label, Select, Skeleton, Textarea } from '@/components/ui/primitives';
 import { api, errorKey } from '@/lib/api';
 import { browserTimeZone, storeTimeZone } from '@/lib/preferences';
@@ -26,6 +27,7 @@ const SECTIONS = [
   { key: 'moderation', permission: [PERMISSIONS.SETTINGS_MANAGE, PERMISSIONS.PUNISHMENT_PRESETS_MANAGE] },
   { key: 'languages', permission: PERMISSIONS.TRANSLATIONS_MANAGE },
   { key: 'privacy', permission: PERMISSIONS.SETTINGS_MANAGE },
+  { key: 'integrations', permission: PERMISSIONS.INTEGRATIONS_MANAGE },
   { key: 'updates', permission: PERMISSIONS.UPDATES_VIEW },
 ] as const;
 type Section = (typeof SECTIONS)[number]['key'];
@@ -72,6 +74,7 @@ function Settings() {
           <>
             <PreferencesCard />
             <TwoFactorCard />
+            <MinecraftLinkCard />
             {can(PERMISSIONS.SETTINGS_MANAGE) && <NetworkCard />}
           </>
         )}
@@ -80,6 +83,7 @@ function Settings() {
         {section === 'moderation' && <ModerationSettings />}
         {section === 'languages' && <LanguagesManager />}
         {section === 'privacy' && <PrivacyCard />}
+        {section === 'integrations' && <LuckPermsIntegration />}
         {section === 'updates' && <UpdatesPanel />}
       </div>
     </>

@@ -13,6 +13,7 @@ import { PlayerActivity } from '@/components/player-activity';
 import { PlayerConnections } from '@/components/player-connections';
 import { PlayerModeration, PlayerNotes } from '@/components/player-moderation';
 import { PlayerStatistics } from '@/components/player-statistics';
+import { RankBadge } from '@/components/staff-accounts';
 import { PlayerHead, SkinViewer } from '@/components/player-skin';
 import { useLiveRefresh } from '@/components/realtime-provider';
 import { Alert, Badge, Button, Card, CardContent, CardHeader, CardTitle, Skeleton, StatusDot } from '@/components/ui/primitives';
@@ -89,6 +90,7 @@ function ProfileContent() {
                 <div className="flex flex-wrap items-center gap-3">
                   <PlayerHead uuid={player.uuid} username={player.username} size={40} />
                   <h1 className="text-3xl font-semibold tracking-tight">{player.username}</h1>
+                  <RankBadge rank={player.minecraftRank} />
                   <Badge variant={player.online ? 'default' : 'muted'}>
                     <StatusDot state={player.online ? 'up' : 'down'} /> {player.online ? t('common.online') : t('common.offline')}
                   </Badge>

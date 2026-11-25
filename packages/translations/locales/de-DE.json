@@ -172,7 +172,8 @@
       "moderation": "Moderation",
       "languages": "Sprachen",
       "privacy": "Datenschutz",
-      "updates": "Updates"
+      "updates": "Updates",
+      "integrations": "Integrationen"
     }
   },
   "setup": {
@@ -1214,5 +1215,130 @@
       "DURATION_OVERRIDE_FORBIDDEN": "Du hast keine Berechtigung, die Dauer eines Grundes zu ändern.",
       "PERMANENT_FORBIDDEN": "Du hast keine Berechtigung, diesen Grund permanent zu machen."
     }
+  },
+  "staff": {
+    "minecraft": "Minecraft",
+    "details": "Teamdetails",
+    "detailTitle": "Teamkonto: {user}",
+    "notLinked": "Kein Minecraft-Konto verknüpft",
+    "minecraftAccount": "Minecraft-Konto",
+    "minecraftAccountDescription": "Verknüpfe dein Minecraft-Konto, um deine Ingame-Berechtigungen im Dashboard zu nutzen. Gib /nexora link im Netzwerk ein, um einen Code zu erhalten.",
+    "code": "Bestätigungscode",
+    "codeHint": "Von /nexora link in Minecraft. 5 Minuten gültig, einmal verwendbar.",
+    "linkAccount": "Konto verknüpfen",
+    "linked": "Minecraft-Konto verknüpft.",
+    "linkedSince": "Verknüpft seit {date}",
+    "rankTitle": "Primäre Gruppe: {group} · Gruppen: {groups}",
+    "protectedOwner": "Geschützter Owner",
+    "dashboardRole": "Dashboard-Rolle",
+    "primaryGroup": "Primäre LuckPerms-Gruppe",
+    "permissionSource": "Berechtigungsquelle",
+    "managedBy": "Konto verwaltet von",
+    "lastSync": "Letzte Synchronisation",
+    "linkedAt": "Verknüpft",
+    "sources": {
+      "ROLE": "Dashboard-Rolle",
+      "LUCKPERMS": "LuckPerms"
+    },
+    "managers": {
+      "NONE": "Nexora",
+      "LUCKPERMS": "LuckPerms"
+    },
+    "statuses": {
+      "ACTIVE": "Aktiv",
+      "DISABLED": "Deaktiviert",
+      "PENDING_LINK": "Verknüpfung ausstehend",
+      "SYNC_WARNING": "Synchronisationswarnung"
+    },
+    "disabledByLuckPerms": "Von LuckPerms deaktiviert",
+    "luckPermsManagedHint": "Die Moderationsberechtigungen dieses Kontos kommen aus LuckPerms. Ändere sie in LuckPerms (Gruppen und Berechtigungen) – hier können sie nicht bearbeitet werden.",
+    "matrixTitle": "Strafgründe",
+    "allowed": "Erlaubt",
+    "notAllowed": "Nicht erlaubt",
+    "special": {
+      "custom": "Eigene Gründe",
+      "durationOverride": "Dauer ändern",
+      "permanent": "Permanent machen"
+    },
+    "history": "Kontoverlauf",
+    "recheck": "LuckPerms erneut prüfen",
+    "rechecked": "Erneute Prüfung angefordert.",
+    "revokeSessions": "Sitzungen widerrufen",
+    "sessionsRevoked": "Alle Sitzungen widerrufen.",
+    "unlink": "Minecraft-Konto trennen",
+    "unlinked": "Minecraft-Konto getrennt.",
+    "unlinkTitle": "Minecraft-Konto von {user} trennen?",
+    "unlinkDescription": "Das Konto behält seine Dashboard-Rolle; LuckPerms-Berechtigungen gelten nicht mehr.",
+    "unlinkManagedDescription": "Dieses Konto wird von LuckPerms verwaltet: Das Trennen deaktiviert es und meldet es überall ab.",
+    "errors": {
+      "INVALID_LINK_CODE": "Der Code ist ungültig, abgelaufen oder bereits verwendet. Gib /nexora link erneut ein.",
+      "ALREADY_LINKED": "Dieses Minecraft-Konto ist bereits mit einem Dashboard-Konto verknüpft.",
+      "LINKING_DISABLED": "Die Kontoverknüpfung ist in diesem Netzwerk deaktiviert.",
+      "REGISTRATION_DISABLED": "Die Registrierung für Teammitglieder ist in diesem Netzwerk deaktiviert.",
+      "NOT_ELIGIBLE": "Dein Minecraft-Rang gewährt keinen Dashboard-Zugriff.",
+      "TOO_MANY_ATTEMPTS": "Zu viele Versuche. Bitte warte und versuche es später erneut.",
+      "USERNAME_TAKEN": "Dieser Benutzername ist bereits vergeben.",
+      "EMAIL_TAKEN": "Diese E-Mail-Adresse wird bereits verwendet."
+    }
+  },
+  "luckperms": {
+    "title": "LuckPerms",
+    "description": "LuckPerms-Gruppen und -Berechtigungen für das Team: dieselben Strafberechtigungen ingame und im Dashboard, Kontoverknüpfung und automatische Zugriffsverwaltung.",
+    "notDetected": "Nicht erkannt",
+    "connected": "Synchronisiert",
+    "syncWarning": "Keine aktuelle Synchronisation",
+    "version": "LuckPerms-Version",
+    "lastSync": "Letzte Synchronisation",
+    "lastFullSync": "Letzter vollständiger Abgleich",
+    "proxy": "Meldender Proxy",
+    "linkedAccounts": "Verknüpfte Konten",
+    "snapshots": "Synchronisierte Spieler",
+    "snapshotCounts": "{count} ({stale} veraltet)",
+    "installHint": "Installiere LuckPerms auf dem Velocity-Proxy (mit dem Nexora-Plugin 1.3 oder neuer). Das Plugin erkennt es automatisch und beginnt zu synchronisieren.",
+    "mode": "Integrationsmodus",
+    "modes": {
+      "DISABLED": "Deaktiviert",
+      "HYBRID": "Hybrid",
+      "MANAGED": "Von LuckPerms verwaltetes Team"
+    },
+    "modeHints": {
+      "DISABLED": "Nur die Rollen und Berechtigungen von Nexora.",
+      "HYBRID": "Dashboard-Rollen bleiben wie zugewiesen. Verknüpfte Teammitglieder nutzen ihre LuckPerms-Berechtigungen für Strafgründe.",
+      "MANAGED": "Zusätzlich erhalten durch Verknüpfung erstellte Konten ihre Rolle aus der Gruppenzuordnung und verlieren den Zugriff ohne berechtigte Gruppe."
+    },
+    "linkingEnabled": "Kontoverknüpfung",
+    "linkingEnabledHint": "Teammitglieder können ihr Minecraft-Konto mit /nexora link verknüpfen.",
+    "registration": "Registrierung für Teammitglieder",
+    "registrationHint": "Berechtigte Teammitglieder können mit einem Verknüpfungscode ein Dashboard-Konto erstellen (Rolle aus der Gruppenzuordnung).",
+    "staleAfter": "Berechtigungen vertrauen für (Minuten)",
+    "staleAfterHint": "Ältere LuckPerms-Daten blockieren sensible Aktionen, bis sie aktualisiert wurden.",
+    "ownerProtected": "Das geschützte Owner-Konto hängt nie von LuckPerms ab: Keine Gruppe kann es vergeben oder entziehen, und es funktioniert auch bei Ausfällen von LuckPerms oder des Proxys.",
+    "mappingTitle": "Rollenzuordnung",
+    "mappingDescription": "Welche LuckPerms-Gruppen welche Dashboard-Rolle erhalten. Die höchste Priorität gewinnt; eine gesperrte Gruppe entzieht den Dashboard-Zugriff.",
+    "mappingHint": "Geerbte Gruppen zählen. Die Owner-Rolle kann nicht zugeordnet werden. Änderungen gelten sofort für von LuckPerms verwaltete Konten.",
+    "group": "LuckPerms-Gruppe",
+    "role": "Dashboard-Rolle",
+    "access": "Dashboard-Zugriff",
+    "priority": "Priorität",
+    "noRole": "Keine Rolle",
+    "denyAccess": "Zugriff sperren",
+    "addMapping": "Zuordnung hinzufügen",
+    "denied": "Gesperrt",
+    "enabled": "Aktiv",
+    "noAccess": "Kein Zugriff",
+    "duplicateMapping": "Diese Gruppe ist bereits zugeordnet."
+  },
+  "register": {
+    "title": "Registrierung für Teammitglieder",
+    "description": "Erstelle dein Dashboard-Konto mit einem Code von /nexora link.",
+    "codeHint": "Gib /nexora link im Netzwerk ein. Der Code ist 5 Minuten gültig.",
+    "passwordHint": "Mindestens 12 Zeichen.",
+    "confirmPassword": "Passwort bestätigen",
+    "mismatch": "Die Passwörter stimmen nicht überein.",
+    "submit": "Konto erstellen",
+    "disabled": "Die Registrierung für Teammitglieder ist in diesem Netzwerk nicht aktiviert. Wende dich an einen Administrator.",
+    "toLogin": "Zurück zur Anmeldung",
+    "fromLogin": "Teammitglied ohne Konto? Registriere dich mit /nexora link",
+    "done": "Konto erstellt. Du kannst dich jetzt anmelden."
   }
 }

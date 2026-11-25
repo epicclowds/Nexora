@@ -230,6 +230,8 @@ export interface PlayerProfile extends PlayerListItem {
   clientProtocol: number | null;
   clientBrand: string | null;
   rank: string | null;
+  /** LuckPerms rank from the proxy; null when not synchronised. */
+  minecraftRank: { primaryGroup: string | null; displayName: string | null; prefix: string | null; color: string | null; groups: string[]; source: string; synchronizedAt: string } | null;
   skinModel: string | null;
   activePlaytimeSeconds: number | null;
   afkSeconds: number | null;

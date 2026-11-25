@@ -172,7 +172,8 @@
       "moderation": "Moderation",
       "languages": "Languages",
       "privacy": "Privacy",
-      "updates": "Updates"
+      "updates": "Updates",
+      "integrations": "Integrations"
     }
   },
   "setup": {
@@ -1214,5 +1215,130 @@
       "DURATION_OVERRIDE_FORBIDDEN": "You do not have permission to change the duration of a reason.",
       "PERMANENT_FORBIDDEN": "You do not have permission to make this reason permanent."
     }
+  },
+  "staff": {
+    "minecraft": "Minecraft",
+    "details": "Staff details",
+    "detailTitle": "Staff account: {user}",
+    "notLinked": "No Minecraft account linked",
+    "minecraftAccount": "Minecraft account",
+    "minecraftAccountDescription": "Link your Minecraft account to use your in-game permissions in the dashboard. Run /nexora link on the network to get a code.",
+    "code": "Verification code",
+    "codeHint": "From /nexora link in Minecraft. Valid for 5 minutes, usable once.",
+    "linkAccount": "Link account",
+    "linked": "Minecraft account linked.",
+    "linkedSince": "Linked since {date}",
+    "rankTitle": "Primary group: {group} · Groups: {groups}",
+    "protectedOwner": "Protected Owner",
+    "dashboardRole": "Dashboard role",
+    "primaryGroup": "Primary LuckPerms group",
+    "permissionSource": "Permission source",
+    "managedBy": "Account managed by",
+    "lastSync": "Last synchronisation",
+    "linkedAt": "Linked",
+    "sources": {
+      "ROLE": "Dashboard role",
+      "LUCKPERMS": "LuckPerms"
+    },
+    "managers": {
+      "NONE": "Nexora",
+      "LUCKPERMS": "LuckPerms"
+    },
+    "statuses": {
+      "ACTIVE": "Active",
+      "DISABLED": "Disabled",
+      "PENDING_LINK": "Pending link",
+      "SYNC_WARNING": "Synchronisation warning"
+    },
+    "disabledByLuckPerms": "Disabled by LuckPerms",
+    "luckPermsManagedHint": "The moderation permissions of this account come from LuckPerms. Change them with LuckPerms (groups and permission nodes) – they cannot be edited here.",
+    "matrixTitle": "Punishment reasons",
+    "allowed": "Allowed",
+    "notAllowed": "Not allowed",
+    "special": {
+      "custom": "Custom reasons",
+      "durationOverride": "Duration overrides",
+      "permanent": "Permanent overrides"
+    },
+    "history": "Account history",
+    "recheck": "Recheck LuckPerms",
+    "rechecked": "Recheck requested.",
+    "revokeSessions": "Revoke sessions",
+    "sessionsRevoked": "All sessions revoked.",
+    "unlink": "Unlink Minecraft account",
+    "unlinked": "Minecraft account unlinked.",
+    "unlinkTitle": "Unlink the Minecraft account of {user}?",
+    "unlinkDescription": "The account keeps its dashboard role; LuckPerms permissions no longer apply.",
+    "unlinkManagedDescription": "This account is managed by LuckPerms: unlinking disables it and signs it out everywhere.",
+    "errors": {
+      "INVALID_LINK_CODE": "The code is invalid, expired or already used. Run /nexora link again.",
+      "ALREADY_LINKED": "This Minecraft account is already linked to a dashboard account.",
+      "LINKING_DISABLED": "Account linking is disabled on this network.",
+      "REGISTRATION_DISABLED": "Staff registration is disabled on this network.",
+      "NOT_ELIGIBLE": "Your Minecraft rank does not grant dashboard access.",
+      "TOO_MANY_ATTEMPTS": "Too many attempts. Please wait and try again later.",
+      "USERNAME_TAKEN": "This username is already taken.",
+      "EMAIL_TAKEN": "This email address is already in use."
+    }
+  },
+  "luckperms": {
+    "title": "LuckPerms",
+    "description": "Use LuckPerms groups and permissions for staff: the same punishment permissions in-game and in the dashboard, account linking and automatic access management.",
+    "notDetected": "Not detected",
+    "connected": "Synchronising",
+    "syncWarning": "No recent synchronisation",
+    "version": "LuckPerms version",
+    "lastSync": "Last synchronisation",
+    "lastFullSync": "Last full reconciliation",
+    "proxy": "Reporting proxy",
+    "linkedAccounts": "Linked accounts",
+    "snapshots": "Synchronised players",
+    "snapshotCounts": "{count} ({stale} outdated)",
+    "installHint": "Install LuckPerms on the Velocity proxy (with the Nexora plugin 1.3 or newer). The plugin detects it automatically and starts synchronising.",
+    "mode": "Integration mode",
+    "modes": {
+      "DISABLED": "Disabled",
+      "HYBRID": "Hybrid",
+      "MANAGED": "LuckPerms-managed staff"
+    },
+    "modeHints": {
+      "DISABLED": "Only Nexora's own roles and permissions.",
+      "HYBRID": "Dashboard roles stay as assigned. Linked staff use their LuckPerms permissions for punishment reasons.",
+      "MANAGED": "Additionally, accounts created by linking get their role from the group mapping and lose access when no eligible group remains."
+    },
+    "linkingEnabled": "Account linking",
+    "linkingEnabledHint": "Staff can link their Minecraft account with /nexora link.",
+    "registration": "Staff registration",
+    "registrationHint": "Eligible staff can create a dashboard account with a link code (role from the group mapping).",
+    "staleAfter": "Trust permissions for (minutes)",
+    "staleAfterHint": "Older LuckPerms data blocks sensitive actions until it is refreshed.",
+    "ownerProtected": "The protected Owner account never depends on LuckPerms: no group can grant or remove it, and it keeps working during LuckPerms or proxy outages.",
+    "mappingTitle": "Role mapping",
+    "mappingDescription": "Which LuckPerms groups give which dashboard role. The highest priority wins; a denied group removes dashboard access.",
+    "mappingHint": "Inherited groups count. The Owner role cannot be mapped. Changes apply to LuckPerms-managed accounts right away.",
+    "group": "LuckPerms group",
+    "role": "Dashboard role",
+    "access": "Dashboard access",
+    "priority": "Priority",
+    "noRole": "No role",
+    "denyAccess": "Deny access",
+    "addMapping": "Add mapping",
+    "denied": "Denied",
+    "enabled": "Enabled",
+    "noAccess": "No access",
+    "duplicateMapping": "This group is already mapped."
+  },
+  "register": {
+    "title": "Staff registration",
+    "description": "Create your dashboard account with a code from /nexora link.",
+    "codeHint": "Run /nexora link on the network. The code is valid for 5 minutes.",
+    "passwordHint": "At least 12 characters.",
+    "confirmPassword": "Confirm password",
+    "mismatch": "The passwords do not match.",
+    "submit": "Create account",
+    "disabled": "Staff registration is not enabled on this network. Ask an administrator.",
+    "toLogin": "Back to sign in",
+    "fromLogin": "Staff member without an account? Register with /nexora link",
+    "done": "Account created. You can sign in now."
   }
 }

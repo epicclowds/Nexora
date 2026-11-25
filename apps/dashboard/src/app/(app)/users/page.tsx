@@ -13,6 +13,8 @@ import { TBody, TD, TH, THead, TR, Table } from '@/components/ui/table';
 import { api, errorKey, type Page } from '@/lib/api';
 import { useRoleName } from '@/lib/use-role-name';
 import { ConfirmDialog } from '@/components/confirm-dialog';
+import { PlayerHead } from '@/components/player-skin';
+import { StaffDetailDialog } from '@/components/staff-accounts';
 
 interface UserRow {
   id: string;
@@ -23,6 +25,9 @@ interface UserRow {
   lastLoginAt: string | null;
   createdAt: string;
   role: { id: string; key: string; name: string; priority: number };
+  managedBy: 'NONE' | 'LUCKPERMS';
+  disabledByLuckPerms: boolean;
+  minecraftLink: { minecraftUuid: string; minecraftUsername: string; lastVerifiedAt: string | null } | null;
 }
 
 interface Role {
@@ -154,6 +159,7 @@ export default function UsersPage() {
             <THead>
               <TR>
                 <TH>{t('users.username')}</TH>
+                <TH>{t('staff.minecraft')}</TH>
                 <TH>{t('users.email')}</TH>
                 <TH>{t('users.role')}</TH>
                 <TH>{t('common.status')}</TH>
@@ -166,7 +172,28 @@ export default function UsersPage() {
                 const manageable = canManage && u.id !== me.id && (me.roleKey === 'owner' || u.role.priority < me.rolePriority);
                 return (
                   <TR key={u.id}>
-                    <TD className="font-medium">{u.username}</TD>
+                    <TD className="font-medium">
+                      <StaffDetailDialog
+                        userId={u.id}
+                        username={u.username}
+                        onChange={() => void load()}
+                        trigger={
+                          <button type="button" className="hover:underline" title={t('staff.details')}>
+                            {u.username}
+                          </button>
+                        }
+                      />
+                    </TD>
+                    <TD>
+                      {u.minecraftLink ? (
+                        <span className="flex items-center gap-2">
+                          <PlayerHead uuid={u.minecraftLink.minecraftUuid} username={u.minecraftLink.minecraftUsername} size={20} />
+                          {u.minecraftLink.minecraftUsername}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">–</span>
+                      )}
+                    </TD>
                     <TD className="text-muted-foreground">{u.email}</TD>
                     <TD>
                       {manageable ? (
@@ -185,6 +212,8 @@ export default function UsersPage() {
                       <div className="flex flex-wrap gap-1">
                         {u.disabled ? <Badge variant="danger">{t('users.disabled')}</Badge> : <Badge>{t('users.active')}</Badge>}
                         {u.twoFactorEnabled && <Badge variant="info">{t('users.twoFactor')}</Badge>}
+                        {u.managedBy === 'LUCKPERMS' && <Badge variant="muted">{t('staff.managers.LUCKPERMS')}</Badge>}
+                        {u.disabledByLuckPerms && <Badge variant="warning">{t('staff.disabledByLuckPerms')}</Badge>}
                       </div>
                     </TD>
                     <TD className="text-muted-foreground">{u.lastLoginAt ? format.relativeTime(new Date(u.lastLoginAt), now) : t('common.never')}</TD>
