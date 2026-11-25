@@ -2,6 +2,25 @@
 
 All notable changes are documented here. The project follows [Semantic Versioning](https://semver.org/) and [Conventional Commits](https://www.conventionalcommits.org/).
 
+## [1.2.1] – 2026-11-25
+
+Fixes the update checker staying at "GitHub rate limit reached … last known result from Never".
+
+### Fixed
+- After a GitHub rate limit, the next check now happens at GitHub's reset time. 1.2.0 waited a full check interval (6 hours) after a failed attempt, so an installation whose first check hit an exhausted quota showed no release information for hours.
+- Failures other than rate limits retry after 15 minutes, 30 minutes, 1 hour, … instead of after the full interval; the last verified result is kept meanwhile.
+- Secondary rate limits (`403`/`429` without rate-limit headers) are recognised; other `403` responses are reported as errors instead of rate limits.
+- Settings → Updates no longer says "last known result from Never": without a successful check it explains that no release information has been retrieved yet and shows the last attempt and the next automatic attempt.
+
+### Added
+- Optional `GITHUB_TOKEN` for the update checker (60 → 5000 requests per hour). Without a token GitHub allows 60 requests per hour per public IP address, shared with every other program on the same network – a common reason for the rate limit. The token is only sent to `api.github.com`, never logged and never returned to the dashboard; a rejected token is reported.
+- Redis cache and lock for the update state: all backend replicas share one result and only one sends a request; the database copy survives restarts. Dashboard page loads, notifications and plugin heartbeats never call GitHub.
+- Conditional requests with `If-Modified-Since` in addition to `If-None-Match`.
+- Clear verdict on Settings → Updates: *Up to date*, *Update available* or *Unable to verify*; GitHub access mode (with/without token) and the last rate-limit headers.
+
+### Upgrade
+Set `NEXORA_VERSION=1.2.1` (or keep `latest`), then `docker compose pull && docker compose up -d`. Optionally add `GITHUB_TOKEN=…` to `.env` (or the stack's environment variables). No database migration; the plugins are unchanged from 1.2.0 apart from the version number, so replacing them is optional.
+
 ## [1.2.0] – 2026-11-25
 
 Update notifications and a standalone Docker Compose installation.
@@ -143,6 +162,7 @@ First stable release (Phase 9 – production readiness).
 ## [0.1.0] – Foundation
 - Monorepo, Docker Compose, backend, dashboard, authentication, RBAC, i18n, setup wizard, CI.
 
+[1.2.1]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.1
 [1.2.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.2.0
 [1.1.0]: https://github.com/epicclowds/Nexora/releases/tag/v1.1.0
 [1.0.3]: https://github.com/epicclowds/Nexora/releases/tag/v1.0.3
